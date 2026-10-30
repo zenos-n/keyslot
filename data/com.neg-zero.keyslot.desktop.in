@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Keyslot
+Comment=Manage KeePass databases
+Exec=@BINDIR@/keyslot %F
+Icon=keepassxc
+Terminal=false
+Categories=GNOME;GTK;System;Security;
+Keywords=KeePass;KeePassXC;Password;KDBX;
+MimeType=application/x-keepass2;
+StartupNotify=true
+DBusActivatable=true

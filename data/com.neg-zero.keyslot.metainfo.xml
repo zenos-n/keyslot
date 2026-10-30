@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.neg_zero.keyslot</id>
+  <name>Keyslot</name>
+  <summary>A native GNOME client for KeePassXC databases</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <developer id="com.neg-zero"><name>Keyslot Contributors</name></developer>
+  <url type="homepage">https://github.com/doromiert/keyslot</url>
+  <description>
+    <p>Browse and edit local KeePass databases with a native GTK4 and libadwaita interface. KeePassXC handles database encryption and storage.</p>
+    <p>Includes search, credential copying, password generation, attachments, and a companion GNOME Quick Settings extension.</p>
+    <p>This is an early development release. It does not yet provide full feature parity with KeePassXC.</p>
+  </description>
+  <launchable type="desktop-id">com.neg-zero.keyslot.desktop</launchable>
+  <provides><binary>keyslot</binary></provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.2.0" date="2026-10-29" type="development"/>
+    <release version="0.1.0" date="2026-10-29" type="development"/>
+  </releases>
+</component>

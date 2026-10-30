@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+/build/
+/result
+*.kdbx
+*.keyslot.bak
+*.zip

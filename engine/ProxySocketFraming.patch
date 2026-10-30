@@ -1,0 +1,71 @@
+--- a/src/proxy/NativeMessagingProxy.h
++++ b/src/proxy/NativeMessagingProxy.h
+@@ -19,6 +19,7 @@
+ #define NATIVEMESSAGINGPROXY_H
+ 
+ #include <QLocalSocket>
++#include <QByteArray>
+ 
+ class QWinEventNotifier;
+ class QSocketNotifier;
+@@ -44,6 +45,7 @@
+ 
+ private:
+     QScopedPointer<QLocalSocket> m_localSocket;
++    QByteArray m_socketInput;
+ 
+     Q_DISABLE_COPY(NativeMessagingProxy)
+ };
+--- a/src/proxy/NativeMessagingProxy.cpp
++++ b/src/proxy/NativeMessagingProxy.cpp
+@@ -17,6 +17,9 @@
+ 
+ #include "NativeMessagingProxy.h"
+ #include "browser/BrowserShared.h"
++#include "BrowserFraming.h"
++#include <QJsonDocument>
++#include <QJsonParseError>
+ 
+ #include <QCoreApplication>
+ #include <QFuture>
+@@ -106,14 +109,32 @@
+ 
+ void NativeMessagingProxy::transferSocketMessage()
+ {
+-    auto msg = m_localSocket->readAll();
+-    if (!msg.isEmpty()) {
+-        // Explicitly write the message length as 1 byte chunks
+-        uint len = msg.size();
+-        std::cout.write(reinterpret_cast<char*>(&len), sizeof(len));
+-
+-        // Write the message and flush the stream
+-        std::cout << msg.toStdString() << std::flush;
++    m_socketInput += m_localSocket->readAll();
++    while (!m_socketInput.isEmpty()) {
++        int leading = 0;
++        while (leading < m_socketInput.size() && (m_socketInput[leading] == ' ' || m_socketInput[leading] == '\n'
++               || m_socketInput[leading] == '\r' || m_socketInput[leading] == '\t')) ++leading;
++        m_socketInput.remove(0, leading);
++        if (m_socketInput.isEmpty()) return;
++        const int end = browserFrameEnd(m_socketInput);
++        if (m_socketInput[0] != '{' || end < 0 || end > BrowserShared::NATIVEMSG_MAX_LENGTH
++            || (!end && m_socketInput.size() > BrowserShared::NATIVEMSG_MAX_LENGTH)) {
++            QCoreApplication::exit(2);
++            return;
++        }
++        if (!end) return;
++        const auto msg = m_socketInput.left(end);
++        QJsonParseError error;
++        const auto document = QJsonDocument::fromJson(msg, &error);
++        if (error.error != QJsonParseError::NoError || !document.isObject()) {
++            QCoreApplication::exit(2);
++            return;
++        }
++        m_socketInput.remove(0, end);
++        const uint len = msg.size();
++        std::cout.write(reinterpret_cast<const char*>(&len), sizeof(len));
++        std::cout.write(msg.constData(), msg.size());
++        std::cout.flush();
+     }
+ }
+ 

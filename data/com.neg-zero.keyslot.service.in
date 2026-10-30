@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=com.neg-zero.keyslot
+Exec=@BINDIR@/keyslot --gapplication-service
