@@ -104,7 +104,8 @@ class BrowserRequests:
                 return True, operation()
             except EngineError as exc:
                 return False, {"association_failed": 8, "conflict": 1, "expired": 5,
-                               "denied": 6, "invalid_request": 12, "invalid_uuid": 18, "not_found": 15, "references_not_allowed": 34}.get(exc.code, 6)
+                               "denied": 6, "invalid_request": 12, "invalid_uuid": 18, "not_found": 15,
+                               "listing_denied": 19, "no_groups": 16, "too_large": 7, "references_not_allowed": 34}.get(exc.code, 6)
 
         def complete(value):
             if not self._valid(request):
@@ -209,7 +210,7 @@ class BrowserRequests:
             self._delete_entry(request, body)
         elif action in {"passkeys-register", "passkeys-get"}:
             self._passkey(request, body, action == "passkeys-register")
-        elif action in {"get-totp", "get-database-groups", "create-new-group"}:
+        elif action in {"get-totp", "get-database-groups", "get-database-entries", "create-new-group"}:
             self._entry_or_group(request, action, body)
         else:
             self._finish(request, error=12)
@@ -321,6 +322,27 @@ class BrowserRequests:
         elif action == "get-database-groups":
             self._job(request, lambda: vault.browser_groups(association.identifier, association.key),
                       lambda value: self._finish(request, {"groups": value}))
+        elif action == "get-database-entries":
+            settings = self.app.startup
+            def allowed():
+                try:
+                    return settings.browser_listing_allowed()
+                except (OSError, ValueError, VaultError):
+                    return False
+            def list_entries():
+                if not allowed():
+                    raise EngineError("listing_denied", "Access to all entries is denied.")
+                entries = vault.browser_entries(association.identifier, association.key, allowed=True)
+                if not allowed():
+                    raise EngineError("listing_denied", "Access to all entries is denied.")
+                return entries
+            def listed(entries):
+                # The user may revoke the switch after the worker finishes but before GTK delivers its result.
+                if not settings.browser_listing:
+                    self._finish(request, error=19)
+                else:
+                    self._finish(request, {"entries": entries})
+            self._job(request, list_entries, listed)
         else:
             name = body.get("groupName")
             if not isinstance(name, str) or not name:

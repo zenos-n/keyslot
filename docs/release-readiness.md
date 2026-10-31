@@ -122,6 +122,23 @@ history updates. Password copying and reference creation stay in the native help
 clone/metadata/history/save/concurrency acceptance remains pending; this batch
 has runtime compilation evidence only and no new tests or automated runs.
 
+Browser metadata inventory now implements the 2.8 get-database-entries action
+with standard fields and error codes19/16. It requires a current authenticated
+association and a default-OFF shared Browser/AllowGetDatabaseEntriesRequest
+permission. Enabling the GTK switch confirms its broader inventory scope,
+including hidden-entry metadata and resolved references/protected values.
+Native traversal and field resolution match upstream, including skipping the
+recycle-bin group itself rather than changing subgroup traversal. Shared policy
+is read before/after enumeration, GUI revocation is checked before delivery,
+and malformed/unreadable policy fails closed. Unrelated settings writes do not
+rewrite the dedicated shared permission. Output is bounded for the encrypted
+transport and returns an error rather than a partial list or transport restart.
+Fresh permission reads request only that key and use a five-second RPC timeout;
+opening Preferences refreshes its switch without writing the configuration.
+No vault mutation, idle touch or browser-protocol version spoofing is added.
+User browser/permission/reference/traversal/large-list acceptance remains pending;
+this batch has runtime compilation only and no new tests or automated runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and
@@ -321,7 +338,7 @@ The [coverage matrix](parity.md) remains the full replacement checklist. Securit
 backports retain the pinned 2.7.12/Qt5 API and do not implement all 2.8 features.
 The [official 2.8 release](https://keepassxc.org/blog/2026-10-21-2.8.0-released/)
 also requires review of remote database synchronization, configurable shortcuts,
-SSH key generation, Linux Polkit quick unlock, browser entry listing, additional
+SSH key generation, Linux Polkit quick unlock, additional
 Proton Pass record types, passkey/TOTP statistics and custom-attribute suggestions.
 Existing gaps such as broader field-reference and breach-report acceptance, advanced
 preferences, import/export coverage and accessibility remain open.

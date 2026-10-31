@@ -471,6 +471,16 @@ vault using upstream metadata. Database Settings → Browser Integration reviews
 and revokes connections. Lock, disconnect or rekey cancels outstanding prompts.
 Browser polling does not extend the inactivity timeout or disable the window.
 
+Preferences → Browser Integration → Allow Browsers to List All Entries enables
+KeePassXC 2.8’s `get-database-entries` operation. It is off by default and uses
+the shared `Browser/AllowGetDatabaseEntriesRequest` setting. Enabling it confirms
+the broader permission: any authenticated paired browser may receive entry
+titles, UUIDs and resolved website fields, including entries hidden from normal
+filling. Field references can reveal protected values. The request uses upstream
+entry ordering and recycle-bin traversal, returns standard errors for denial or
+an empty list, and refuses oversized output without truncation. Permissions are
+re-read before and after enumeration; polling does not reset inactivity.
+
 Entry Details → Browser Settings controls browser visibility, automatic form
 submission and HTTP authentication. Edit Group → Browser Integration adds
 inherited rules, www matching and restrictions to a paired browser connection.

@@ -47,7 +47,7 @@ GLOBAL = {"RememberLastDatabases": True, "OpenPreviousDatabasesOnStartup": True,
     "Keyslot/KeeShareExport": False, "PasswordGenerator/AdvancedMode": False,
     "PasswordGenerator/SpecialChars": True, "PasswordGenerator/WordCase": 0,
     "PasswordGenerator/Type": 0, "FaviconDownloadTimeout": 10,
-    "Security/IconDownloadFallback": False}
+    "Security/IconDownloadFallback": False, "Browser/AllowGetDatabaseEntriesRequest": False}
 LOCAL = {"LastActiveDatabase": "", "LastDatabases": [], "LastOpenedDatabases": [],
          "LastKeyFiles": {}, "LastChallengeResponse": {}, "Keyslot/LoginVault": ""}
 for _role, _key, _default in STARTUP_KEYS.values():
@@ -98,11 +98,11 @@ class IniProfile:
         self.startup = self.generator = None
         self._read()
 
-    def _request(self, write, files):
+    def _request(self, write, files, timeout=None):
         for role, (_option, path) in zip(("global", "local"), self.arguments):
             if str(Path(path).resolve()) != self.paths[role]:
                 raise VaultError("The configuration link changed. Reopen Keyslot before saving settings.")
-        client = Vault()
+        client = Vault() if timeout is None else Vault(timeout=timeout)
         try:
             return client.configuration(write, files)["files"]
         except EngineError as exc:
@@ -206,6 +206,7 @@ class IniProfile:
     def read_startup(self):
         with self.mutex:
             data = {field: self._get(key, role) for field, (role, key, _default) in STARTUP_KEYS.items()}
+            data["browser_listing"] = self._get("Browser/AllowGetDatabaseEntriesRequest")
             data["remember"] = self._get("OpenPreviousDatabasesOnStartup")
             candidates = [self._get("LastActiveDatabase", "local"), *self._get("LastOpenedDatabases", "local")]
             if data["login"]:
@@ -274,6 +275,21 @@ class IniProfile:
                     put("Keyslot/KeeShare" + name.title(), data["keeshare"][name])
             self._write(changes)
             self.startup = copy.deepcopy(dict(data, lock_seconds=seconds, clipboard_seconds=clipboard))
+
+    def read_browser_listing(self):
+        with self.mutex:
+            path, key = self.paths["global"], "Browser/AllowGetDatabaseEntriesRequest"
+            records = self._request(False, [{"path": path, "defaults": {key: False}}], timeout=5)
+            value = records[0]["values"][key]
+            self.values[path][key] = value
+            return value
+
+    def write_browser_listing(self, enabled):
+        if type(enabled) is not bool:
+            raise VaultError("Choose whether paired browsers may list entries.")
+        with self.mutex:
+            self._read()
+            self._write({("global", "Browser/AllowGetDatabaseEntriesRequest"): enabled})
 
     def read_search(self):
         with self.mutex:

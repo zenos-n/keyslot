@@ -77,6 +77,7 @@ class Startup:
         self.remember = self.login = False
         self.background = True
         self.browser = False
+        self.browser_listing = False
         self.minimize_on_url = False
         self.auto_reload = True
         self.auto_save = self.auto_save_on_exit = True
@@ -94,6 +95,7 @@ class Startup:
             data = stored if storage else json.loads(self.path.read_text())
             self.background = data.get("background", True) is True
             self.browser = data.get("browser") is True
+            self.browser_listing = data.get("browser_listing") is True
             self.minimize_on_url = data.get("minimize_on_url") is True
             self.auto_reload = data.get("auto_reload", True) is True
             self.auto_save = data.get("auto_save", True) is True
@@ -137,6 +139,34 @@ class Startup:
             self.login = self.remember and self.vault is not None and data.get("login") is True
         except (OSError, ValueError, AttributeError):
             pass
+
+    def browser_listing_allowed(self):
+        with self.mutex:
+            if self.storage:
+                value = self.storage.read_browser_listing()
+            else:
+                data = json.loads(self.path.read_text()) if self.path.exists() else {}
+                if not isinstance(data, dict):
+                    raise ValueError("The startup settings are invalid.")
+                value = data.get("browser_listing", False)
+            if type(value) is not bool:
+                raise ValueError("The browser entry-list permission is invalid.")
+            self.browser_listing = value
+            return value
+
+    def set_browser_listing(self, enabled):
+        if type(enabled) is not bool:
+            raise ValueError("Choose whether paired browsers may list entries.")
+        with self.mutex:
+            if self.storage:
+                self.storage.write_browser_listing(enabled)
+            else:
+                data = json.loads(self.path.read_text()) if self.path.exists() else {}
+                if not isinstance(data, dict):
+                    raise ValueError("The startup settings are invalid.")
+                data["browser_listing"] = enabled
+                _write(self.path, json.dumps(data) + "\n")
+            self.browser_listing = enabled
 
     def save(self, remember, login, vault=None, background=None, lock_minutes=None, browser=None,
              ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
@@ -196,6 +226,7 @@ class Startup:
                 self.autostart.unlink(missing_ok=True)
             try:
                 data = {"remember": bool(remember), "login": login, "background": background, "lock_minutes": timeout, "browser": browser,
+                       "browser_listing": self.browser_listing if self.storage else self.browser_listing_allowed(),
                        "ssh": ssh, "ssh_socket": ssh_socket, "ssh_provider": ssh_provider,
                        "autotype": autotype,
                        "keeshare": keeshare,

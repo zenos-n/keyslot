@@ -25,6 +25,8 @@ def add_preferences(session, page, preferences):
     group = Adw.PreferencesGroup(title="Browser Integration",
         description="Fill and save logins with KeePassXC-Browser. Keep Keyslot running to provide browser access.")
     enabled = Adw.SwitchRow(title="Browser Integration", subtitle="Allow connected browsers to request credentials", active=settings.browser)
+    listing = Adw.SwitchRow(title="Allow Browsers to List All Entries", active=settings.browser_listing,
+        subtitle="Share all entry titles, IDs and resolved website fields with paired browsers")
     setup = Adw.ActionRow(title="Browser Setup", subtitle="Choose browsers that can connect to Keyslot")
     configure = Gtk.Button(label="Configure…", valign=Gtk.Align.CENTER)
     configure.connect("clicked", lambda *_: (preferences.close(), browser_setup(session)))
@@ -42,6 +44,10 @@ def add_preferences(session, page, preferences):
             "Ready for browser requests" if browser and browser.ready else
             "Unavailable. Try turning this option off and on again." if browser is None or browser.pipe.closed else
             "Starting browser access…")
+        if listing.get_active() != settings.browser_listing:
+            changing[0] = True
+            listing.set_active(settings.browser_listing)
+            changing[0] = False
         return True
 
     def changed(*_):
@@ -56,9 +62,47 @@ def add_preferences(session, page, preferences):
         status()
         changing[0] = False
     enabled.connect("notify::active", changed)
+    def set_listing(value):
+        if closed[0]:
+            return
+        try:
+            settings.set_browser_listing(value)
+        except (OSError, ValueError, VaultError) as exc:
+            session.error(str(exc))
+        changing[0] = True
+        listing.set_active(settings.browser_listing)
+        changing[0] = False
+    def listing_changed(*_):
+        if changing[0]:
+            return
+        if not listing.get_active() or settings.browser_listing:
+            set_listing(listing.get_active())
+            return
+        changing[0] = True
+        listing.set_active(False)
+        changing[0] = False
+        alert = Adw.AlertDialog(heading="Allow Browsers to List All Entries?", body=
+            "Any paired browser can retrieve entry titles, IDs and resolved website fields, including entries hidden from normal filling. "
+            "References in these fields are resolved and can include protected values.", body_use_markup=False)
+        alert.add_response("cancel", "Cancel")
+        alert.add_response("allow", "Allow Listing")
+        alert.set_close_response("cancel")
+        alert.set_default_response("cancel")
+        alert.set_response_appearance("allow", Adw.ResponseAppearance.SUGGESTED)
+        alert.connect("response", lambda _alert, response: set_listing(True) if response == "allow" else None)
+        session.present_dialog(alert)
+    listing.connect("notify::active", listing_changed)
     group.add(enabled)
     group.add(setup)
+    group.add(listing)
     page.add(group)
+    def refreshed_listing(value):
+        if not closed[0]:
+            changing[0] = True
+            listing.set_active(value)
+            changing[0] = False
+    session.jobs.run(settings.browser_listing_allowed, refreshed_listing,
+                     lambda message: session.error(message) if not closed[0] else None, interactive=False)
     status()
     GLib.timeout_add(200, status)
 

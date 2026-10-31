@@ -759,6 +759,12 @@ class Vault:
         with self._mutex:
             return self._rpc("browser.groups", id=identifier, key=key)
 
+    def browser_entries(self, identifier, key, *, allowed=False):
+        with self._mutex:
+            if "browser-entry-list" not in self.capabilities:
+                raise EngineError("listing_denied", "Update the native engine before listing browser entries.")
+            return self._rpc("browser.entries", id=identifier, key=key, allowed=allowed)
+
     def browser_prepare_group(self, identifier, key, name):
         with self._mutex:
             return self._rpc("browser.prepare_group", id=identifier, key=key, name=name)

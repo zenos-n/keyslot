@@ -2,6 +2,7 @@
 #include "BrowserDatabase.h"
 #include "KeyslotBrowserValues.h"
 #include "browser/BrowserSettings.h"
+#include "browser/BrowserShared.h"
 #include "core/CustomData.h"
 #include "core/Database.h"
 #include "core/Entry.h"
@@ -11,6 +12,7 @@
 #include "core/Metadata.h"
 #include "core/Tools.h"
 #include <QDateTime>
+#include <QJsonDocument>
 #include <QMap>
 #include <QSet>
 #include <QUrl>
@@ -231,6 +233,29 @@ QJsonObject KeyslotBrowserDatabase::databaseGroups(const QSharedPointer<Database
     auto* root = db->rootGroup();
     return {{"groups", QJsonArray{QJsonObject{{"name", root->name()}, {"uuid", root->uuidToHex()},
                                              {"children", service.getChildrenFromGroup(root)}}}}};
+}
+
+// Field names, resolution and ordering follow KeePassXC 2.8 BrowserService::getDatabaseEntries
+// (KeePassXC Team, GPL-3.0-or-later); this opt-in grants an inventory beyond site-matched filling.
+QJsonArray KeyslotBrowserDatabase::databaseEntries(const QSharedPointer<Database>& db, const QJsonObject& args) {
+    authenticate(db, text(args, "id", true), text(args, "key", true));
+    if (!flag(args, "allowed")) reject("listing_denied", "Access to all entries is denied.");
+    QJsonArray entries;
+    qint64 bytes = 32;
+    for (const auto* group : db->rootGroup()->groupsRecursive(true)) {
+        if (group == db->metadata()->recycleBin()) continue;
+        for (const auto* entry : group->entries()) {
+            const QJsonObject item{{"title", entry->resolveMultiplePlaceholders(entry->title())},
+                                   {"uuid", entry->uuidToHex()},
+                                   {"url", entry->resolveMultiplePlaceholders(entry->url())}};
+            bytes += QJsonDocument(item).toJson(QJsonDocument::Compact).size() + 1;
+            if (bytes > BrowserShared::SOCKET_BUFFER_SIZE / 2 - 1024)
+                reject("too_large", "The entry list exceeds the browser message limit.");
+            entries.append(item);
+        }
+    }
+    if (entries.isEmpty()) reject("no_groups", "No groups found.");
+    return entries;
 }
 
 QJsonObject KeyslotBrowserDatabase::prepareGroup(const QSharedPointer<Database>& db, const QJsonObject& args,
