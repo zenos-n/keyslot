@@ -170,6 +170,16 @@ def show(session):
     minimize.connect("notify::active", changed_minimize)
     links.add(minimize)
     page.add(links)
+    keyboard = Adw.PreferencesGroup(title="Keyboard")
+    shortcuts = Adw.ActionRow(title="Keyboard Shortcuts…", subtitle="Customize application shortcuts and restore defaults", activatable=True)
+    shortcuts.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+    def configure_shortcuts(*_):
+        from .shortcut_views import show as show_shortcuts
+        dialog.force_close()
+        show_shortcuts(session)
+    shortcuts.connect("activated", configure_shortcuts)
+    keyboard.add(shortcuts)
+    page.add(keyboard)
     add_preferences(session, page, dialog)
     ssh_preferences(session, page, dialog)
     autotype_preferences(session, page)

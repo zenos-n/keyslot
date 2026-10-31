@@ -1346,6 +1346,8 @@ class Vault:
                 self._start()
             if "configuration" not in self.capabilities:
                 raise VaultError("Update the native engine before using custom configuration files.")
+            if write and any(item.get("remove") for item in files) and "configuration-reset" not in self.capabilities:
+                raise VaultError("Update the native engine before resetting keyboard shortcuts.")
             return self._rpc("configuration.write" if write else "configuration.read", files=files)
 
     def generator_info(self):
@@ -1356,6 +1358,15 @@ class Vault:
             if "generator-details" not in self.capabilities:
                 raise VaultError("Update the native engine before using the extended password generator.")
             return self._rpc("generator.info")
+
+    def shortcut_sequences(self, values):
+        with self._mutex:
+            if self._process is None or self._process.poll() is not None:
+                self._stop()
+                self._start()
+            if "shortcut-codec" not in self.capabilities:
+                raise VaultError("Update the native engine before editing shared keyboard shortcuts.")
+            return self._rpc("shortcuts.decode", values=list(values))
 
     def inspect_wordlist(self, path):
         with self._mutex:

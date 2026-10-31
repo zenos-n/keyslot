@@ -744,9 +744,26 @@ terminal. Ctrl+C quits, locks/cleans up the vault helper and exits with status
 130 without a Python traceback. The signal gate verifies that lifecycle in a
 private graphical session using a disposable vault.
 
-ZenPkgs has separate app and extension declarations. Source inputs currently
-reference local sibling repositories. Publish and pin them before distributing
-the catalog to another machine.
+ZenPkgs has separate app and extension declarations with independent published
+source pins.
 
 License: GPL-3.0-only. See `LICENSE`; the linked KeePassXC source retains its
 upstream licenses and notices.
+
+## Keyboard shortcuts
+
+Preferences → Keyboard Shortcuts edits application and entry actions. Record a
+combination, resolve conflicts, disable an action, or restore its default; Save
+applies the staged changes to all windows. The shortcuts help follows the active
+bindings. Common entry actions now include edit, duplicate, delete, username,
+password, website and TOTP copying. Ctrl+U copies a website; Ctrl+Shift+U opens it.
+Entry actions yield to text editing and open dialogs. The desktop auto-type
+shortcut remains in the auto-type preferences.
+
+With a KeePassXC configuration profile, shared actions use its `Shortcuts` keys;
+Keyslot-only actions use their own namespace. Reset removes only the selected
+override, retaining unrelated settings. Unsupported platform keys and manually
+authored multi-stroke sequences are preserved but disabled here until changed.
+The editor records one combination per action. These additions have runtime
+compilation only; desktop and keyboard-layout acceptance remain manual.
+

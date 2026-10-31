@@ -6,6 +6,17 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Configurable application shortcuts now include staged recording, conflict
+replacement, disabling and default resets, shared KeePassXC action-key overrides,
+private Keyslot-only actions and help generated from active bindings. Reset
+removes individual keys atomically and refuses stale shortcut snapshots or
+settings with descendant keys. Unknown keys and unsupported Qt sequences are
+preserved. Entry copy/edit/delete actions yield while text is focused or dialogs
+are open, and recording temporarily inhibits application accelerators. The GUI
+records one combination per action; multi-stroke and unavailable platform keys
+remain inactive until replaced. This batch is runtime compilation only; user
+keyboard-layout, recording, conflict and desktop acceptance are pending.
+
 The generator now manages a persistent custom word-list library beside the
 selected KeePassXC configuration, using its existing wordlists directory.
 Import copies the selected regular file through private staging, validates it

@@ -17,6 +17,7 @@
 #include "KeyslotReports.h"
 #include "KeyslotIcons.h"
 #include "KeyslotNetwork.h"
+#include <QKeySequence>
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
 #include "core/Database.h"
@@ -785,7 +786,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -967,6 +968,30 @@ public:
             } catch (const KeyslotConfig::Failure& error) {
                 throw Failure{error.code, error.message, error.details};
             }
+        }
+        if (method == "shortcuts.decode") {
+            const auto values = args.value("values");
+            if (!values.isArray() || values.toArray().size() > 256)
+                fail("invalid_request", "Specify supported keyboard shortcuts.");
+            QJsonArray result;
+            for (const auto& value : values.toArray()) {
+                if (!value.isString() || value.toString().size() > 1024 || value.toString().contains(QChar('\0')))
+                    fail("invalid_request", "A keyboard shortcut is invalid.");
+                const auto source = value.toString();
+                auto sequence = QKeySequence::fromString(source, QKeySequence::NativeText);
+                if (!source.isEmpty() && (sequence.isEmpty() || sequence[0] == Qt::Key_unknown))
+                    sequence = QKeySequence::fromString(source, QKeySequence::PortableText);
+                const int stroke = sequence.isEmpty() ? 0 : sequence[0];
+                const int key = stroke & ~int(Qt::KeyboardModifierMask);
+                result.append(QJsonObject{{"text", sequence.toString(QKeySequence::PortableText)},
+                    {"key", key ? QKeySequence(key).toString(QKeySequence::PortableText) : QString()},
+                    {"ctrl", bool(stroke & Qt::CTRL)}, {"shift", bool(stroke & Qt::SHIFT)},
+                    {"alt", bool(stroke & Qt::ALT)}, {"super", bool(stroke & Qt::META)},
+                    {"keypad", bool(stroke & Qt::KeypadModifier)},
+                    {"unsupported", sequence.count() > 1 || (!source.isEmpty() && (!key || key == Qt::Key_unknown))
+                        || bool(stroke & Qt::GroupSwitchModifier)}});
+            }
+            return result;
         }
         if (method == "generator.info") {
             QJsonArray lists;

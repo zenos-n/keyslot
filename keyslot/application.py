@@ -261,7 +261,9 @@ class VaultSession:
         self.dialogs.append(dialog)
         dialog.connect("closed", lambda d: self.dialogs.remove(d) if d in self.dialogs else None)
         dialog.connect("closed", lambda *_: self.files.resume())
+        dialog.connect("closed", lambda *_: self.application.shortcuts.refresh_state())
         dialog.present(self.host_window)
+        self.application.shortcuts.refresh_state()
         return True
 
     def error(self, message):
@@ -308,6 +310,7 @@ class VaultSession:
         epoch, view_epoch = self.epoch, self.view_epoch
         cancellable = Gio.Cancellable()
         self.file_requests.add(cancellable)
+        self.application.shortcuts.refresh_state()
         chooser = Gtk.FileDialog(title="Select Folder" if folder else "Save File" if save else "Open File")
         if name:
             chooser.set_initial_name(name)
@@ -327,6 +330,7 @@ class VaultSession:
                 pass
             finally:
                 self.file_requests.discard(cancellable)
+                self.application.shortcuts.refresh_state()
                 if hasattr(self, "files"):
                     self.files.resume()
         (chooser.select_folder if folder else chooser.save if save else chooser.open)(self.host_window, cancellable, selected)
@@ -859,20 +863,8 @@ class VaultSession:
         return generator_views.show(self, on_apply)
 
     def shortcuts(self):
-        dialog = Adw.ShortcutsDialog()
-        section = Adw.ShortcutsSection(title="Database")
-        for title, accelerator in [("Open Database", "<Control>o"), ("New Database", "<Control><Shift>n"),
-                                   ("New Entry", "<Control>n"), ("Search", "<Control>f"), ("Open Entry URL", "<Control>u"),
-                                   ("Lock Database", "<Control>l"), ("Lock All Databases", "<Control><Shift>l"),
-                                   ("Password Generator", "<Control>g"), ("Refresh", "<Control>r"),
-                                   ("Save Database", "<Control>s"), ("Save Database As", "<Control><Shift>s"), ("Preferences", "<Control>comma"),
-                                   ("Select All Entries (Entry List)", "<Control>a"),
-                                   ("Deselect All Entries (Entry List)", "<Control><Shift>a"),
-                                   ("Leave Entry Selection", "Escape"),
-                                   ("Close Window", "<Control>w")]:
-            section.add(Adw.ShortcutsItem(title=title, accelerator=accelerator))
-        dialog.add(section)
-        self.present_dialog(dialog)
+        from .shortcut_views import help_dialog
+        help_dialog(self)
 
     def about(self):
         dialog = Adw.AboutDialog(application_name="Keyslot", application_icon=ICON_NAME,
@@ -1313,20 +1305,21 @@ class DatabaseView(Gtk.Box):
         noun = "Entry" if count == 1 else "Entries"
         self.detail.append(Adw.StatusPage(title=f"{count} {noun} Selected" if count else "Select Entries",
             icon_name="edit-select-all-symbolic", description="Use the actions below the entry list to copy, move, restore, delete or edit tags and expiry."))
+        self.app.application.shortcuts.refresh_state()
 
     def _entry_keys(self, _keys, keyval, _code, state):
-        if keyval == Gdk.KEY_Escape and self.selection_mode:
+        from .shortcuts import MODIFIERS
+        mods = state & MODIFIERS
+        if keyval == Gdk.KEY_Escape and not mods and self.selection_mode:
             self.set_selection_mode(False)
             return True
-        if keyval in (Gdk.KEY_Menu, Gdk.KEY_F10) and (keyval == Gdk.KEY_Menu or state & Gdk.ModifierType.SHIFT_MASK):
+        if (keyval == Gdk.KEY_Menu and not mods) or (keyval == Gdk.KEY_F10 and mods == Gdk.ModifierType.SHIFT_MASK):
             selected = self.selected_entries()
             if selected:
                 self.begin_selection(selected[0].uuid)
                 return True
-        if keyval in (Gdk.KEY_Delete, Gdk.KEY_KP_Delete):
-            self.app.delete_entries(self.selected_entries(), permanent=bool(state & Gdk.ModifierType.SHIFT_MASK))
-            return True
-        if keyval in (Gdk.KEY_a, Gdk.KEY_A) and state & Gdk.ModifierType.CONTROL_MASK:
+        if keyval in (Gdk.KEY_a, Gdk.KEY_A) and mods in (Gdk.ModifierType.CONTROL_MASK,
+                Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK):
             self.set_selection_mode(True)
             if state & Gdk.ModifierType.SHIFT_MASK:
                 self.entries.unselect_all()
@@ -1342,12 +1335,14 @@ class DatabaseView(Gtk.Box):
         if row and not self.selection_mode and not self.rendering_entries:
             self.selected_entry = row.entry
             self.render_detail(row.entry)
+            self.app.application.shortcuts.refresh_state()
 
     def _empty_detail(self):
         self.app.totp.clear()
         clear(self.detail)
         self.detail.append(Adw.StatusPage(title="Select an Entry", icon_name="dialog-password-symbolic",
                                          description="Your login details will appear here."))
+        self.app.application.shortcuts.refresh_state()
 
     def render_detail(self, entry):
         self.app.totp.clear()

@@ -10,6 +10,7 @@
 #include <QLockFile>
 #include <QSaveFile>
 #include <QSettings>
+#include <QSet>
 #include <QTemporaryDir>
 #include <algorithm>
 #include <atomic>
@@ -195,6 +196,11 @@ QJsonObject KeyslotConfig::write(const QJsonObject& arguments)
         warnings.check();
         const auto updated = entry.value("values").toObject();
         const auto expected = entry.value("expected").toObject();
+        for (auto it = expected.begin(); it != expected.end(); ++it) {
+            if (!schema.contains(it.key())) reject("invalid_request", "The configuration comparison is invalid.");
+            if (current.value(it.key()) != it.value())
+                reject("conflict", "This setting changed in another application. Reopen it before saving.");
+        }
         for (auto it = updated.begin(); it != updated.end(); ++it) {
             if (!schema.contains(it.key()) || !expected.contains(it.key())) reject("invalid_request", "The configuration update is invalid.");
             if (current.value(it.key()) != expected.value(it.key()))
@@ -205,6 +211,21 @@ QJsonObject KeyslotConfig::write(const QJsonObject& arguments)
             if (it.value().isArray()) for (const auto& item : it.value().toArray())
                 if (!item.isString()) reject("invalid_request", "The configuration list must contain strings.");
             settings.setValue(it.key(), converted(it.value().toVariant(), schema.value(it.key())));
+        }
+        if (entry.contains("remove") && !entry.value("remove").isArray())
+            reject("invalid_request", "Specify individual settings to reset.");
+        QSet<QString> removed;
+        const auto allKeys = settings.allKeys();
+        for (const auto& value : entry.value("remove").toArray()) {
+            const auto key = value.toString();
+            if (!value.isString() || !schema.contains(key) || !expected.contains(key) || updated.contains(key) || removed.contains(key))
+                reject("invalid_request", "The configuration reset is invalid.");
+            if (current.value(key) != expected.value(key))
+                reject("conflict", "This setting changed in another application. Reopen it before resetting it.");
+            for (const auto& existing : allKeys) if (existing.startsWith(key + '/'))
+                reject("invalid_request", "Only individual configuration values can be reset.");
+            removed.insert(key);
+            settings.remove(key);
         }
         settings.sync();
         warnings.check();

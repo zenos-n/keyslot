@@ -9,19 +9,6 @@ from .application import Adw, Gio, GLib, Gtk, Vault, VaultSession, VaultError, I
 from . import APP_ID, ICON_NAME, database_views, preferences, passkey_views, autotype_views, command_line as gui_cli
 from .startup import Startup, LoginKeyring
 
-SHORTCUTS = {
-    "save": ["<Primary>s"],
-    "save-as": ["<Primary><Shift>s"],
-    "open": ["<Primary>o"], "new": ["<Primary><Shift>n"], "new-entry": ["<Primary>n"],
-    "search": ["<Primary>f"], "lock": ["<Primary>l"], "generator": ["<Primary>g"],
-    "refresh": ["<Primary>r"], "save-copy": [], "close": ["<Primary>w"],
-    "shortcuts": ["<Primary>question"],
-    "preferences": ["<Primary>comma"],
-    "autotype": ["<Primary><Shift>v"],
-    "open-url": ["<Primary>u"],
-}
-
-
 class Keyslot(Adw.Application):
     def __init__(self):
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -118,16 +105,18 @@ class Keyslot(Adw.Application):
                 self.startup.save(True, True, self.startup.vault)
             except (OSError, ValueError, VaultError):
                 self.startup_error = "The login launcher could not be updated. Check your configuration folder’s permissions."
-        for name, callback, keys in [("new-window", self.new_window, []),
-                                     ("recover", self.recover, []),
-                                     ("lock-all", self.lock, ["<Primary><Shift>l"]),
-                                     ("quit", self.quit, ["<Primary>q"])]:
+        for name, callback in [("new-window", self.new_window), ("recover", self.recover),
+                               ("lock-all", self.lock), ("quit", self.quit)]:
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, callback=callback: callback())
             self.add_action(action)
-            self.set_accels_for_action("app." + name, keys)
-        for name, keys in SHORTCUTS.items():
-            self.set_accels_for_action("win." + name, keys)
+        from .shortcuts import Manager
+        self.shortcuts = Manager(self)
+        try:
+            self.shortcuts.load()
+        except (OSError, ValueError, VaultError):
+            self.shortcuts.install()
+            self.startup_error = "Keyboard shortcuts could not be loaded. Defaults are active; the stored settings were kept."
         self.connection = self.get_dbus_connection()
         if self.connection is None:
             raise RuntimeError("A session D-Bus connection is required.")
@@ -211,6 +200,8 @@ class Keyslot(Adw.Application):
                 action.set_enabled(session.vault.unlocked or session.busy)
         if action := self.lookup_action("lock-all"):
             action.set_enabled(not self.locked or self.busy)
+        if manager := getattr(self, "shortcuts", None):
+            manager.refresh_state()
         if getattr(self, "connection", None):
             self.connection.emit_signal(None, OBJECT_PATH, "org.freedesktop.DBus.Properties", "PropertiesChanged",
                 GLib.Variant("(sa{sv}as)", (INTERFACE, {"Locked": GLib.Variant("b", self.locked),
@@ -524,13 +515,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.connect("close-request", self._close)
         self.connect("notify::is-active", self._focused)
         self.connect("notify::visible", lambda *_: application.emit_state())
+        self.connect("notify::focus-widget", lambda *_: application.shortcuts.refresh_state())
         motion = Gtk.EventControllerMotion()
         motion.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         motion.connect("motion", application.touch)
         self.add_controller(motion)
         keys = Gtk.EventControllerKey()
         keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
-        keys.connect("key-pressed", lambda *_: (application.touch(), False)[1])
+        keys.connect("key-pressed", lambda *_: (application.touch(), application.shortcuts.refresh_state(), False)[-1])
         self.add_controller(keys)
         clicks = Gtk.GestureClick()
         clicks.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
@@ -553,6 +545,12 @@ class MainWindow(Adw.ApplicationWindow):
         self._action("preferences", lambda: preferences.show(session))
         self._action("passkeys", lambda: passkey_views.manage(session))
         self._action("autotype", lambda: autotype_views.choose(session))
+        from .shortcuts import ENTRY_ACTIONS, invoke_entry
+        from .shortcut_views import show as shortcut_settings
+        for name, operation in ENTRY_ACTIONS.items():
+            self._action(name, lambda operation=operation: invoke_entry(session, operation))
+        self._action("shortcut-settings", lambda: shortcut_settings(session))
+        self.app.shortcuts.refresh_state()
 
     def _action(self, name, callback):
         action = Gio.SimpleAction.new(name, None)
