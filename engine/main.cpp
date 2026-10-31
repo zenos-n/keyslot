@@ -769,7 +769,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1538,9 +1538,23 @@ public:
         }
         if (method == "database.report") return KeyslotReports::inventory(db, boolean(args, "excluded"), hash);
         if (method == "search") {
-            EntrySearcher searcher(false, true);
+            auto* base = args.contains("group") ? group(text(args, "group")) : db->rootGroup();
+            if (args.contains("group")) {
+                int matches = 0;
+                for (const auto* item : db->rootGroup()->groupsRecursive(true)) if (item->uuid() == base->uuid()) ++matches;
+                if (matches != 1) fail("invalid_request", "Choose a group with an unambiguous identifier.");
+            }
+            const bool recursive = boolean(args, "recursive", true), recycled = boolean(args, "recycled");
+            const bool force = boolean(args, "force");
+            QList<Entry*> candidates;
+            const auto groups = recursive ? base->groupsRecursive(true) : QList<Group*>{base};
+            for (const auto* item : groups) {
+                if (item->isRecycled() ? !recycled : (!force && !item->resolveSearchingEnabled())) continue;
+                for (auto* entry : item->entries()) if (recycled || !entry->isRecycled()) candidates.append(entry);
+            }
+            EntrySearcher searcher(boolean(args, "case_sensitive"), !boolean(args, "protected"));
             QJsonArray result;
-            for (const auto* e : searcher.search(text(args, "query"), db->rootGroup())) result.append(uid(e->uuid()));
+            for (const auto* e : searcher.searchEntries(text(args, "query"), candidates)) result.append(uid(e->uuid()));
             return result;
         }
         if (method == "attribute") {

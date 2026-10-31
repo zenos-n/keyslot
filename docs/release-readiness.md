@@ -46,6 +46,17 @@ unchecked. Empty/malformed data cannot produce a clean result. User desktop,
 live network and large-corpus acceptance remain pending; runtime compilation
 alone does not prove these workflows. No additional tests or automated runs.
 
+Search now offers whole-vault, direct-group and recursive-group scope,
+case sensitivity, password/protected-custom-field matching, explicit recycled
+and disabled-group controls, Enter-to-search and syntax help. Whole-vault
+matches are no longer hidden by the selected sidebar group. Recursive browsing
+excludes recycled descendants unless browsing a recycled group. Search defaults
+map stock SearchLimitGroup/GUI SearchWaitForEnter and private Keyslot recursive
+preferences; queries and temporary switches are not written to configuration.
+Pending, waiting, failed and stale requests are distinguished in the UI. These
+additions are compiled candidates for user acceptance, with no new tests,
+harnesses or automated behavior runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and

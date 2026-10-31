@@ -64,6 +64,16 @@ helper. Checks report progress, cancellation, partial findings and retryable
 network failures. Report refresh clears previous breach results. These new
 workflows await user manual acceptance; no automated runs were added or performed.
 
+The filter button beside Search controls whole-vault, selected-group and
+selected-group-with-subgroups search, case sensitivity, password/protected
+custom-field matching, recycled entries, disabled search groups and Enter-to-search.
+Whole-vault results stay visible regardless of the selected sidebar group.
+Browsing can include subgroup entries while keeping trash in its own group.
+Scope, recursive browsing and Enter-to-search defaults are remembered separately
+from query text and temporary switches. Explicit INI profiles share KeePassXC's
+`SearchLimitGroup` and `GUI/SearchWaitForEnter` settings; Keyslot-specific browsing
+defaults use its own namespace. These additions await user manual acceptance.
+
 Import source includes KeePass 1 (`.kdb`), KeePass XML, Bitwarden JSON (including
 password-protected exports), 1Password 1PUX/OPVault, and Proton Pass JSON through
 the pinned upstream readers. The GTK workflow collects source credentials

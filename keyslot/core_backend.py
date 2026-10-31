@@ -1185,9 +1185,15 @@ class Vault:
             self._entry(entry)
             return self._snapshot_call("history.remove", entry=entry.uuid, index=index, revision=revision)
 
-    def search(self, query):
+    def search(self, query, group="", recursive=True, case_sensitive=False, protected=False, recycled=False, force=False):
         with self._mutex:
-            return self._rpc("search", query=query)
+            if (group or not recursive or case_sensitive or protected or recycled or force) and "search-options" not in self.capabilities:
+                raise VaultError("Update the native engine before using search options.")
+            params = dict(query=query, recursive=recursive, case_sensitive=case_sensitive,
+                          protected=protected, recycled=recycled, force=force)
+            if group:
+                params["group"] = group
+            return self._rpc("search", **params)
 
     def import_attachment(self, entry, source, replace=False):
         with self._mutex:

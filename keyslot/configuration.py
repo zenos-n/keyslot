@@ -37,6 +37,8 @@ GENERATOR_KEYS = {"lowercase": ("LowerCase", True), "uppercase": ("UpperCase", T
     "wordlist": ("WordList", "eff_large.wordlist")}
 SYMBOL_KEYS = {"braces": "Braces", "punctuation": "Punctuation", "quotes": "Quotes",
                "dashes": "Dashes", "math": "Math", "logograms": "Logograms"}
+SEARCH_KEYS = {"limit_group": ("SearchLimitGroup", False), "wait_enter": ("GUI/SearchWaitForEnter", False),
+               "recursive": ("Keyslot/RecursiveGroupView", False), "search_recursive": ("Keyslot/SearchRecursive", True)}
 GLOBAL = {"RememberLastDatabases": True, "OpenPreviousDatabasesOnStartup": True,
     "RememberLastKeyFiles": True,
     "NumberOfRememberedLastDatabases": 5, "Security/LockDatabaseIdle": True,
@@ -58,6 +60,8 @@ for _key, _default in GENERATOR_KEYS.values():
     GLOBAL["PasswordGenerator/" + _key] = _default
 for _key in SYMBOL_KEYS.values():
     GLOBAL["PasswordGenerator/" + _key] = False
+for _key, _default in SEARCH_KEYS.values():
+    GLOBAL[_key] = _default
 
 
 def default_paths():
@@ -269,6 +273,16 @@ class IniProfile:
                     put("Keyslot/KeeShare" + name.title(), data["keeshare"][name])
             self._write(changes)
             self.startup = copy.deepcopy(dict(data, lock_seconds=seconds, clipboard_seconds=clipboard))
+
+    def read_search(self):
+        with self.mutex:
+            return {name: self._get(key) for name, (key, _default) in SEARCH_KEYS.items()}
+
+    def write_search(self, changes):
+        with self.mutex:
+            if not isinstance(changes, dict) or set(changes) - SEARCH_KEYS.keys() or any(type(value) is not bool for value in changes.values()):
+                raise VaultError("Choose supported search options.")
+            self._write({("global", SEARCH_KEYS[name][0]): value for name, value in changes.items()})
 
     def read_generator(self):
         from .generator_views import DEFAULTS, CASES, _validate

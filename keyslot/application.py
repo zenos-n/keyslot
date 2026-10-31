@@ -964,10 +964,15 @@ class DatabaseView(Gtk.Box):
         list_header.pack_end(list_menu)
         list_toolbar.add_top_bar(list_header)
         entries_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.search = Gtk.SearchEntry(placeholder_text="Search passwords", margin_top=12,
-                                     margin_start=12, margin_end=12, margin_bottom=12)
+        self.search = Gtk.SearchEntry(placeholder_text="Search passwords", hexpand=True)
         self.search.connect("search-changed", self._search_changed)
-        entries_box.append(self.search)
+        from .search_view import SearchOptions
+        self.search_tools = SearchOptions(self)
+        search_box = Gtk.Box(spacing=6, margin_top=12, margin_start=12, margin_end=12, margin_bottom=12)
+        search_box.append(self.search)
+        search_box.append(self.search_tools.button)
+        entries_box.append(search_box)
+        entries_box.append(self.search_tools.status)
         self.entries = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["boxed-list"], valign=Gtk.Align.START)
         self.entries.connect("row-selected", self._select_entry)
         self.entries.connect("selected-rows-changed", self._selection_changed)
@@ -1055,6 +1060,7 @@ class DatabaseView(Gtk.Box):
         self.search_matches = None
         self.search_generation += 1
         self.search.set_text("")
+        self.search_tools.clear()
         clear(self.entries)
         self.entry_count = 0
         clear(self.groups)
@@ -1093,9 +1099,11 @@ class DatabaseView(Gtk.Box):
                 selected = row
         self.groups.select_row(selected)
         self.refreshing_groups = False
-        self.render_entries(previous, selection)
         if self.search.get_text().strip():
+            self.search_tools.previous, self.search_tools.selection = previous, selection
             self._search_changed(passive=True)
+        else:
+            self.render_entries(previous, selection)
         self.app.emit_state()
 
     def _select_group(self, _list, row):
@@ -1105,7 +1113,10 @@ class DatabaseView(Gtk.Box):
         self.list_title.set_title("All Entries" if row.group_path is None else row.group_name)
         if self.refreshing_groups:
             return
-        self.render_entries()
+        if self.search.get_text().strip():
+            self._search_changed(passive=True)
+        else:
+            self.render_entries()
         if self.outer.get_collapsed():
             self.outer.set_show_sidebar(False)
 
@@ -1118,14 +1129,19 @@ class DatabaseView(Gtk.Box):
         self.rendering_entries = True
         clear(self.entries)
         self.selected_entry = None
-        query = self.search.get_text().casefold().strip()
+        query = self.search.get_text().strip()
+        groups = self.search_tools.browsing_groups() if not query else None
+        selected_recycled = any(group.identity == self.selected_group and group.recycled for group in self.snapshot.groups)
+        title = "All Entries" if self.selected_group is None else next(
+            (group.name for group in self.snapshot.groups if group.identity == self.selected_group), "Entries")
+        self.list_title.set_title("Search Results" if query else title)
         rows = []
-        for entry in sorted(self.snapshot.entries, key=lambda e: e.title.casefold()):
-            if self.selected_group is None and entry.recycled:
-                continue
-            if self.selected_group is not None and entry.group != self.selected_group:
-                continue
-            if query and self.search_matches is not None and entry.uuid not in self.search_matches:
+        candidates = self.snapshot.entries if not query or self.search_matches is not None else ()
+        for entry in sorted(candidates, key=lambda e: e.title.casefold()):
+            if query:
+                if self.search_matches is None or entry.uuid not in self.search_matches:
+                    continue
+            elif (entry.recycled and not selected_recycled) or (groups is not None and entry.group not in groups):
                 continue
             row = Adw.ActionRow(title=GLib.markup_escape_text(entry.title or "Untitled Entry"),
                 subtitle=GLib.markup_escape_text(entry.username or entry.url or entry.group_path or entry.group))
@@ -1150,9 +1166,12 @@ class DatabaseView(Gtk.Box):
             row.set_activatable(True)
             self.entries.append(row)
             rows.append(row)
-        self.list_title.set_subtitle(f"{len(rows)} entries")
+        subtitle = ("Press Enter to Search" if self.search_tools.state == "waiting" else
+                    "Searching…" if self.search_tools.state == "pending" else
+                    "Search Failed" if self.search_tools.state == "error" else f"{len(rows)} entries")
+        self.list_title.set_subtitle(subtitle if query else f"{len(rows)} entries")
         self.entry_count = len(rows)
-        self.empty_label.set_visible(not rows)
+        self.empty_label.set_visible(not rows and (not query or self.search_tools.state == "ready"))
         if self.selection_mode:
             for row in rows:
                 if row.entry.uuid in selection:
@@ -1307,27 +1326,7 @@ class DatabaseView(Gtk.Box):
         return False
 
     def _search_changed(self, *_, passive=False):
-        self.search_generation += 1
-        generation = self.search_generation
-        query = self.search.get_text()
-        self.search_matches = None
-        if not self.snapshot or not query.strip():
-            self.render_entries()
-            return
-        def start():
-            if generation != self.search_generation or not self.snapshot:
-                return GLib.SOURCE_REMOVE
-            if self.app.busy:
-                GLib.timeout_add(100, start)
-                return GLib.SOURCE_REMOVE
-            def received(matches):
-                if generation == self.search_generation and self.snapshot:
-                    self.search_matches = set(matches)
-                    self.render_entries()
-            queue = self.app.jobs.run if passive else self.app.run_job
-            queue(lambda: self.app.vault.search(query), received)
-            return GLib.SOURCE_REMOVE
-        start()
+        self.search_tools.changed(passive=passive)
 
     def _select_entry(self, _list, row):
         if row and not self.selection_mode and not self.rendering_entries:
