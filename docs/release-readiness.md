@@ -6,6 +6,17 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+SSH generation now uses the upstream 2.8 Botan generator with the pinned 2.7.12
+parser/agent. GTK offers Ed25519, RSA and ECDSA, key sizes, comment and attachment
+name, plus optional protection with the entry's current password. Private bytes
+stay native; public review precedes a single-use, revision-bound save of private
+and `.pub` attachments with the selected KeeAgent source. Existing attachments,
+external files and loaded agent keys are preserved, and policy is unchanged.
+Native parse/decrypt validation runs as part of generation. No automated
+behavior runs are performed here. OpenSSH signing/import, algorithm/encoding,
+cancel/expiry, history/save/recovery and real desktop acceptance remain manual;
+runtime compilation alone does not establish production readiness.
+
 Configurable application shortcuts now include staged recording, conflict
 replacement, disabling and default resets, shared KeePassXC action-key overrides,
 private Keyslot-only actions and help generated from active bindings. Reset

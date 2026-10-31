@@ -32,6 +32,12 @@ class KeyslotSSH {
     int sequence = 0;
     QHash<QString, Pending> pending;
     QHash<QString, Removal> removals;
+    struct Generated {
+        QWeakPointer<Database> database;
+        QByteArray revision, privateKey, publicKey;
+        QString token, entry, attachment;
+        qint64 expires = 0;
+    } generated;
     QJsonObject request(QJsonObject value);
     void clearPending();
     void prunePending();
@@ -41,6 +47,10 @@ public:
     void configure(const QJsonObject& args);
     QJsonObject settings(const Entry* entry) const;
     QJsonObject keyInfo(const Entry* entry, bool decrypt) const;
+    QJsonObject generationInfo(const Entry* entry) const;
+    QJsonObject generate(const QSharedPointer<Database>& db, Entry* entry, const QJsonObject& args, const QByteArray& revision);
+    void saveGenerated(const QSharedPointer<Database>& db, Entry* entry, const QJsonObject& args, const QByteArray& revision);
+    void cancelGenerated(const QString& token);
     void saveSettings(Entry* entry, const QJsonObject& args);
     void updatePolicy(const Entry* entry);
     QJsonObject prepare(const QSharedPointer<Database>& db, Entry* entry, const QByteArray& fingerprint);

@@ -624,6 +624,29 @@ class Vault:
             self._entry(entry)
             return self._rpc("ssh.key_info", entry=entry.uuid, decrypt=decrypt)
 
+    def ssh_generation_info(self, entry):
+        with self._mutex:
+            self._entry(entry)
+            if "ssh-key-generation" not in self.capabilities:
+                raise VaultError("Update the native engine before generating SSH keys.")
+            return self._rpc("ssh.generate.info", entry=entry.uuid)
+
+    def generate_ssh_key(self, entry, **options):
+        with self._mutex:
+            self._entry(entry)
+            if "ssh-key-generation" not in self.capabilities:
+                raise VaultError("Update the native engine before generating SSH keys.")
+            return self._rpc("ssh.generate.prepare", entry=entry.uuid, **options)
+
+    def save_generated_ssh_key(self, entry, token):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("ssh.generate.save", entry=entry.uuid, token=token)
+
+    def cancel_generated_ssh_key(self, token):
+        with self._mutex:
+            return self._rpc("ssh.generate.cancel", token=token)
+
     def save_ssh_settings(self, entry, **options):
         with self._mutex:
             self._entry(entry)

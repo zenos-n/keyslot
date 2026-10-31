@@ -786,7 +786,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1400,6 +1400,7 @@ public:
         }
         if (method.startsWith("ssh.")) {
             try {
+                if (method == "ssh.generate.cancel") { ssh.cancelGenerated(text(args, "token")); return true; }
                 if (method == "ssh.configure") { ssh.configure(args); return true; }
                 if (method == "ssh.owned") return ssh.owned();
                 if (method == "ssh.remove") return ssh.remove(args);
@@ -1408,6 +1409,12 @@ public:
                 if (method == "ssh.removal.finish") { unchanged(); return ssh.finishRemoval(db, args, hash); }
                 if (method == "ssh.add") { unchanged(); return ssh.add(db, args, hash); }
                 auto* item = entry(args);
+                if (method == "ssh.generate.info") return ssh.generationInfo(item);
+                if (method == "ssh.generate.prepare") { unchanged(); return ssh.generate(db, item, args, hash); }
+                if (method == "ssh.generate.save") {
+                    unchanged();
+                    return transaction([&] { ssh.saveGenerated(db, item, args, hash); });
+                }
                 if (method == "ssh.settings") return ssh.settings(item);
                 if (method == "ssh.key_info") return ssh.keyInfo(item, boolean(args, "decrypt"));
                 if (method == "ssh.prepare") { unchanged(); return ssh.prepare(db, item, hash); }

@@ -60,7 +60,7 @@ def entry_settings(session, entry, data=None):
     for row in (auto, remove, confirm, lifetime, seconds):
         options.add(row)
     box.append(options)
-    box.append(Gtk.Label(label="Preview and Add use the saved key settings. Save changes first. Automatic loading requires SSH Agent in Preferences.",
+    box.append(Gtk.Label(label="Preview, Add and Generate use the saved key settings. Save changes first. Automatic loading requires SSH Agent in Preferences.",
                          wrap=True, xalign=0, css_classes=["dim-label"]))
     actions = Gtk.Box(spacing=12, homogeneous=True)
     preview = Gtk.Button(label="Preview Saved Key", sensitive=data["configured"])
@@ -70,6 +70,9 @@ def entry_settings(session, entry, data=None):
     actions.append(preview)
     actions.append(add)
     box.append(actions)
+    generate = Gtk.Button(label="Generate New SSH Key…")
+    generate.connect("clicked", lambda *_: (dialog.close(), generate_key(session, entry)) if current() else None)
+    box.append(generate)
     def save(*_):
         if not current() or session.busy:
             return
@@ -88,6 +91,111 @@ def entry_settings(session, entry, data=None):
         session.run_job(lambda: session.vault.save_ssh_settings(_entry(session, entry.uuid), **values), saved)
     _save(header, save)
     session.present_dialog(dialog)
+
+
+def _cancel_generation(session, token):
+    if session.vault.unlocked and not session.jobs.closed:
+        session.jobs.run(lambda: session.vault.cancel_generated_ssh_key(token), failed=lambda _message: None, interactive=False)
+
+
+def generate_key(session, entry, info=None):
+    if not session.vault.unlocked or session.busy or entry.recycled:
+        return
+    if info is None:
+        session.run_job(lambda: session.vault.ssh_generation_info(_entry(session, entry.uuid)),
+                        lambda value: generate_key(session, entry, value))
+        return
+    dialog, header, box = _dialog("Generate SSH Key", width=500, height=560)
+    current = _lifetime(session, dialog)
+    box.append(Gtk.Label(label=entry.title or "Untitled Entry", css_classes=["title-2"], wrap=True))
+    options = Adw.PreferencesGroup(title="Key")
+    algorithm = Adw.ComboRow(title="Type", model=Gtk.StringList.new(["Ed25519", "RSA", "ECDSA"]))
+    bits = Adw.ComboRow(title="Key Size (Bits)")
+    sizes = {0: [256], 1: [2048, 3072, 4096], 2: [256, 384, 521]}
+    def changed_type(*_):
+        index = algorithm.get_selected()
+        bits.set_model(Gtk.StringList.new([str(value) for value in sizes[index]]))
+        bits.set_selected(1 if index == 1 else 0)
+        bits.set_visible(index != 0)
+    algorithm.connect("notify::selected", changed_type)
+    changed_type()
+    comment = Adw.EntryRow(title="Comment", text=entry.username)
+    name = Adw.EntryRow(title="Private Key Attachment Name", text=info["attachment"])
+    for row in (algorithm, bits, comment, name):
+        options.add(row)
+    box.append(options)
+    passphrase = Adw.PreferencesGroup(title="Passphrase", description="The entry password stays unchanged.")
+    encrypt = Adw.SwitchRow(title="Protect With Entry Password", active=info["has_password"], sensitive=info["has_password"],
+        subtitle="Use the entry's current password" if info["has_password"] else "Set an entry password first to protect the private key")
+    passphrase.add(encrypt)
+    box.append(passphrase)
+    box.append(Gtk.Label(label="Review the public key before saving. A private key and a .pub attachment will be added to this entry. Existing attachments and external files are kept.", wrap=True, xalign=0))
+    def submit(*_):
+        if not current() or session.busy:
+            return
+        index = algorithm.get_selected()
+        values = dict(algorithm=["ed25519", "rsa", "ecdsa"][index], bits=sizes[index][bits.get_selected()],
+                      comment=comment.get_text(), attachment=name.get_text(), encrypt=encrypt.get_active())
+        def prepared(value):
+            if not current():
+                _cancel_generation(session, value["token"])
+                return
+            dialog.close()
+            _review_generation(session, entry, value)
+        session.run_job(lambda: session.vault.generate_ssh_key(_entry(session, entry.uuid), **values), prepared)
+    _save(header, submit, "Generate…")
+    session.present_dialog(dialog)
+
+
+def _review_generation(session, entry, data):
+    dialog, header, box = _dialog("Save Generated SSH Key", width=560, height=580)
+    current = _lifetime(session, dialog)
+    token, epoch, identity = data["token"], session.epoch, session.vault.identity
+    phase = ["review"]
+    def release():
+        if phase[0] == "review":
+            phase[0] = "released"
+            if session.epoch == epoch and session.vault.identity is identity:
+                _cancel_generation(session, token)
+        return False
+    dialog.connect("closed", lambda *_: GLib.idle_add(release))
+    summary = "This becomes the entry's selected SSH key. Existing attachments and external files are kept. Loaded agent keys are unchanged."
+    if data["configured"]:
+        summary += " It replaces the currently selected key source."
+    box.append(Gtk.Label(label=summary, wrap=True, xalign=0))
+    group = Adw.PreferencesGroup(title="Public Key")
+    for title, value in (("Type", data["type"]), ("SHA256 Fingerprint", data["fingerprint"]),
+                         ("Comment", data["comment"] or "—"), ("Private Attachment", data["attachment"]),
+                         ("Public Attachment", data["attachment"] + ".pub"),
+                         ("Passphrase", "Current entry password" if data["encrypted"] else "None — protected by the encrypted vault only")):
+        group.add(Adw.ActionRow(title=title, subtitle=value, use_markup=False, subtitle_lines=2))
+    box.append(group)
+    public = Gtk.Label(label=data["public_key"], wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,
+                       max_width_chars=48, selectable=True, xalign=0, css_classes=["monospace"])
+    box.append(public)
+    copy = Gtk.Button(label="Copy Public Key")
+    copy.connect("clicked", lambda *_: session.copy(data["public_key"]) if current() else None)
+    box.append(copy)
+    box.append(Gtk.Label(label="This review expires after two minutes or when the vault changes. Saving keeps the existing SSH-agent policy.",
+                         wrap=True, xalign=0, css_classes=["dim-label"]))
+    def submit(*_):
+        if not current() or session.busy or phase[0] != "review":
+            return
+        phase[0] = "saving"
+        def saved(snapshot):
+            phase[0] = "saved"
+            session.apply_refreshed(snapshot)
+            session.toast("SSH key saved")
+        def failed(message):
+            phase[0] = "failed"
+            _cancel_generation(session, token)
+            dialog.close()
+            session.error(message)
+        if not session.run_job(lambda: session.vault.save_generated_ssh_key(_entry(session, entry.uuid), token), saved, failed):
+            phase[0] = "review"
+    _save(header, submit, "Save Key")
+    if not session.present_dialog(dialog):
+        release()
 
 
 def preview_key(session, entry, data=None, decrypt=False):

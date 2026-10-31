@@ -767,3 +767,20 @@ authored multi-stroke sequences are preserved but disabled here until changed.
 The editor records one combination per action. These additions have runtime
 compilation only; desktop and keyboard-layout acceptance remain manual.
 
+## Generate SSH keys
+
+Open an entry's SSH Key Settings and choose Generate New SSH Key. Select
+Ed25519, RSA or ECDSA, choose an attachment name and review the public key before
+saving. The key can be protected with the entry's current password; the password
+stays unchanged. Without that option the private key has no separate passphrase
+and relies on the encrypted vault. Private key material remains in the native
+helper until saved to attachments.
+
+Saving adds a private key and `.pub` attachment, and selects the new private
+attachment in KeeAgent settings. Existing attachments/files and SSH-agent
+policy are kept; loaded agent keys are unchanged. Agent integration can remain
+disabled during generation. Use the existing attachment actions to export files
+or the public-key preview to copy a public key. A review expires after two
+minutes or when the vault changes. This batch has runtime compilation only;
+manual OpenSSH and desktop acceptance remain open.
+

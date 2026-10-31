@@ -4,7 +4,14 @@
 #include "core/Database.h"
 #include "core/Entry.h"
 #include "core/EntryAttachments.h"
+#include "core/EntryAttributes.h"
+#include "core/Group.h"
+#include "crypto/Random.h"
+#include "crypto/SymmetricCipher.h"
 #include "sshagent/BinaryStream.h"
+#include "sshagent/OpenSSHKeyGen.h"
+#include <botan/pwdhash.h>
+#include <qscopeguard.h>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcessEnvironment>
@@ -93,11 +100,13 @@ bool loadKey(KeeAgentSettings settings, const Entry* entry, OpenSSHKey& key, boo
 }
 
 void KeyslotSSH::clearPending() {
+    cancelGenerated(generated.token);
     for (const auto& request : pending) request.key->clearPrivate();
     pending.clear();
     removals.clear();
 }
 void KeyslotSSH::prunePending() {
+    if (generated.expires <= clock.elapsed() || generated.database.isNull()) cancelGenerated(generated.token);
     for (auto it = pending.begin(); it != pending.end();) {
         if (it->expires <= clock.elapsed() || it->database.isNull()) { it->key->clearPrivate(); it = pending.erase(it); }
         else ++it;
@@ -185,6 +194,137 @@ QJsonObject KeyslotSSH::keyInfo(const Entry* entry, bool decrypt) const {
         {"public_key", key.publicKey()}, {"type", key.type()}, {"comment", key.comment()}, {"encrypted", key.encrypted()}};
     key.clearPrivate();
     return result;
+}
+
+namespace {
+void attachmentAvailable(const Entry* entry, const QString& name) {
+    if (name.isEmpty() || name == "." || name == ".." || name == "KeeAgent.settings" || name.toUtf8().size() > 240)
+        fail("invalid_request", "Choose a short attachment name other than KeeAgent.settings.");
+    for (const auto ch : name) if (ch == '/' || ch == '\\' || ch.unicode() < 32 || ch.unicode() == 127)
+        fail("invalid_request", "Choose an attachment name without path separators or control characters.");
+    if (entry->attachments()->hasKey(name) || entry->attachments()->hasKey(name + ".pub"))
+        fail("conflict", "An attachment already uses this key name. Choose a different name; existing keys were kept.");
+}
+
+// OpenSSH PROTOCOL.key framing, using the pinned upstream stream/cipher/KDF.
+QByteArray privateKeyFile(OpenSSHKey& key, const QString& passphrase) {
+    QByteArray payload, derived, password = passphrase.toUtf8();
+    const auto wipe = qScopeGuard([&] { payload.fill('\0'); derived.fill('\0'); password.fill('\0'); });
+    BinaryStream privateStream(&payload);
+    const auto check = randomGen()->randomUIntRange(1, 0xffffffff);
+    privateStream.write(check); privateStream.write(check);
+    if (!key.writePrivate(privateStream)) fail("key_error", "The generated SSH key could not be encoded.");
+    const bool encrypted = !passphrase.isEmpty();
+    const auto block = encrypted ? 16 : 8;
+    const auto padding = (block - payload.size() % block) % block;
+    for (quint8 i = 1; i <= padding; ++i) privateStream.write(i);
+    QByteArray options;
+    if (encrypted) {
+        const auto salt = randomGen()->randomArray(16);
+        BinaryStream optionStream(&options);
+        optionStream.writeString(salt); optionStream.write(quint32(16));
+        derived.resize(48);
+        try {
+            auto hash = Botan::PasswordHashFamily::create_or_throw("Bcrypt-PBKDF")->from_iterations(16);
+            hash->derive_key(reinterpret_cast<uint8_t*>(derived.data()), derived.size(), password.constData(), password.size(),
+                reinterpret_cast<const uint8_t*>(salt.constData()), salt.size());
+        } catch (const std::exception&) {
+            fail("key_error", "The SSH key passphrase could not be applied.");
+        }
+        SymmetricCipher cipher;
+        if (!cipher.init(SymmetricCipher::Aes256_CTR, SymmetricCipher::Encrypt, derived.left(32), derived.right(16))
+            || !cipher.finish(payload)) fail("key_error", "The SSH private key could not be encrypted.");
+    }
+    QByteArray encoded;
+    const auto wipeEncoded = qScopeGuard([&] { encoded.fill('\0'); });
+    BinaryStream stream(&encoded);
+    stream.write(QByteArray("openssh-key-v1\0", 15));
+    stream.writeString(encrypted ? QStringLiteral("aes256-ctr") : QStringLiteral("none"));
+    stream.writeString(encrypted ? QStringLiteral("bcrypt") : QStringLiteral("none"));
+    stream.writeString(options); stream.write(quint32(1));
+    QByteArray publicKey;
+    BinaryStream publicStream(&publicKey);
+    if (!key.writePublic(publicStream)) fail("key_error", "The generated SSH public key could not be encoded.");
+    stream.writeString(publicKey); stream.writeString(payload);
+    auto base64 = encoded.toBase64();
+    const auto wipeBase64 = qScopeGuard([&] { base64.fill('\0'); });
+    QByteArray pem("-----BEGIN OPENSSH PRIVATE KEY-----\n");
+    for (int i = 0; i < base64.size(); i += 70) pem += base64.mid(i, 70) + '\n';
+    pem += "-----END OPENSSH PRIVATE KEY-----\n";
+    return pem;
+}
+}
+
+QJsonObject KeyslotSSH::generationInfo(const Entry* entry) const {
+    if (entry->isRecycled()) fail("denied", "Restore this entry before generating an SSH key.");
+    int matches = 0;
+    for (const auto* candidate : entry->database()->rootGroup()->entriesRecursive())
+        if (candidate->uuid() == entry->uuid()) ++matches;
+    if (matches != 1) fail("conflict", "This entry identifier is ambiguous. Resolve duplicate identifiers before generating a key.");
+    const auto settings = readSettings(entry);
+    QString name("id_key");
+    for (int suffix = 2; entry->attachments()->hasKey(name) || entry->attachments()->hasKey(name + ".pub"); ++suffix)
+        name = "id_key_" + QString::number(suffix);
+    return {{"has_password", !entry->password().isEmpty()}, {"attachment", name}, {"configured", settings.keyConfigured()}};
+}
+
+QJsonObject KeyslotSSH::generate(const QSharedPointer<Database>& db, Entry* entry, const QJsonObject& args, const QByteArray& revision) {
+    cancelGenerated(generated.token);
+    generationInfo(entry);
+    const auto algorithm = text(args, "algorithm"), comment = text(args, "comment"), name = text(args, "attachment").trimmed();
+    attachmentAvailable(entry, name);
+    if (comment.size() > 1024) fail("invalid_request", "Choose a shorter SSH key comment.");
+    for (const auto ch : comment) if (ch.unicode() < 32 || ch.unicode() == 127)
+        fail("invalid_request", "The SSH key comment cannot contain control characters.");
+    const auto bitsValue = args.value("bits");
+    if (!bitsValue.isDouble() || bitsValue.toDouble() != bitsValue.toInt()) fail("invalid_request", "Choose a supported SSH key size.");
+    const int bits = bitsValue.toInt();
+    if (!((algorithm == "ed25519" && bits == 256) || (algorithm == "rsa" && (bits == 2048 || bits == 3072 || bits == 4096))
+        || (algorithm == "ecdsa" && (bits == 256 || bits == 384 || bits == 521)))) fail("invalid_request", "Choose a supported SSH key type and size.");
+    QString password = flag(args, "encrypt") ? entry->password() : QString();
+    const auto wipePassword = qScopeGuard([&] { password.fill(QChar('\0')); });
+    if (flag(args, "encrypt") && password.isEmpty()) fail("invalid_request", "Set an entry password first, or explicitly choose a key without a passphrase.");
+    OpenSSHKey key;
+    const auto clearKey = qScopeGuard([&] { key.clearPrivate(); });
+    const bool success = algorithm == "ed25519" ? OpenSSHKeyGen::generateEd25519(key) :
+        algorithm == "rsa" ? OpenSSHKeyGen::generateRSA(key, bits) : OpenSSHKeyGen::generateECDSA(key, bits);
+    if (!success) fail("key_error", "The SSH key could not be generated. Existing keys were kept.");
+    key.setComment(comment);
+    auto pem = privateKeyFile(key, password);
+    const auto wipePem = qScopeGuard([&] { pem.fill('\0'); });
+    OpenSSHKey verified;
+    const auto clearVerified = qScopeGuard([&] { verified.clearPrivate(); });
+    if (!verified.parsePKCS1PEM(pem) || !verified.openKey(password) || verified.publicKey() != key.publicKey())
+        fail("key_error", "The generated SSH key could not be opened by the native parser. It was not saved.");
+    generated = {db, revision, pem, key.publicKey().toUtf8() + '\n', QUuid::createUuid().toString(QUuid::WithoutBraces),
+        entry->uuidToHex(), name, clock.elapsed() + 120000};
+    return {{"token", generated.token}, {"public_key", key.publicKey()}, {"fingerprint", key.fingerprint()},
+        {"type", key.type()}, {"bits", bits}, {"comment", comment}, {"encrypted", !password.isEmpty()},
+        {"attachment", name}, {"configured", readSettings(entry).keyConfigured()}};
+}
+
+void KeyslotSSH::cancelGenerated(const QString& token) {
+    if (token != generated.token) return;
+    generated.privateKey.fill('\0'); generated = {};
+}
+
+void KeyslotSSH::saveGenerated(const QSharedPointer<Database>& db, Entry* entry, const QJsonObject& args, const QByteArray& revision) {
+    const auto token = text(args, "token");
+    if (token.isEmpty() || token != generated.token || generated.database.toStrongRef().data() != db.data()
+        || entry->uuidToHex() != generated.entry || revision != generated.revision || clock.elapsed() >= generated.expires) {
+        if (token == generated.token) cancelGenerated(token);
+        fail("conflict", "The generated key review expired or the vault changed. Generate and review a new key.");
+    }
+    const auto clear = qScopeGuard([&] { cancelGenerated(token); });
+    generationInfo(entry);
+    attachmentAvailable(entry, generated.attachment);
+    auto settings = readSettings(entry);
+    settings.setSelectedType("attachment"); settings.setAttachmentName(generated.attachment); settings.setFileName(QString());
+    entry->beginUpdate();
+    entry->attachments()->set(generated.attachment, generated.privateKey);
+    entry->attachments()->set(generated.attachment + ".pub", generated.publicKey);
+    settings.toEntry(entry);
+    entry->endUpdate();
 }
 
 void KeyslotSSH::saveSettings(Entry* entry, const QJsonObject& args) {
