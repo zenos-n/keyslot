@@ -13,6 +13,7 @@ class IconCache:
         self.closed = False
         self.owner = session.vault.identity
         self.cache, self.pending = {}, {}
+        self.drafts = {}
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vault-icons")
 
     def clear(self):
@@ -22,6 +23,7 @@ class IconCache:
 
     def close(self):
         self.clear()
+        self.drafts.clear()
         self.closed = True
         self.executor.shutdown(wait=False, cancel_futures=True)
 
@@ -80,12 +82,12 @@ class IconCache:
         image.set_from_paintable(Gdk.Texture.new_for_pixbuf(scaled))
 
 
-def choose_icon(session, callback, value=None, offset=0, dialog=None):
+def choose_icon(session, callback, value=None, offset=0, dialog=None, website=None, current=None):
     if session.busy or not session.vault.unlocked:
         return
     if value is None:
         session.run_job(lambda: session.vault.icons(offset),
-                        lambda value: choose_icon(session, callback, value, offset, dialog))
+                        lambda value: choose_icon(session, callback, value, offset, dialog, website, current))
         return
     if dialog:
         dialog.close()
@@ -132,7 +134,7 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None):
                         session.icons.clear()
                         session.window.show_vault(snapshot)
                         callback({"removed": identifier, "previous": previous})
-                        choose_icon(session, callback, offset=offset, dialog=dialog)
+                        choose_icon(session, callback, offset=offset, dialog=dialog, website=website, current=current)
                     session.run_job(lambda: session.vault.remove_icon(identifier), done)
             alert.connect("response", response)
             session.present_dialog(alert)
@@ -144,7 +146,7 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None):
         page = Gtk.Box(spacing=12, homogeneous=True)
         for label, target in (("Previous", max(0, offset - 100)), ("Next", offset + 100)):
             button = Gtk.Button(label=label, sensitive=target != offset and target < value["total"])
-            button.connect("clicked", lambda *_args, target=target: choose_icon(session, callback, offset=target, dialog=dialog))
+            button.connect("clicked", lambda *_args, target=target: choose_icon(session, callback, offset=target, dialog=dialog, website=website, current=current))
             page.append(button)
         box.append(page)
     def imported(identifier):
@@ -154,11 +156,31 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None):
     button.connect("clicked", lambda *_: session.choose_file(lambda path:
         session.run_job(lambda: session.vault.import_icon(path), imported)))
     header.pack_start(button)
+    from . import icon_views
+    download = Gtk.Button(label="Download Website Icon…", valign=Gtk.Align.CENTER)
+    download.connect("clicked", lambda *_: icon_views.download(session, imported, website() if website else ""))
+    box.append(download)
+    def cleaned(snapshot):
+        session.icons.clear()
+        session.window.show_vault(snapshot)
+        choose_icon(session, callback, dialog=dialog, website=website, current=current)
+    clean = Gtk.Button(label="Remove Unused Icons…", valign=Gtk.Align.CENTER)
+    def cleanup(*_):
+        keep = {values["custom_icon"] for values in session.icons.drafts.values() if values["custom_icon"]}
+        if current and current():
+            keep.add(current())
+        icon_views.cleanup(session, keep, cleaned)
+    clean.connect("clicked", cleanup)
+    box.append(clean)
     session.present_dialog(dialog)
 
 
-def icon_row(session, item):
+def icon_row(session, item, website=None, dialog=None):
     values = {"icon": item.icon, "custom_icon": item.custom_icon}
+    if dialog:
+        token = object()
+        session.icons.drafts[token] = values
+        dialog.connect("closed", lambda *_: session.icons.drafts.pop(token, None))
     row = Adw.ActionRow(title="Icon", activatable=True)
     row.target = item
     preview = session.icons.image(item, 32)
@@ -177,7 +199,7 @@ def icon_row(session, item):
         row.remove(preview)
         preview = session.icons.image(SimpleNamespace(**values), 32)
         row.add_prefix(preview)
-    row.connect("activated", lambda *_: choose_icon(session, chosen))
+    row.connect("activated", lambda *_: choose_icon(session, chosen, website=website, current=lambda: values["custom_icon"]))
     row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
     return row, values
 

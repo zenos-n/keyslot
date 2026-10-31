@@ -14,6 +14,8 @@
 #include "KeyslotTotp.h"
 #include "KeyslotTrash.h"
 #include "KeyslotReports.h"
+#include "KeyslotIcons.h"
+#include "KeyslotNetwork.h"
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
 #include "core/Database.h"
@@ -334,6 +336,7 @@ class Engine {
     KeyslotLaunch launch;
     KeyslotTrash trash;
     KeyslotReports reports;
+    KeyslotIcons iconTools;
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash, diskHash;
@@ -703,6 +706,17 @@ class Engine {
         const auto format = reader.format().toLower();
         if (!QList<QByteArray>{"png", "jpeg", "jpg", "gif", "bmp", "ico", "webp"}.contains(format))
             fail("invalid_request", "Convert this image to PNG before importing it.");
+        if (format == "ico" && reader.imageCount() > 1) {
+            int best = -1, area = 0;
+            for (int index = 0; index < reader.imageCount(); ++index) {
+                if (!reader.jumpToImage(index)) continue;
+                const auto size = reader.size();
+                if (size.isValid() && size.width() <= 4096 && size.height() <= 4096 && size.width() * size.height() > area) {
+                    best = index; area = size.width() * size.height();
+                }
+            }
+            if (best < 0 || !reader.jumpToImage(best)) fail("invalid_request", "This icon has no supported image size.");
+        }
         const auto size = reader.size();
         if (!size.isValid() || size.width() > 4096 || size.height() > 4096)
             fail("invalid_request", "Choose an image with dimensions of at most 4096 by 4096 pixels.");
@@ -769,7 +783,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -795,7 +809,7 @@ public:
             discardManual(data);
             return true;
         }
-        if (method == "lock") { reports.clear(); trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
+        if (method == "lock") { iconTools.clear(); reports.clear(); trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
                 if (method == "url.cancel") { launch.cancel(args); return true; }
@@ -1037,7 +1051,35 @@ public:
                 fail("file_error", "The key file could not be created. A file may already exist there.");
             return true;
         }
+        if (method == "network.icon") {
+            const auto url = QUrl(text(args, "url"));
+            if (!url.isValid() || url.host().isEmpty()) fail("invalid_request", "The icon download address is invalid.");
+            const auto result = KeyslotNetwork::get(url, 8 * 1024 * 1024, integer(args, "timeout", 1, 15000));
+            return QJsonObject{{"data", QString::fromLatin1(result.bytes.toBase64())}, {"status", result.status},
+                {"redirect", result.redirect.toString(QUrl::FullyEncoded)}, {"failed", !result.error.isEmpty()}};
+        }
         requireDatabase();
+        if (method.startsWith("icons.favicon.") || method.startsWith("icons.unused.")) {
+            try {
+                if (method == "icons.favicon.cancel" || method == "icons.unused.cancel") { iconTools.cancel(text(args, "token")); return true; }
+                unchanged();
+                if (method == "icons.unused.review") return iconTools.reviewUnused(db, args, hash);
+                if (method == "icons.unused.remove") {
+                    iconTools.removeUnused(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
+                    return snapshot();
+                }
+                if (method == "icons.favicon.prepare") return iconTools.prepare(db, args, hash);
+                if (method == "icons.favicon.step") return iconTools.step(db, args, hash);
+                if (method == "icons.favicon.accept") return iconTools.accept(db, args, hash, [this](const QByteArray& raw) {
+                    try { return iconPng(raw); } catch (const Failure&) { return QByteArray(); }
+                });
+                if (method == "icons.favicon.finish") {
+                    const auto id = iconTools.finish(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
+                    return QJsonObject{{"icon", id}, {"snapshot", snapshot()}};
+                }
+            } catch (const KeyslotIcons::Failure& error) { throw Failure{error.code, error.message}; }
+            fail("unsupported", "This icon operation is not supported.");
+        }
         if (method == "report.hibp.prepare" || method == "report.hibp.step" || method == "report.hibp.cancel"
             || method == "database.report.edit") {
             try {

@@ -74,6 +74,15 @@ from query text and temporary switches. Explicit INI profiles share KeePassXC's
 `SearchLimitGroup` and `GUI/SearchWaitForEnter` settings; Keyslot-specific browsing
 defaults use its own namespace. These additions await user manual acceptance.
 
+The icon picker can remove unused icons while retaining all current, historical,
+recycled and open-editor references. Website-icon downloads review the sanitized
+site/parent-domain addresses first, with optional path lookup and DuckDuckGo
+service use. They send no saved credentials or browser cookies, bound downloads
+and redirects, refuse HTTPS downgrades and preview the result before adding it.
+Downloaded SVGs use the existing byte-only SVG conversion path; ICOs select the
+largest supported frame. The stock favicon timeout and service defaults are read
+from explicit profiles. These new workflows await manual desktop/network acceptance.
+
 Import source includes KeePass 1 (`.kdb`), KeePass XML, Bitwarden JSON (including
 password-protected exports), 1Password 1PUX/OPVault, and Proton Pass JSON through
 the pinned upstream readers. The GTK workflow collects source credentials

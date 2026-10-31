@@ -588,7 +588,8 @@ class VaultSession:
         box.append(location)
         inherited = groups[group.get_selected()]
         initial_icon = inherited.icon if inherited.custom_icon or inherited.icon not in (48, 49) else 0
-        icon, decoration = appearance.icon_row(self, entry or SimpleNamespace(icon=initial_icon, custom_icon=inherited.custom_icon))
+        icon, decoration = appearance.icon_row(self, entry or SimpleNamespace(icon=initial_icon, custom_icon=inherited.custom_icon),
+                                                website=lambda: url.get_text(), dialog=dialog)
         visual = Adw.PreferencesGroup(title="Appearance")
         visual.add(icon)
         foreground = appearance.color_row("Text Color", entry.foreground if entry else "")
@@ -733,7 +734,7 @@ class VaultSession:
         parent.set_sensitive(bool(current.parent))
         if not current.recycled:
             fields.add(parent)
-        icon, decoration = appearance.icon_row(self, current)
+        icon, decoration = appearance.icon_row(self, current, dialog=dialog)
         fields.add(icon)
         box.append(fields)
         options = Adw.PreferencesGroup(title="Group Options")

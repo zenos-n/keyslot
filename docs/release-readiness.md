@@ -57,6 +57,20 @@ Pending, waiting, failed and stale requests are distinguished in the UI. These
 additions are compiled candidates for user acceptance, with no new tests,
 harnesses or automated behavior runs.
 
+Icon additions include review-bound unused-icon removal preserving current,
+history, recycled and editor-draft references, plus user-initiated website icon
+download/review/preview. Candidate site/parent-domain and optional DuckDuckGo
+addresses are shown before requests; entered credentials/query/fragment are
+stripped, cookies/cache are disabled, redirects are bounded with no HTTPS
+downgrade, responses are capped and each request is limited to at most 15 seconds.
+Network requests run in a separately cancellable helper with no open database,
+allowing vault/browser operations to continue; replies are bound to their native
+request and vault revision. Images reuse native normalization/deduplication, SVG byte-only
+conversion and existing encrypted transactions. ICO normalization selects the
+largest supported frame. HIBP now shares the bounded transport while retaining
+its fixed HTTPS/padded-range policy. New GUI/network/image/cleanup acceptance is
+pending, with runtime compilation only and no new tests or automated runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and

@@ -46,7 +46,8 @@ GLOBAL = {"RememberLastDatabases": True, "OpenPreviousDatabasesOnStartup": True,
     "Security/ClearClipboardTimeout": 10, "Keyslot/KeeShareImport": False,
     "Keyslot/KeeShareExport": False, "PasswordGenerator/AdvancedMode": False,
     "PasswordGenerator/SpecialChars": True, "PasswordGenerator/WordCase": 0,
-    "PasswordGenerator/Type": 0}
+    "PasswordGenerator/Type": 0, "FaviconDownloadTimeout": 10,
+    "Security/IconDownloadFallback": False}
 LOCAL = {"LastActiveDatabase": "", "LastDatabases": [], "LastOpenedDatabases": [],
          "LastKeyFiles": {}, "LastChallengeResponse": {}, "Keyslot/LoginVault": ""}
 for _role, _key, _default in STARTUP_KEYS.values():
@@ -277,6 +278,13 @@ class IniProfile:
     def read_search(self):
         with self.mutex:
             return {name: self._get(key) for name, (key, _default) in SEARCH_KEYS.items()}
+
+    def read_icon_options(self):
+        with self.mutex:
+            timeout = self._get("FaviconDownloadTimeout")
+            if not 1 <= timeout <= 300:
+                raise VaultError("This profile's favicon timeout is outside the supported 1–300 second range. Its original setting was preserved.")
+            return {"timeout": timeout, "fallback": self._get("Security/IconDownloadFallback")}
 
     def write_search(self, changes):
         with self.mutex:

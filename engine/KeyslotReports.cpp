@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "KeyslotReports.h"
+#include "KeyslotNetwork.h"
 #include "browser/BrowserService.h"
 #include "core/CustomData.h"
 #include "core/Database.h"
@@ -9,16 +10,11 @@
 #include "core/Group.h"
 #include "core/PasswordHealth.h"
 #include <QCryptographicHash>
-#include <QEventLoop>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QSet>
-#include <QTimer>
 #include <algorithm>
 
 namespace {
@@ -62,39 +58,11 @@ QHash<QByteArray, qint64> parse(const QByteArray& bytes, int length) {
     return result;
 }
 QByteArray download(const QString& prefix) {
-    constexpr int Limit = 1024 * 1024;
-    QNetworkAccessManager manager;
-    QNetworkRequest request(QUrl("https://api.pwnedpasswords.com/range/" + prefix));
-    request.setRawHeader("User-Agent", "Keyslot");
-    request.setRawHeader("Add-Padding", "true");
-    request.setRawHeader("Accept", "text/plain");
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
-    request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
-    request.setAttribute(QNetworkRequest::CacheSaveControlAttribute, false);
-    request.setAttribute(QNetworkRequest::CookieLoadControlAttribute, QNetworkRequest::Manual);
-    request.setAttribute(QNetworkRequest::CookieSaveControlAttribute, QNetworkRequest::Manual);
-    auto* reply = manager.get(request);
-    reply->setReadBufferSize(Limit + 1);
-    QByteArray bytes;
-    bool oversized = false, timedOut = false;
-    QEventLoop loop;
-    QTimer timer;
-    timer.setSingleShot(true);
-    auto receive = [&] {
-        bytes += reply->read(Limit + 1 - bytes.size());
-        if (bytes.size() > Limit) { oversized = true; reply->abort(); }
-    };
-    QObject::connect(reply, &QIODevice::readyRead, &loop, receive);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QObject::connect(&timer, &QTimer::timeout, &loop, [&] { timedOut = true; reply->abort(); loop.quit(); });
-    timer.start(15000);
-    if (!reply->isFinished()) loop.exec();
-    receive();
-    if (oversized) fail("report_network", "HIBP returned too much data. The check was not completed.");
-    if (timedOut) fail("report_network", "HIBP did not respond in time. Retry to continue the incomplete check.");
-    if (reply->error() != QNetworkReply::NoError || reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 200)
+    const auto reply = KeyslotNetwork::get(QUrl("https://api.pwnedpasswords.com/range/" + prefix),
+        1024 * 1024, 15000, {{"Add-Padding", "true"}, {"Accept", "text/plain"}});
+    if (!reply.error.isEmpty() || reply.status != 200)
         fail("report_network", "HIBP could not be reached securely or refused the request. Retry later; the check is incomplete.");
-    return bytes;
+    return reply.bytes;
 }
 }
 

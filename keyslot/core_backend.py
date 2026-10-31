@@ -22,6 +22,31 @@ from .backend import Entry, Group, Snapshot, VaultError
 MAX_FRAME = 64 * 1024 * 1024
 
 
+def _icon_bytes(raw):
+    if len(raw) > 8 * 1024 * 1024:
+        raise VaultError("Choose an icon file smaller than 8 MiB.")
+    if b"<svg" in raw[:4096].lower():
+        import gi
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import GdkPixbuf
+        # A byte loader has no base URI, so SVG cannot load adjacent files.
+        loader = GdkPixbuf.PixbufLoader.new_with_type("svg")
+        def prepared(loader, width, height):
+            scale = min(1, 128 / max(1, width, height))
+            loader.set_size(max(1, round(width * scale)), max(1, round(height * scale)))
+        loader.connect("size-prepared", prepared)
+        try:
+            loader.write(raw)
+            loader.close()
+            pixbuf = loader.get_pixbuf()
+            ok, raw = pixbuf.save_to_bufferv("png", [], [])
+            if not ok:
+                raise ValueError()
+        except Exception as exc:
+            raise VaultError("This SVG icon could not be decoded.") from exc
+    return raw
+
+
 class Vault:
     def __init__(self, executable=None, timeout=120):
         candidate = executable or os.environ.get("KEYSLOT_ENGINE") or "keyslot-engine"
@@ -981,25 +1006,7 @@ class Vault:
             raw = stream.read(8 * 1024 * 1024 + 1)
         if len(raw) > 8 * 1024 * 1024:
             raise VaultError("Choose an icon file smaller than 8 MiB.")
-        if b"<svg" in raw[:4096].lower():
-            import gi
-            gi.require_version("GdkPixbuf", "2.0")
-            from gi.repository import GdkPixbuf
-            # A byte loader has no base URI, so SVG cannot load adjacent files.
-            loader = GdkPixbuf.PixbufLoader.new_with_type("svg")
-            def prepared(loader, width, height):
-                scale = min(1, 128 / max(1, width, height))
-                loader.set_size(max(1, round(width * scale)), max(1, round(height * scale)))
-            loader.connect("size-prepared", prepared)
-            try:
-                loader.write(raw)
-                loader.close()
-                pixbuf = loader.get_pixbuf()
-                ok, raw = pixbuf.save_to_bufferv("png", [], [])
-                if not ok:
-                    raise ValueError()
-            except Exception as exc:
-                raise VaultError("This SVG icon could not be decoded.") from exc
+        raw = _icon_bytes(raw)
         with self._mutex:
             result = self._rpc("icons.import", data=base64.b64encode(raw).decode("ascii"), name=source.stem)
             self._set_snapshot(result["snapshot"])
@@ -1008,6 +1015,51 @@ class Vault:
     def remove_icon(self, custom_icon):
         with self._mutex:
             return self._snapshot_call("icons.remove", custom_icon=custom_icon)
+
+    def review_unused_icons(self, keep=()):
+        with self._mutex:
+            if "unused-icons" not in self.capabilities:
+                raise VaultError("Update the native engine before cleaning the icon library.")
+            return self._rpc("icons.unused.review", keep=list(keep))
+
+    def remove_unused_icons(self, token):
+        with self._mutex:
+            return self._snapshot_call("icons.unused.remove", token=token)
+
+    def prepare_favicon(self, url, fallback=False, path=False, timeout=10):
+        with self._mutex:
+            if "favicon" not in self.capabilities:
+                raise VaultError("Update the native engine before downloading website icons.")
+            return self._rpc("icons.favicon.prepare", url=url, fallback=fallback, path=path, timeout=timeout)
+
+    def step_favicon(self, token, network):
+        import base64
+        with self._mutex:
+            result = self._rpc("icons.favicon.step", token=token, approved=True)
+        if "request" not in result:
+            return result
+        response = network._rpc("network.icon", url=result["url"], timeout=result["timeout"])
+        raw = b""
+        if not response["failed"] and response["status"] == 200:
+            try:
+                raw = _icon_bytes(base64.b64decode(response["data"], validate=True))
+            except VaultError:
+                raw = b""
+        with self._mutex:
+            return self._rpc("icons.favicon.accept", token=token, request=result["request"],
+                status=response["status"], redirect=response["redirect"], failed=response["failed"],
+                data=base64.b64encode(raw).decode("ascii"))
+
+    def finish_favicon(self, token):
+        with self._mutex:
+            result = self._rpc("icons.favicon.finish", token=token)
+            self._set_snapshot(result["snapshot"])
+            return result["icon"]
+
+    def cancel_icon_operation(self, token):
+        with self._mutex:
+            if self.unlocked:
+                self._rpc("icons.favicon.cancel", token=token)
 
     def export_icon(self, custom_icon, destination, overwrite=False):
         with self._mutex:
