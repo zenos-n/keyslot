@@ -104,7 +104,7 @@ class BrowserRequests:
                 return True, operation()
             except EngineError as exc:
                 return False, {"association_failed": 8, "conflict": 1, "expired": 5,
-                               "denied": 6, "invalid_request": 12, "invalid_uuid": 18, "not_found": 15}.get(exc.code, 6)
+                               "denied": 6, "invalid_request": 12, "invalid_uuid": 18, "not_found": 15, "references_not_allowed": 34}.get(exc.code, 6)
 
         def complete(value):
             if not self._valid(request):

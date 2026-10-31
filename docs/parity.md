@@ -3,16 +3,28 @@
 Target: a GNOME HIG client with drop-in behavioral compatibility with the official
 KeePassXC application. Current status: **alpha, incomplete parity**. No percentage
 claim is made. The pinned engine baseline is KeePassXC **2.7.12**; upstream
-features must be re-inventoried against the release chosen for replacement.
+security changes are being backported from **2.8.0**, released 2026-10-21.
+The [release requirements](release-readiness.md) track validation and the new
+upstream feature inventory; no 2.8 feature-parity claim is made.
 
-**0.2 verification:** the native helper and full Nix application package build on
-the GNOME 50 host. All 188 tests pass without skips: seven legacy, one upstream CLI installation, fifteen protocol,
-twelve native browser-transport, twenty-four native browser-vault, twenty-eight browser-request,
-eight native-host registration, seven worker lifecycle, ten startup-preference,
-eight window-controller, eighteen real-core, four native passkey, six passkey transfer, twenty-eight SSH-agent and twelve SSH-controller tests. Ten gates require the backend,
-GTK, real GNOME login keyring, terminal signals, browser management and encrypted
-browser workflow, GTK passkey/SSH management, GCR and actual agent forwarding under isolated test services. Each GTK test owns a private bus and
+**0.2 development verification:** the native helper and full Nix application
+package build on the GNOME 50 host. All 323 tests pass without skips. Nineteen
+gates cover the backend, GTK, real GNOME login keyring, terminal signals,
+encrypted browser workflow, passkey/SSH management, GCR, actual agent forwarding,
+auto-type review/X11 delivery, real encrypted libsecret interoperability and
+mapped icon/appearance editing and reviewed cross-vault entry transfer with
+partial-save warnings, bulk selection/actions, recursive group transfers and
+entry URL activation through an actual private URI handler and native/GTK entry history inspection and live TOTP/QR workflows.
+The Secret Service coverage includes fifteen native and fifteen controller tests.
+Each GTK test owns a private bus and
 checks a completion marker, so another test's application cannot satisfy its gate.
+Native build gates additionally pass 332 security/serialization checks and 331
+under AddressSanitizer/LeakSanitizer. This includes 2.8 security backports,
+current/history XML attachment retention and exact stream-cipher boundaries.
+New-vault KDBX4/Argon2id defaults and all 18 advertised KDBX4 cipher/KDF/compression
+combinations pass, alongside upstream KDBX3/4 encrypted-copy fixtures. Actual
+KeePassXC-Browser 1.10.4.1 on Chromium 155 passes pairing, fill, TOTP, save, groups
+and DOM WebAuthn with independently verified signatures after these changes.
 Manual visual review is underway; full feature and platform acceptance remains open.
 
 Inventory sources: [KeePassXC feature list](https://github.com/keepassxreboot/keepassxc),
@@ -23,37 +35,104 @@ interfaces, integration protocols, data preservation, migrations, and packaging.
 | Capability | Current implementation | Acceptance remaining |
 |---|---|---|
 | GTK4/libadwaita interface | Adaptive sidebar/list/details, native dialogs/actions | Visual review, screen reader and keyboard testing |
-| KDBX open/save | Native upstream Database/format implementation; encrypted copy; failed refresh retains open data | KDBX3/4 fixture and encryption/KDF combination matrix, full Save As/recovery |
+| KDBX open/save | Native upstream Database/format implementation; encrypted copy; failed refresh retains open data | Broader KDBX3/key-component/unknown-data and interrupted-save matrix, full Save As/recovery |
 | New databases | Password, existing/generated key file, key-file-only and hardware-key options | Real-core and hardware tests, creation wizard polish |
 | Composite unlock | Password, key file, key-only | Physical YubiKey/OnlyKey and malformed-key tests |
-| Entry editing | UUID-based create/edit/move/recycle; empty/multiline/Unicode fields, tags, expiry | Real-core round trips, colors/icons, all advanced properties |
-| Groups | UUID browse/create/rename/move/notes/recycle; duplicate names | Real-core tests, custom group settings, recursive views |
+| Entry editing | UUID-based create/edit/move/recycle; empty/multiline/Unicode fields, tags, expiry, standard/custom icons, text/background colors, URL-override metadata and report exclusion; native/GTK round trips preserve credentials/history | Remaining advanced properties and broader format matrix |
+| Entry URL activation | Native placeholder/reference/conversion resolution, Qt URL normalization and GTK URI launcher; explicit override action; reviewed native command execution with masked previews, remembered/revoked approvals and no implicit shell; sealed native-to-native linked-vault credentials, path/key-file fingerprints, open-window reuse/manual fallback, lock cancellation and minimize preference; native and mapped real-handler tests pass | Linked-vault login-keyring enrollment, broader handler/portal/Wayland/minimize and failure acceptance |
+| Groups | UUID browse/create/rename/move/notes/recycle; duplicate names; standard/custom icons, inherited search settings, tags and expiry; new entries inherit group icons | Remaining custom group settings, recursive views and broader format matrix |
 | Search | Upstream EntrySearcher behind asynchronous UI filtering | Query grammar fixtures, group/recursive options |
-| Password generator | Upstream random passwords/diceware; character groups, custom/excluded characters, look-alike exclusion and group requirements, tested with real core | Entropy meter, presets and remaining passphrase options |
+| Password generator | Upstream random passwords/diceware, 1–999 characters/1–100 words; character groups, custom/excluded characters, look-alike exclusion and group requirements; word case/separator, installed/custom lists with small-list warning; upstream strength/entropy display, edited-result estimates and private remembered settings | Word-list library management and broader desktop acceptance |
 | Credential clipboard | Fetch on demand, clear owned clipboard after 20 seconds | Wayland/X11, primary selection, clipboard manager behavior |
-| TOTP | Upstream URI setup/edit/remove and code copying | Real-core tests, QR/Steam UX, live countdown, clock-edge tests |
-| Custom attributes | Add/edit/delete/copy with protection flag | Real-core tests, rename and ordering UI |
+| TOTP | Native standard/Steam/custom key/link setup, algorithm/period/digit controls, retained legacy formats, persistent KeePass2 removal, live reveal/countdown/progress, fresh code/password+code copy, short-lived QR display/link copy/private SVG export; RFC vectors, clock edges, independent QR decoder and mapped GTK lifecycle/clipboard checks pass | Broader authenticator/format and physical desktop clipboard/accessibility acceptance |
+| Custom attributes | Add/edit/rename/delete/copy with protection flag; atomic rename, duplicate-name rejection and revision-guarded editing | Ordering UI and broader format acceptance |
 | Attachments | File-based import/save/confirmed replace/remove; no 40 MiB frontend cap | Real-core large-file tests, network filesystem coverage |
-| History | List/restore/remove versions; current state preserved before restore | Real-core tests, version comparison and full preview |
-| Field references | Preserved; retrieval delegated to upstream | Reference picker, complete resolution fixtures |
-| Recycle bin | Recycle entries/groups and restore entries; refuse implicit permanent deletion | Real-core tests, explicit purge and disabled-bin workflow |
-| Custom icons | Existing data preserved | Display/edit/download icon management |
+| History | Native any-version comparison and full field/property/Auto-Type/custom-data/attachment metadata preview; explicit protected-field reveal, historical attachment export, confirmed restore/remove/delete-all, revision guards and current-version preservation | Broader format/large-history/accessibility acceptance |
+| Field references | Preserved; retrieval delegated to upstream; searchable, paged UUID-reference picker for entry fields, notes, URL override and custom values | Broader resolution and manual desktop acceptance |
+| Recycle bin | Recycle entries/groups and restore entries; atomic reviewed bulk recycling with native rollback/duplicate/missing/foreign-item/disabled-bin checks; refuse implicit permanent deletion | Explicit purge, bulk restore and broader disabled-bin workflow |
+| Custom icons | Exact upstream 69-icon resource catalogue; GTK entry/group/detail display and picker; custom raster/SVG import, native normalization/deduplication, original-byte export, reviewed deletion repairing current/history references, paged custom library and lock-safe previews; native and mapped GTK checks pass | Favicon downloading, unused-icon cleanup and broader malformed/legacy image/format acceptance |
 | Database settings | Metadata, defaults, history/recycle/compression, cipher/KDF tuning and calibration, key rotation | Real-core tests, legacy format upgrade UX, remaining advanced preferences |
-| Multi-database | One window per database, separate helpers/keys/workers/views, path deduplication and independent/all-database locking; GTK smoke passes | Cross-database operations, manual platform acceptance; tabs intentionally omitted at user request |
+| Multi-database | One window per database, separate helpers/keys/workers/views, path deduplication and independent/all-database locking; reviewed single/bulk entry and recursive group copy/move with native streamed KDBX, history/attachments/icons/settings, fresh cross-vault UUIDs and saved-destination-before-source-removal ordering; GTK selection/cancellation and real pointer/Shift-range/secondary checks | Broader bulk editing/field copying, drag-and-drop, filesystem/failure and manual platform acceptance; tabs intentionally omitted at user request |
 | Merge/synchronization | Upstream merge, no-op detection, stale-write refusal, encrypted backup | Real-core conflict/merge tests, file watchers, network filesystem behavior |
 | Import/export | Upstream KeePass 1/XML, Bitwarden, 1PUX/OPVault, Proton Pass and mapped CSV import; paged review; XML/CSV/HTML export and attachments | Real-core import/export fixtures, live review/mapping UX, complete icon output |
 | Reports | Upstream local password health and database statistics | Real-core tests, HIBP and browser reports |
 | Browser integration | Opt-in native transport; upstream association/hash/authentication/revocation, URL matching and token-bound credential release; GTK pairing/site-entry/save consent and connection management; token-bound login/group creation and login update, TOTP/upstream group listing, authenticated locking/deletion, generator approval and lock/unlock notifications; reversible native-host registration; real upstream extension pairing, DOM fill, save, groups and generator acceptance | Favicon download, custom/sandboxed browser paths and broader browser/session acceptance |
 | Passkeys | Upstream crypto and RP/origin validation, protected storage, GTK create/attach/replace/account selection; searchable/expired-filtered management, import/export and history-preserving removal; OpenSSL EC/RSA/Ed25519 transfer checks; actual extension DOM WebAuthn create/get | Localhost/advanced preferences, broader browser/platform acceptance |
-| Auto-type | Not implemented | Sequences, matching, global shortcuts, Wayland/X11 behavior |
+| Auto-type | Native upstream parser, entry/group settings, associations, multi-vault matching/search, GTK review/PICKCHARS, X11 executor and permission-gated Wayland portal with companion focus lease/shortcut; native, GTK, X11 receiver and GNOME lease tests pass | Real GNOME portal input/permission acceptance, retype/global shortcut preferences and broader platform behavior |
 | SSH Agent | GTK preferences/entry settings, saved-policy automatic loading on unlock, public preview/copy, token-bound manual add/constraints, managed/external/other-vault removal and clear-agent review, cleanup warnings; upstream KeeAgent/key/agent reuse and separate native ownership with PID authentication; socket-alias ownership, GCR/real forwarded-agent signing and mapped GTK tests | Hardware/security keys, GCR preload/keyring prompts and broader disconnect/failure/platform acceptance |
-| Secret Service | Not implemented | D-Bus collections/items/prompts/sessions and service ownership |
-| KeeShare | Not implemented | Signed/unsigned sharing and import/export synchronization |
+| Secret Service | Opt-in D-Bus collections/items/aliases, peer-owned sessions and GTK prompts; upstream native plain/DH-AES ciphers and item conventions; exposed-group scope, independent one-shot password/TOTP reads, history/recycle semantics, incumbent-owner preservation, policy revocation and reply cancellation; real encrypted libsecret item/collection/alias/property/metadata-cache/GTK workflows pass | Broader client/desktop interoperability, persistence/session recovery and copied-vault acceptance |
+| KeeShare | Native upstream group references, cloning/import/merge, encrypted standard/legacy containers, private persistent signing identity, opt-in GTK settings and unlocked-vault polling with file-change/alias guards; native interoperability/history/rollback/identity-reload fixtures pass | Identity import/export/management, broader conflict/network/share acceptance; legacy signatures are ignored by upstream 2.7.12 |
 | Quick unlock / biometrics | Session-only short password, upstream Argon2id KDBX credential sealing, five-attempt fallback; GTK/native tests pass | Biometric/platform adapters and hardware/session acceptance |
-| Official CLI/proxy replacement | Public unchanged upstream CLI and corrected browser proxy; native-host launcher strips inherited browser library paths | Remaining GUI command-line/desktop/IPC compatibility contract |
-| Preferences/localization | Remembered vault, login-keyring unlock, background mode, configurable inactivity/Never, session quick unlock, shortcuts dialog; fixed clipboard timeout | Remaining preferences, translations, real desktop login-cycle acceptance |
+| Official CLI/proxy replacement | Public keepassxc GUI launcher, --lock/keyfile/pw-stdin/minimized/version/debug-info; bounded origin-aware stdin, foreground TTY-to-pipe forwarding and cancellation; manual headless, primary/remote multi-file, TTY/echo and cancellation checks; unchanged upstream CLI and corrected browser proxy | --config/--localconfig migration, broader terminal/remote/key-component acceptance and remaining desktop/IPC compatibility |
+| Preferences/localization | Remembered vault, login-keyring unlock, background mode, configurable inactivity/Never, session quick unlock, minimize after links and shortcuts dialog; fixed clipboard timeout | Remaining preferences, translations, real desktop login-cycle and linked-vault keyring enrollment acceptance |
 | Lock lifecycle | Manual/idle/screen/suspend hooks; cancellation; clear UI | Runtime confirmation and race testing on GNOME 50 |
 | GNOME Quick Settings | Separate tile and native Background Apps row; generic status, Show/Lock/Quit; GNOME 50.4 disposable-shell lifecycle test passes | Installed session reports enabled/state1/no error; actual lock screen, restart and other-extension interaction |
+
+## One-time password workflows
+
+The core returns current codes, period and remaining milliseconds without the
+seed. The GTK view polls asynchronously at most once a second and derives a
+conservative local monotonic deadline from request start and native remaining
+time; expired/late codes stay blank until a fresh reply. Passive reads use the
+background worker directly and do not call `touch`, so inactivity lock remains
+effective. Hide, selection changes, view teardown and idle/screen lock invalidate
+reads and erase code labels/timers. Clipboard actions fetch the current native
+code again, with an optional resolved-password prefix matching upstream semantics.
+Provider replacement is direct: clearing and immediately reclaiming the X11
+clipboard could lose ownership and discard the newer copy on the tested X11 backend.
+Owned timeout/lock cleanup preserves a different clipboard owner.
+
+Setup supports a secret key or TOTP URI, standard/Steam/custom modes and native
+hash/period/digit controls. The setup fingerprint binds save/removal to the
+reviewed database, preserving transactional failure behavior. Native legacy and
+KeeOtp formats are retained where supported; custom legacy setup upgrades to URI
+storage. All `TimeOtp-*` KeePass2 fields are cleared inside upstream `setTotp`'s
+history update, preventing removal from being undone by reopening. A narrow core
+patch rejects empty decoded keys and unbounded imported lengths and uses integer
+64-bit alphabet powers for ten-digit codes. URI parsing retains upstream bounded
+normalization rather than inventing different URI rules.
+
+QR encoding reuses upstream QrCode/libqrencode, rendering a native PNG and an
+explicit private SVG output. No temporary QR image is written for display. The
+GTK view clears its paintable and auto-closes after 45 seconds; setup-link copy
+and SVG export require the displayed encrypted-file revision. An independent
+zbar decoder checks the real PNG against the exact upstream setup URI, including
+Unicode labels. Fifteen native cases cover RFC 6238's eighteen published hash/time
+vectors, Steam, clock edges, ten-digit values, formats, removal/history, invalid
+requests, stale reviews, failed saves, read-only/recycled/locked states and
+no-clobber output. The serial GTK gate uses an isolated bus/display, actual
+clipboard reads, passive-idle assertions, QR/export/expiry, standard/Steam/link
+setup and cancellation after view changes/hide/idle lock. Physical clipboard,
+large/custom authenticator and accessibility acceptance remains open.
+
+## Entry history inspection
+
+The history list opens a comparison between a saved version and the current
+entry. Either endpoint can be changed to any version. Changes-only filtering
+can be disabled to inspect unchanged fields too. Native comparison includes
+attribute existence, exact values and protection flags; tags, expiry, icons,
+colors, URL override, report exclusion and timestamps; Auto-Type sequences and
+window associations; custom-data values/timestamps; and attachment sizes and
+SHA-256 fingerprints. Stored placeholders stay literal rather than resolving
+against today's entry. Custom fields, protected/default-password fields, OTP,
+Auto-Type sequences, URL overrides and custom-data values are hidden until an
+explicit per-field reveal. Showing a secret does not change its storage protection.
+
+Attachment export reads the chosen version through a native output file, not a
+base64 UI payload; parent-owned staging enforces private permissions and no
+clobber. Every comparison, reveal, export and history mutation must match the
+encrypted database fingerprint captured by the history list. External writes,
+other edits, missing indices and stale reviews fail instead of retargeting a
+version. Restore adds the previous current state using upstream history, subject
+to the database's retention/truncation limits; this is not an archival guarantee.
+Remove/delete-all save transactionally and preserve the current entry. GTK
+clears reveals on hide, collapse, selector/filter rebuild, close and lock, and
+rejects late results belonging to a detached view. Native and mapped GTK gates
+exercise these behaviors with disposable KDBX/XML fixtures. The upstream XML
+reader has a narrow null-inner-stream guard: a Protected encrypted-value marker
+in a plain import produces an error instead of crashing the helper. Valid
+ProtectInMemory flags remain supported; the regression verifies a failed malformed
+import inspection keeps the already unlocked vault available.
 
 ## Architecture and remaining integration work
 
@@ -63,6 +142,74 @@ there is no automatic CLI fallback. `keyslot/backend.py` remains a legacy
 regression adapter. The helper owns Database, composite keys, serialization,
 search, generation, TOTP, history, groups, attributes, attachments, settings,
 key rotation, merge/export, encrypted copies, and local reports.
+
+`engine/KeyslotTransfer.cpp` clones selected entries through upstream `Entry` and
+streams a private KDBX4 capsule directly between the two native child processes.
+Unix peer credentials bind the channel to the exact expected PID and UID; the
+socket and its directory have owner-only permissions. Upstream dump hardening
+remains enabled. The generic KDBX reader probes then rewinds, so this known-format
+channel uses `Kdbx4Reader` and a bounded chunk adapter that fills reads across
+chunk boundaries. Neither credentials, attachment bodies nor a decrypting key
+cross the Python pipe, and no transfer file is created. Pending reviews expire
+after two minutes and channel I/O after five minutes. Each transfer is single-use
+and bound to both vault fingerprints and helper identities. The destination
+saves first and issues a native receipt tied to its staged-output hash; the
+source verifies that saved file again before removing originals. Unknown or
+partial outcomes never trigger an automatic retry. Current/history custom-icon
+UUID collisions are remapped without changing the existing destination icon.
+Fourteen native tests cover preservation, fresh UUIDs, history/icons, a 65 MiB
+incompressible attachment, changed vaults, hardlink identity, replay, cancellation,
+lost replies and failed save/cleanup. A mapped GTK gate checks destination/group
+selection, review/cancel, copy/move, refreshed views, partial-save messaging and
+lock cancellation. Thirteen additional native cases and a separate GTK gate
+cover recursive/empty group transfer, settings and current/history icon collision
+preservation, fresh copied IDs and retained local move IDs, forbidden root/recycled/
+descendant destinations, mismatched manifests, changed-child cleanup, bulk entry
+copy/move and transactional recycling with failed-save rollback. Source capsules
+preserve group/entry UUIDs for manifest validation; final copies use upstream
+`Group::clone(Entry::CloneCopy)` and new UUIDs, while local moves keep their IDs.
+Metadata-only entry manifests cover the full selection while review previews are
+limited to ten titles; counts and field-reference warnings cover every selected
+entry, including those beyond the preview. Group reviews include total recursive
+counts and retain Auto-Type and KeeShare settings with a shared-file-path warning.
+The GTK gate exercises real pointer hover/checkbox/toggle/Shift-range/secondary
+selection, keyboard selection, filtered rows, reviewed bulk copy/move/recycle,
+group-editor transfer, refreshed navigation and lock clearing. Its pointer input
+runs serially in private Xvfb; live Wayland/touch/screen-reader acceptance remains
+open. Selection follows the [GNOME HIG selection-mode pattern](https://developer.gnome.org/hig/patterns/containers/selection-mode.html)
+with header count/Cancel and bottom actions. Remaining bulk editing/field copying
+and drag-and-drop workflows are not implied by these checks.
+
+`engine/KeyslotLaunch.cpp` reuses pinned `Entry` placeholder resolution and
+`QProcess::splitCommand`. Ordinary URI data is released to GTK only for the
+requested launch, while prepared previews contain masked protected values.
+Command previews resolve a separate tree of current entries with protected
+attributes/passwords/TOTP replaced before expansion, including nested references
+and conversions. Actual command arguments stay native; detached children receive
+null standard streams and no internal `KEYSLOT_*` environment. Normal remembered
+approvals use upstream `_EXEC_CMD`; entry editing calls `Entry::setUrl` to revoke
+that approval on URL changes. Override approval is stored separately with a hash
+of both URL templates. Upstream 2.7.12 stores OverrideURL but does not use it in
+`DatabaseWidget::openUrlForEntry`; Keyslot therefore exposes an explicit override
+action without changing normal Open semantics. A failed start returns its saved
+approval snapshot so GTK can display/revoke the actual persisted decision.
+
+Linked-vault passwords travel in a bounded authenticated upstream crypto-box
+packet between ephemeral native keys, bound to both one-shot tokens and the
+reviewed file/key-file hashes. No raw linked master password enters Python.
+Nonces use canonical standard Base64, not upstream's similarly named URL-safe
+random-string helper. The recipient opens a candidate and adopts it only after
+fingerprint checks; mismatched recipient, replay, tampering, changed files and
+locked generations are rejected. Native tests cover ordinary schemes/overrides,
+protected previews, command argv/stdout isolation, approval revocation, failed
+save/start, linked passwords/key-only/composite/empty keys, changed inputs,
+wrong credentials, tampering/replay/recipient identity and bounded ciphertext.
+The GTK gate tests actual default URI dispatch under private XDG directories,
+asynchronous cancellation/error redaction, command review/remember/revoke/error
+state, hide/minimize preference, existing/locked/new linked windows, manual unlock
+fallback and paused recipient cancellation on source lock. The remembered path
+updates after linked opening; saving its credential to the login keyring is still
+an explicit enrollment step, not an implemented automatic handoff.
 Import uses the pinned upstream readers and a separate candidate database;
 source credentials and the new target unlock key are distinct. The candidate
 is adopted only after a no-clobber encrypted save. File or directory fingerprints
@@ -77,7 +224,8 @@ fingerprint. Dedicated dialog cleanup clears raw preview contents on lock.
 
 The private stdin/stdout protocol is versioned and UUID-based. It does not use
 the session bus for credentials. The public Quick Settings D-Bus API remains
-Show/Lock/Quit and Locked/Busy/Background booleans. The Nix application build requires real helper
+Show/Lock/Quit/AutoType and Locked/Busy/Background booleans. AutoType only opens
+the chooser; typing requires a separate review. The Nix application build requires real helper
 integration tests; mock protocol tests cannot pass that release gate alone.
 The package also requires a GTK smoke test under Xvfb/private D-Bus. It exercises
 CSV parser-to-field mapping, the native dialog surfaces, responsive navigation,
@@ -97,8 +245,11 @@ polling never resets the inactivity timer. Entry objects have client-side owners
 equal UUIDs in copied databases cannot cross the adapter boundary. Startup uses
 a cancellation generation so a cancelled unlock cannot restart a helper later.
 
-Remaining advanced browser preferences, SSH platform acceptance, auto-type, Secret Service and KeeShare
-services still need porting. They are not activated by linking the core. Several upstream services
+Secret Service now has a native adapter and GTK provider, with private-bus
+libsecret interoperability checks; broader client acceptance remains open.
+Advanced browser preferences and broader
+SSH/auto-type/KeeShare platform acceptance remain open. Services are not activated
+by linking the core. Several upstream services
 depend on DatabaseWidget and Qt confirmation dialogs, which must be adapted to
 GTK before claiming a native replacement. No fallback to upstream Qt windows is
 represented as GTK feature parity.
@@ -341,9 +492,11 @@ Failed explicit refresh keeps the last open database and fingerprint. Encrypted
 copy serializes that open state without requiring the source file, and leaves
 the current database path in place. Read-only access uses the open state even
 when the source changes; mutation transactions retain their file-change guard.
-A failed mutation still rolls back by
-reopening the source; if that source also becomes unreadable during rollback,
-the engine locks. Recovery for that simultaneous failure remains unfinished.
+Failed mutations now restore a verified encrypted snapshot made before the edit,
+without replacing the original file or loading a concurrent writer's revision.
+If recovery cannot reopen that snapshot, an encrypted copy is retained and its
+path reported. The existing 323-test/19-gate package checks pass for this batch;
+physical-key and broader interrupted-save acceptance remain open.
 
 Native compilation and integration tests now pass with the pinned Qt5/Botan
 dependencies. Remaining work includes the missing services above, broader fixture

@@ -1,0 +1,43 @@
+--- a/src/core/Totp.cpp
++++ b/src/core/Totp.cpp
+@@ -216,13 +216,13 @@
+         return QObject::tr("Invalid Settings", "TOTP");
+     }
+     QVariant secret = Base32::decode(Base32::sanitizeInput(settings->key.toLatin1()));
+-    if (secret.isNull()) {
++    if (secret.isNull() || secret.toByteArray().isEmpty()) {
+         return QObject::tr("Invalid Key", "TOTP");
+     }
+     if (settings->step == 0) {
+         return QObject::tr("Invalid Step", "TOTP");
+     }
+-    if (settings->digits == 0) {
++    if (settings->digits == 0 || settings->digits > 10) {
+         return QObject::tr("Invalid Digits", "TOTP");
+     }
+     return {};
+@@ -284,7 +284,10 @@
+         direction = 1;
+         startpos = 0;
+     }
+-    quint32 digitsPower = pow(encoder.alphabet.size(), digits);
++    quint64 digitsPower = 1;
++    for (uint i = 0; i < digits; ++i) {
++        digitsPower *= static_cast<quint64>(encoder.alphabet.size());
++    }
+ 
+     quint64 password = binary % digitsPower;
+     QString retval(int(digits), encoder.alphabet[0]);
+--- a/src/core/Entry.cpp
++++ b/src/core/Entry.cpp
+@@ -612,6 +612,10 @@
+     m_attributes->remove(Totp::ATTRIBUTE_OTP);
+     m_attributes->remove(Totp::ATTRIBUTE_SEED);
+     m_attributes->remove(Totp::ATTRIBUTE_SETTINGS);
++    m_attributes->remove(Totp::KP2_TOTP_SECRET);
++    m_attributes->remove(Totp::KP2_TOTP_ALGORITHM);
++    m_attributes->remove(Totp::KP2_TOTP_LENGTH);
++    m_attributes->remove(Totp::KP2_TOTP_PERIOD);
+ 
+     if (!settings || settings->key.isEmpty()) {
+         m_data.totpSettings.reset();

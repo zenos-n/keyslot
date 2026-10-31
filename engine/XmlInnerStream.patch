@@ -1,0 +1,14 @@
+--- a/src/format/KdbxXmlReader.cpp
++++ b/src/format/KdbxXmlReader.cpp
+@@ -1020,6 +1020,11 @@
+     QString value = m_xml.readElementText();
+ 
+     if (isProtected && !value.isEmpty()) {
++        if (!m_randomStream) {
++            value.clear();
++            raiseError(tr("Protected XML value has no inner encryption stream."));
++            return value;
++        }
+         QByteArray ciphertext = QByteArray::fromBase64(value.toLatin1());
+         bool ok;
+         QByteArray plaintext = m_randomStream->process(ciphertext, &ok);

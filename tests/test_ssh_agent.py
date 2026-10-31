@@ -302,11 +302,18 @@ class SSHAgentTests(unittest.TestCase):
         self.assertTrue(self.asked.exists())
         self.decision.write_text("allow\n")
         self.sign(key)
-        self.vault.save_ssh_settings(self.entry(), confirm=False, lifetime=True, seconds=1, remove_on_lock=False)
+        self.vault.save_ssh_settings(self.entry(), confirm=False, lifetime=False, remove_on_lock=False)
         self.vault.ssh_add(self.vault.ssh_prepare(self.entry())["token"], approved=True)
         self.vault.lock()
         self.assertEqual(len(self.loaded()), 1)
-        eventually(lambda: not self.loaded())
+        subprocess.run([ADD, "-d", str(key) + ".pub"], env=self.environment, check=True, capture_output=True)
+        self.vault.unlock(self.path, "public SSH vault master")
+        self.vault.ssh_configure(self.manager, socket=str(self.socket))
+        self.vault.save_ssh_settings(self.entry(), lifetime=True, seconds=2)
+        self.assertTrue(self.vault.ssh_add(self.vault.ssh_prepare(self.entry())["token"], approved=True)["added"])
+        # Expiration and retention on lock are independent; scheduling may consume a short lifetime.
+        eventually(lambda: not self.loaded(), seconds=6)
+        self.assertIsNone(self.agent.poll())
 
     def test_managed_removal_works_after_original_key_file_is_gone_and_disable_keeps_vault_open(self):
         key = self.key()

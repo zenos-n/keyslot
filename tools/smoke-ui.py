@@ -85,6 +85,7 @@ def start_vault():
         while child:
             widgets.append(child)
             child = child.get_next_sibling()
+    totp_config = app.active_session.vault.totp_config(app.active_session.window.selected_entry)
     database_settings = app.active_session.vault.settings()
     database_report = app.active_session.vault.report()
     existing_copy = Path(temporary.name) / "Copy.kdbx"
@@ -95,7 +96,7 @@ def start_vault():
     for show in (lambda: preferences.show(app.active_session), lambda: preferences.enroll(app.active_session),
                  app.active_session.edit_entry, app.active_session.new_group, app.active_session.edit_group,
                  lambda: app.active_session.edit_attribute(app.active_session.window.selected_entry),
-                 lambda: app.active_session.setup_totp(app.active_session.window.selected_entry, ""),
+                 lambda: app.active_session.setup_totp(app.active_session.window.selected_entry, totp_config),
                  lambda: app.active_session.move_entry(app.active_session.window.selected_entry),
                  lambda: database_views.settings(app.active_session, database_settings),
                  lambda: database_views.import_database(app.active_session),

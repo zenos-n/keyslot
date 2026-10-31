@@ -20,7 +20,7 @@ configure_file(input: 'data/com.neg-zero.keyslot.service.in',
 install_data('data/com.neg-zero.keyslot.metainfo.xml', install_dir: get_option('datadir') / 'metainfo')
 install_data('LICENSE', install_dir: get_option('datadir') / 'licenses/keyslot')
 test('backend', python, args: ['-m', 'unittest', 'discover', '-s', 'tests', '-v'],
-     workdir: meson.project_source_root(), timeout: 300)
+     workdir: meson.project_source_root(), timeout: 600)
 test('ui', dbus, args: private_bus + files('tools/smoke-ui.py'),
      workdir: meson.project_source_root(), timeout: 90)
 test('login', python, args: files('tools/smoke-login.py'),
@@ -39,3 +39,21 @@ test('ssh-agents', dbus, args: private_bus + files('tools/smoke-ssh-agents.py') 
      workdir: meson.project_source_root(), timeout: 60)
 test('ssh-forwarded', python, args: files('tools/smoke-ssh-agents.py') + ['--forwarded'],
      workdir: meson.project_source_root(), timeout: 60)
+test('autotype', dbus, args: private_bus + files('tools/smoke-autotype.py'),
+     workdir: meson.project_source_root(), timeout: 60)
+test('autotype-x11', dbus, args: private_bus + files('tools/smoke-autotype-x11.py'),
+     workdir: meson.project_source_root(), timeout: 60, is_parallel: false)
+test('secrets', dbus, args: private_bus + files('tools/smoke-secrets.py'),
+     workdir: meson.project_source_root(), timeout: 90)
+test('appearance', dbus, args: private_bus + files('tools/smoke-appearance.py'),
+     workdir: meson.project_source_root(), timeout: 60)
+test('transfers', dbus, args: private_bus + files('tools/smoke-transfers.py'),
+     workdir: meson.project_source_root(), timeout: 60)
+test('bulk-groups', dbus, args: private_bus + files('tools/smoke-bulk-groups.py'),
+     workdir: meson.project_source_root(), timeout: 60, is_parallel: false)
+test('urls', dbus, args: private_bus + files('tools/smoke-urls.py'),
+     workdir: meson.project_source_root(), timeout: 90)
+test('history', dbus, args: private_bus + files('tools/smoke-history.py'),
+     workdir: meson.project_source_root(), timeout: 90)
+test('totp', dbus, args: private_bus + files('tools/smoke-totp.py'),
+     workdir: meson.project_source_root(), timeout: 90, is_parallel: false)

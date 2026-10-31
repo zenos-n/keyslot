@@ -149,6 +149,14 @@ def start():
     session.vault.set_totp(entry, "otpauth://totp/Fixture?secret=JBSWY3DPEHPK3PXP&issuer=Fixture")
     session.window.show_vault(session.vault.snapshot)
     app.set_browser(True, persist=False)
+    finish = app.browser.requests._finish
+    def observed_finish(request, result=None, error=None):
+        if error is not None:
+            print("Fixture browser rejection:", request.event.get("action"), error,
+                  "queue_busy=", request.session.jobs.busy, "interactive=", request.session.jobs.interactive,
+                  "dialogs=", [dialog.get_title() for dialog in request.session.dialogs], file=sys.stderr)
+        return finish(request, result, error)
+    app.browser.requests._finish = observed_finish
     GLib.timeout_add(20, drive)
     GLib.timeout_add(20, launch)
     return False

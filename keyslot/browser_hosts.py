@@ -14,7 +14,7 @@ from .startup import _write
 
 HOST = "org.keepassxc.keepassxc_browser"
 BROWSERS = {"firefox": "Firefox", "chrome": "Google Chrome", "chromium": "Chromium", "brave": "Brave",
-            "vivaldi": "Vivaldi", "edge": "Microsoft Edge", "tor": "Tor Browser"}
+            "vivaldi": "Vivaldi", "edge": "Microsoft Edge", "tor": "Tor Browser", "gnosis": "Gnosis"}
 ORIGINS = ["chrome-extension://pdffhmdngciaglkoonimfcmckehcpafo/",
            "chrome-extension://oboonakemofpalcgghocfoadofidjkkk/"]
 
@@ -37,6 +37,7 @@ class NativeHosts:
             "chromium": config / "chromium/NativeMessagingHosts", "brave": config / "BraveSoftware/Brave-Browser/NativeMessagingHosts",
             "vivaldi": config / "vivaldi/NativeMessagingHosts", "edge": config / "microsoft-edge/NativeMessagingHosts",
             "tor": data / "torbrowser/tbb/x86_64/tor-browser/Browser/TorBrowser/Data/Browser/.mozilla/native-messaging-hosts"}
+        directories["gnosis"] = config / "gnosis/NativeMessagingHosts"
         self.paths = {name: directory / (HOST + ".json") for name, directory in directories.items()}
         self.state_path = config / "keyslot/browser-hosts.json"
 
@@ -91,7 +92,7 @@ class NativeHosts:
         if browser in {"firefox", "tor"}:
             value["allowed_extensions"] = ["keepassxc-browser@keepassxc.org"]
         else:
-            value["allowed_origins"] = ORIGINS
+            value["allowed_origins"] = ["chrome-extension://giohadoodmdcadnkcpdmhmmdnaidnckm/"] if browser == "gnosis" else ORIGINS
         return (json.dumps(value, indent=2) + "\n").encode()
 
     def status(self, browser):

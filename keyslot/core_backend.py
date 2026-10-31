@@ -1,7 +1,7 @@
 """Private pipe protocol to a helper linked to the actual KeePassXC core.
 
 Only the helper keeps the composite unlock key. The public Shell D-Bus API
-exposes only aggregate lock/background state and Show/Lock/Quit actions.
+exposes aggregate lock/background state and Show/Lock/Quit/AutoType actions.
 """
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ class Vault:
         self._cancelled = threading.Event()
         self._process = None
         self._runtime = None
+        self._preserve_runtime = False
         self._request_id = 0
         self._generation = 0
         self._operation = threading.local()
@@ -79,6 +80,7 @@ class Vault:
         with self._process_mutex:
             process, self._process = self._process, None
             runtime, self._runtime = self._runtime, None
+            preserve_runtime, self._preserve_runtime = self._preserve_runtime, False
         try:
             if process:
                 if process.poll() is None:
@@ -95,8 +97,16 @@ class Vault:
                     elif not self.ssh_manager.cleanup_ok:
                         self.ssh_warning = "SSH key cleanup was not confirmed. Review your SSH agent."
         finally:
-            if runtime:
+            if runtime and not preserve_runtime:
                 runtime.cleanup()
+
+    def _recovery_files(self):
+        if self._cancelled.is_set() or self._runtime is None:
+            return []
+        try:
+            return list(Path(self._runtime.name).glob("recovery-*/database.kdbx"))
+        except OSError:
+            return []
 
     def lock(self):
         self.cancel()
@@ -114,8 +124,10 @@ class Vault:
                 raise VaultError("The operation was cancelled before the native engine started.")
             self._cancelled.clear()
             self._owner = object()
-            self._runtime = tempfile.TemporaryDirectory(prefix="keyslot-engine-")
-            environment = os.environ | {"KEYSLOT_ENGINE_CONFIG_DIRECTORY": self._runtime.name}
+            self._runtime = tempfile.TemporaryDirectory(prefix="keyslot-engine-", delete=False)
+            state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
+            environment = os.environ | {"KEYSLOT_ENGINE_CONFIG_DIRECTORY": self._runtime.name,
+                                        "KEYSLOT_RECOVERY_DIRECTORY": str(state / "keyslot/recovery")}
             try:
                 self._process = subprocess.Popen([self.executable], stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0, close_fds=True, env=environment)
@@ -132,7 +144,7 @@ class Vault:
             self._stop()
             raise
 
-    def _rpc(self, method, **params):
+    def _rpc(self, method, _timeout=None, **params):
         if self._cancelled.is_set() or self._process is None:
             raise VaultError("The database is locked.")
         self._request_id += 1
@@ -143,7 +155,7 @@ class Vault:
             raise VaultError("This operation exceeds the engine's 64 MiB message limit.")
         process = self._process
         try:
-            deadline = time.monotonic() + self.timeout
+            deadline = time.monotonic() + (self.timeout if _timeout is None else _timeout)
             # Nonblocking stdin keeps cancellation responsive even for a large attachment.
             os.set_blocking(process.stdin.fileno(), False)
             os.set_blocking(process.stdout.fileno(), False)
@@ -186,8 +198,15 @@ class Vault:
                                     error = value["error"]
                                     if not isinstance(error, dict) or not isinstance(error.get("message"), str):
                                         raise ValueError("invalid error response")
-                                    # Engine errors are fixed messages; they do not include field values.
-                                    raise EngineError(error.get("code", "engine_error"), error["message"])
+                                    # Recovery metadata can name encrypted files, never credential field values.
+                                    code = error.get("code", "engine_error")
+                                    if code == "recovery_error" and error.get("retain_runtime") is True:
+                                        self._preserve_runtime = True
+                                    if code == "internal_error" and (recovery := self._recovery_files()):
+                                        self._preserve_runtime = True
+                                        error = error | {"recovery_path": str(recovery[0]), "retain_runtime": True,
+                                            "message": error["message"] + "\nAn encrypted recovery copy remains at:\n" + str(recovery[0])}
+                                    raise EngineError(code, error["message"], details=error)
                                 if "result" not in value:
                                     raise ValueError("missing result")
                                 return value["result"]
@@ -195,8 +214,18 @@ class Vault:
         except EngineError:
             raise
         except (OSError, ValueError, UnicodeError, VaultError) as exc:
+            runtime = self._runtime
+            recovery = self._recovery_files()
+            if recovery:
+                self._preserve_runtime = True
             self._stop()
             self.snapshot = None
+            kept = next((path for path in recovery if path.is_file()), None)
+            if kept:
+                raise VaultError("The native operation stopped. An encrypted recovery copy remains at:\n"
+                                 + str(kept) + "\nOpen it with the original vault credentials.") from exc
+            if recovery and runtime:
+                runtime.cleanup()
             if isinstance(exc, VaultError):
                 raise
             raise VaultError("Communication with the native engine failed. Unlock the database again.") from exc
@@ -211,7 +240,7 @@ class Vault:
             entries = [Entry(**{k: v for k, v in item.items() if k in entry_keys}, _owner=self._owner) for item in value["entries"]]
             groups = [Group(**{k: v for k, v in item.items() if k in group_keys}) for item in value["groups"]]
             self.snapshot = Snapshot(value.get("name", ""), value.get("recycle_bin_enabled", True), groups,
-                                     entries, value.get("root", ""), value.get("default_username", ""))
+                                     entries, value.get("root", ""), value.get("default_username", ""), value.get("secret_group", ""))
         except (TypeError, AttributeError) as exc:
             self.lock()
             raise VaultError("The native engine returned invalid database metadata.") from exc
@@ -401,6 +430,75 @@ class Vault:
         with self._mutex:
             self._entry(entry)
             return self._rpc("ssh.settings", entry=entry.uuid)
+
+    def autotype_settings(self, entry=None, group=None):
+        with self._mutex:
+            if entry is not None:
+                self._entry(entry)
+                return self._rpc("autotype.settings", entry=entry.uuid)
+            return self._rpc("autotype.group.settings", group=group)
+
+    def save_autotype_settings(self, entry=None, group=None, **options):
+        with self._mutex:
+            if entry is not None:
+                self._entry(entry)
+                return self._snapshot_call("autotype.settings.save", entry=entry.uuid, **options)
+            return self._snapshot_call("autotype.group.save", group=group, **options)
+
+    def autotype_targets(self):
+        with self._mutex:
+            return self._rpc("autotype.targets")["windows"]
+
+    def autotype_matches(self, title, match_title=True, match_url=True, hide_expired=False):
+        with self._mutex:
+            return self._rpc("autotype.matches", title=title, match_title=match_title,
+                             match_url=match_url, hide_expired=hide_expired)["matches"]
+
+    def autotype_prepare(self, entry, target, sequence="", delay=25, start_delay=500):
+        with self._mutex:
+            self._entry(entry)
+            return self._rpc("autotype.prepare", entry=entry.uuid, sequence=sequence, delay=delay,
+                             start_delay=start_delay, **target)
+
+    def autotype_finish(self, token, pick=(), approved=False):
+        with self._mutex:
+            return self._rpc("autotype.finish", token=token, pick=list(pick), approved=approved)
+
+    def keeshare_configure(self, directory, options):
+        with self._mutex:
+            return self._rpc("keeshare.configure", identity=str(Path(directory) / "keyslot" / "keeshare-identity.xml"), **options)
+
+    def keeshare_settings(self, group):
+        with self._mutex:
+            return self._rpc("keeshare.settings", group=group)
+
+    def save_keeshare_settings(self, group, **options):
+        with self._mutex:
+            return self._snapshot_call("keeshare.settings.save", group=group, **options)
+
+    def keeshare_sync(self, force=False):
+        with self._mutex:
+            result = self._rpc("keeshare.sync", force=force)
+            self._set_snapshot(result.pop("snapshot"))
+            return result
+
+    def secret_settings(self):
+        with self._mutex:
+            return self._rpc("secret.settings")
+
+    def save_secret_settings(self, group):
+        with self._mutex:
+            return self._snapshot_call("secret.settings.save", group=group)
+
+    def secret_request(self, operation, **params):
+        """Private provider adapter; native code checks the exposed group and peer grants."""
+        if operation not in {"configure", "drop-peer", "info", "search", "get", "prepare", "finish", "mutate"}:
+            raise VaultError("Unknown Secret Service operation.")
+        with self._mutex:
+            result = self._rpc("secret." + operation, **params)
+            if isinstance(result, dict) and "snapshot" in result:
+                self._set_snapshot(result.pop("snapshot"))
+            return result
 
     def ssh_key_info(self, entry, decrypt=False):
         with self._mutex:
@@ -676,15 +774,56 @@ class Vault:
             return {key: self._rpc("attribute", entry=entry.uuid, name=key, resolve=False)
                     for key in ("UserName", "URL", "Notes")}
 
-    def attribute_info(self, entry, name):
+    def attribute_info(self, entry, name, *, review=False):
         with self._mutex:
             self._entry(entry)
-            return self._rpc("attribute.info", entry=entry.uuid, name=name)
+            return self._rpc("attribute.info", entry=entry.uuid, name=name, **({"review": True} if review else {}))
 
-    def totp_settings(self, entry):
+    def totp_settings(self, entry, revision=None):
         with self._mutex:
             self._entry(entry)
-            return self._rpc("totp.settings", entry=entry.uuid)
+            return self._rpc("totp.settings", entry=entry.uuid, **({"revision": revision} if revision is not None else {}))
+
+    def totp_config(self, entry):
+        with self._mutex:
+            self._entry(entry)
+            return self._rpc("totp.config", entry=entry.uuid)
+
+    def save_totp(self, entry, revision, **settings):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("totp.save", entry=entry.uuid, revision=revision, **settings)
+
+    def remove_totp(self, entry, revision):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("totp.remove", entry=entry.uuid, revision=revision)
+
+    def totp_sample(self, entry, at=None):
+        with self._mutex:
+            self._entry(entry)
+            return self._rpc("totp.sample", entry=entry.uuid, **({"at": at} if at is not None else {}))
+
+    def copy_totp(self, entry, combined=False):
+        with self._mutex:
+            self._entry(entry)
+            return self._rpc("totp.copy", entry=entry.uuid, combined=combined)
+
+    def totp_qr(self, entry):
+        import base64
+        with self._mutex:
+            self._entry(entry)
+            result = self._rpc("totp.qr", entry=entry.uuid)
+            result["png"] = base64.b64decode(result["png"], validate=True)
+            return result
+
+    def export_totp_qr(self, entry, revision, destination):
+        with self._mutex:
+            self._entry(entry)
+            if Path(destination).expanduser().resolve() == self.path:
+                raise VaultError("Choose an output file different from the open database.")
+            self._commit_output(destination, lambda stage: self._rpc("totp.qr", entry=entry.uuid,
+                revision=revision, path=str(stage)))
 
     def set_totp(self, entry, uri):
         with self._mutex:
@@ -706,12 +845,62 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("group.save", parent=parent, name=name)
 
-    def save_group(self, group, name, notes, parent=None):
+    def save_group(self, group, name, notes, parent=None, **advanced):
         with self._mutex:
-            params = {"group": group, "name": name, "notes": notes}
+            params = {"group": group, "name": name, "notes": notes, **advanced}
             if parent:
                 params["parent"] = parent
             return self._snapshot_call("group.save", **params)
+
+    def icons(self, offset=0):
+        with self._mutex:
+            return self._rpc("icons.list", offset=offset)
+
+    def icon(self, icon=0, custom_icon=""):
+        import base64
+        with self._mutex:
+            return base64.b64decode(self._rpc("icons.get", icon=icon, custom_icon=custom_icon), validate=True)
+
+    def import_icon(self, source):
+        import base64
+        source = Path(source)
+        with source.open("rb") as stream:
+            raw = stream.read(8 * 1024 * 1024 + 1)
+        if len(raw) > 8 * 1024 * 1024:
+            raise VaultError("Choose an icon file smaller than 8 MiB.")
+        if b"<svg" in raw[:4096].lower():
+            import gi
+            gi.require_version("GdkPixbuf", "2.0")
+            from gi.repository import GdkPixbuf
+            # A byte loader has no base URI, so SVG cannot load adjacent files.
+            loader = GdkPixbuf.PixbufLoader.new_with_type("svg")
+            def prepared(loader, width, height):
+                scale = min(1, 128 / max(1, width, height))
+                loader.set_size(max(1, round(width * scale)), max(1, round(height * scale)))
+            loader.connect("size-prepared", prepared)
+            try:
+                loader.write(raw)
+                loader.close()
+                pixbuf = loader.get_pixbuf()
+                ok, raw = pixbuf.save_to_bufferv("png", [], [])
+                if not ok:
+                    raise ValueError()
+            except Exception as exc:
+                raise VaultError("This SVG icon could not be decoded.") from exc
+        with self._mutex:
+            result = self._rpc("icons.import", data=base64.b64encode(raw).decode("ascii"), name=source.stem)
+            self._set_snapshot(result["snapshot"])
+            return result["icon"]
+
+    def remove_icon(self, custom_icon):
+        with self._mutex:
+            return self._snapshot_call("icons.remove", custom_icon=custom_icon)
+
+    def export_icon(self, custom_icon, destination, overwrite=False):
+        with self._mutex:
+            if Path(destination).expanduser().resolve() == self.path:
+                raise VaultError("Choose an output file different from the open database.")
+            self._commit_output(destination, lambda stage: self._rpc("icons.export", custom_icon=custom_icon, path=str(stage)), overwrite)
 
     def recycle_group(self, group):
         with self._mutex:
@@ -727,30 +916,143 @@ class Vault:
             self._entry(entry)
             return self._snapshot_call("entry.restore" if entry.recycled else "entry.move", entry=entry.uuid, group=destination)
 
-    def set_attribute(self, entry, name, value, protected=True):
+    def prepare_transfer(self, entries, move=False):
         with self._mutex:
-            self._entry(entry)
-            return self._snapshot_call("attribute.save", entry=entry.uuid, name=name, value=value, protected=protected)
+            entries = list(entries)
+            for entry in entries:
+                self._entry(entry)
+            return self._rpc("transfer.prepare", entries=[entry.uuid for entry in entries], move=move)
 
-    def remove_attribute(self, entry, name):
+    def url_prepare(self, entry, override=False):
         with self._mutex:
             self._entry(entry)
-            return self._snapshot_call("attribute.remove", entry=entry.uuid, name=name)
+            if "entry-urls" not in self.capabilities:
+                raise VaultError("Update the native engine before opening entry URLs.")
+            return self._rpc("url.prepare", entry=entry.uuid, override=override)
+
+    def url_finish(self, token, approved=False, remember=False, destination=None):
+        with self._mutex:
+            value = self._rpc("url.finish", token=token, approved=approved, remember=remember, destination=destination or {})
+            if "snapshot" in value:
+                self._set_snapshot(value.pop("snapshot"))
+            return value
+
+    def url_cancel(self, token):
+        with self._mutex:
+            return self._rpc("url.cancel", token=token)
+
+    def url_forget(self, entry):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("url.forget", entry=entry.uuid)
+
+    def url_offer(self, ticket):
+        with self._mutex:
+            if self.unlocked:
+                raise VaultError("The destination vault is already unlocked.")
+            self._stop()
+            self.snapshot = None
+            self.path = Path(ticket["path"])
+            self._start()
+            try:
+                return self._rpc("url.offer", **ticket)
+            except Exception:
+                self.lock()
+                raise
+
+    def url_accept(self, envelope):
+        with self._mutex:
+            if self.unlocked:
+                raise VaultError("The destination vault is already unlocked.")
+            try:
+                return self._snapshot_call("url.accept", token=envelope["token"], message=envelope["message"])
+            except Exception:
+                self.lock()
+                raise
+
+    def prepare_group_transfer(self, group, move=False):
+        with self._mutex:
+            if not self.unlocked:
+                raise VaultError("Unlock a database first.")
+            if not any(item.identity == group and not item.recycled for item in self.snapshot.groups):
+                raise VaultError("The selected group is unavailable.")
+            return self._rpc("transfer.prepare", source_group=group, move=move)
+
+    def recycle_entries(self, entries):
+        with self._mutex:
+            entries = list(entries)
+            for entry in entries:
+                self._entry(entry)
+            return self._snapshot_call("entries.recycle", entries=[entry.uuid for entry in entries])
+
+    def listen_transfer(self, source, group):
+        with self._mutex:
+            return self._rpc("transfer.listen", source_pid=source["pid"], source_token=source["token"],
+                             source_path=source["path"], entries=source["ids"], groups=source["groups"],
+                             source_group=source["source_group"], group=group)
+
+    def transfer_request(self, operation, **params):
+        if operation not in ("send", "receive", "finish", "local", "cancel"):
+            raise ValueError("Unknown entry transfer operation")
+        with self._mutex:
+            result = self._rpc("transfer." + operation, _timeout=360 if operation in ("send", "receive") else None, **params)
+            if isinstance(result, dict) and "snapshot" in result:
+                self._set_snapshot(result.pop("snapshot"))
+            return result
+
+    def set_attribute(self, entry, name, value, protected=True, *, original_name=None, revision=None):
+        with self._mutex:
+            self._entry(entry)
+            options = {}
+            if original_name is not None:
+                options["original_name"] = original_name
+            if revision is not None:
+                options["revision"] = revision
+            return self._snapshot_call("attribute.save", entry=entry.uuid, name=name, value=value, protected=protected, **options)
+
+    def remove_attribute(self, entry, name, *, revision=None):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("attribute.remove", entry=entry.uuid, name=name,
+                                       **({"revision": revision} if revision is not None else {}))
 
     def history(self, entry):
         with self._mutex:
             self._entry(entry)
             return self._rpc("history", entry=entry.uuid)
 
-    def restore_history(self, entry, index):
+    def compare_history(self, entry, left, right, revision):
         with self._mutex:
             self._entry(entry)
-            return self._snapshot_call("history.restore", entry=entry.uuid, index=index)
+            return self._rpc("history.compare", entry=entry.uuid, left=left, right=right, revision=revision)
 
-    def remove_history(self, entry, index):
+    def history_value(self, entry, index, revision, section, key):
         with self._mutex:
             self._entry(entry)
-            return self._snapshot_call("history.remove", entry=entry.uuid, index=index)
+            return self._rpc("history.value", entry=entry.uuid, index=index, revision=revision, section=section, key=key)
+
+    def export_history_attachment(self, entry, index, revision, name, destination):
+        with self._mutex:
+            self._entry(entry)
+            if Path(destination).expanduser().resolve() == self.path:
+                raise VaultError("Choose a different destination for the attachment.")
+            self._commit_output(destination, lambda stage: self._rpc("history.attachment", entry=entry.uuid,
+                index=index, revision=revision, name=name, path=str(stage)))
+
+    def clear_history(self, entry, revision):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("history.clear", entry=entry.uuid, revision=revision)
+
+    def restore_history(self, entry, index, revision):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("history.restore", entry=entry.uuid, index=index, revision=revision)
+
+    def remove_history(self, entry, index, revision):
+        with self._mutex:
+            self._entry(entry)
+            return self._snapshot_call("history.remove", entry=entry.uuid, index=index, revision=revision)
 
     def search(self, query):
         with self._mutex:
@@ -776,10 +1078,40 @@ class Vault:
             self._commit_output(destination, lambda stage: self._rpc("attachment.export",
                 entry=entry.uuid, name=name, path=str(stage)))
 
+    def configuration(self, write, files):
+        with self._mutex:
+            if self.unlocked:
+                raise VaultError("Use a separate helper for application configuration.")
+            if self._process is None or self._process.poll() is not None:
+                self._stop()
+                self._start()
+            if "configuration" not in self.capabilities:
+                raise VaultError("Update the native engine before using custom configuration files.")
+            return self._rpc("configuration.write" if write else "configuration.read", files=files)
+
+    def generator_info(self):
+        with self._mutex:
+            if self._process is None or self._process.poll() is not None:
+                self._stop()
+                self._start()
+            if "generator-details" not in self.capabilities:
+                raise VaultError("Update the native engine before using the extended password generator.")
+            return self._rpc("generator.info")
+
+    def password_health(self, value):
+        with self._mutex:
+            if self._process is None or self._process.poll() is not None:
+                self._stop()
+                self._start()
+            if "generator-details" not in self.capabilities:
+                raise VaultError("Update the native engine before estimating password strength.")
+            return self._rpc("password.health", value=value)
+
     def generate(self, length=24, passphrase=False, **options):
         with self._mutex:
             allowed = {"lowercase", "uppercase", "numbers", "symbols", "braces", "punctuation", "quotes", "dashes",
-                       "math", "logograms", "extended_ascii", "every_group", "exclude_lookalike", "additional", "excluded"}
+                       "math", "logograms", "extended_ascii", "every_group", "exclude_lookalike", "additional", "excluded",
+                       "word_case", "separator", "wordlist", "details"}
             if set(options) - allowed:
                 raise VaultError("An unsupported password generator option was supplied.")
             if self._process is None or self._process.poll() is not None:
@@ -787,10 +1119,13 @@ class Vault:
                 self._start()
             if options and "generator-options" not in self.capabilities:
                 raise VaultError("Update the native engine before choosing password character types.")
+            if set(options) & {"word_case", "separator", "wordlist", "details"} and "generator-details" not in self.capabilities:
+                raise VaultError("Update the native engine before using the extended password generator.")
             return self._rpc("generate", length=length, passphrase=passphrase, **options)
 
 
 class EngineError(VaultError):
-    def __init__(self, code, message):
+    def __init__(self, code, message, details=None):
         super().__init__(message)
         self.code = code
+        self.details = dict(details or {})

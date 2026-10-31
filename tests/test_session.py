@@ -86,6 +86,54 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(results, ["background", "foreground"])
         self.assertFalse(jobs.busy)
 
+    def test_background_polling_is_serial_and_bounded_with_reserved_foreground_action(self):
+        jobs, _events, errors = self.session()
+        ready, release = threading.Event(), threading.Event()
+        calls, results = [], []
+        def saving():
+            ready.set()
+            release.wait(2)
+            calls.append("save")
+            return "save"
+        self.assertTrue(jobs.run(saving, results.append, interactive=False))
+        self.assertTrue(ready.wait(1))
+        for index in range(7):
+            def polling(index=index):
+                calls.append(index)
+                return index
+            self.assertTrue(jobs.run(polling, results.append, interactive=False))
+        self.assertEqual(calls, [])
+        self.assertFalse(jobs.run(lambda: self.fail("Unbounded polling"), interactive=False))
+        self.assertTrue(jobs.run(lambda: "foreground", results.append))
+        self.assertFalse(jobs.run(lambda: self.fail("Polling overtook foreground"), interactive=False))
+        release.set()
+        for _ in range(9):
+            self.dispatch()
+        self.assertEqual(calls, ["save", *range(7)])
+        self.assertEqual(results, ["save", *range(7), "foreground"])
+        self.assertFalse(jobs.busy)
+        self.assertEqual(errors, [])
+
+    def test_lock_drops_all_queued_background_polls_and_late_results(self):
+        jobs, _events, errors = self.session()
+        ready, release = threading.Event(), threading.Event()
+        calls, results = [], []
+        def saving():
+            ready.set()
+            release.wait(2)
+            return "late result"
+        self.assertTrue(jobs.run(saving, results.append, interactive=False))
+        self.assertTrue(ready.wait(1))
+        for _ in range(7):
+            self.assertTrue(jobs.run(lambda: calls.append("must not execute"), results.append, interactive=False))
+        jobs.lock()
+        release.set()
+        jobs.executor.submit(lambda: None).result(timeout=2)
+        for _ in range(8):
+            self.dispatch()
+        self.assertEqual((calls, results, errors), ([], [], []))
+        self.assertFalse(jobs.busy)
+
     def test_lock_cancels_foreground_action_queued_behind_background_read(self):
         jobs, _events, _errors = self.session()
         ready, release = threading.Event(), threading.Event()

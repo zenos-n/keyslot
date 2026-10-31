@@ -1,0 +1,34 @@
+--- a/src/keeshare/ShareImport.cpp
++++ b/src/keeshare/ShareImport.cpp
+@@ -31,6 +31,11 @@
+         int bytes, bytesRead = 0;
+         unzOpenCurrentFile(uf);
+         do {
++            // Bound encrypted ZIP payload expansion before allocation in the headless importer.
++            if (data.size() > 256 * 1024 * 1024 - 8192) {
++                unzCloseCurrentFile(uf);
++                return {};
++            }
+             data.resize(data.size() + 8192);
+             bytes = unzReadCurrentFile(uf, data.data() + bytesRead, 8192);
+             if (bytes > 0) {
+@@ -49,7 +54,7 @@
+ {
+     QByteArray dbData;
+ 
+-    auto uf = unzOpen64(resolvedPath.toLatin1().constData());
++    auto uf = unzOpen64(QFile::encodeName(resolvedPath).constData());
+     if (uf) {
+         // Open zip share, extract database portion, ignore signature file
+         char zipFileName[256];
+--- a/src/keeshare/ShareExport.cpp
++++ b/src/keeshare/ShareExport.cpp
+@@ -215,7 +215,7 @@
+ 
+         signatureData = KeeShareSettings::Sign::serialize(sign).toLatin1();
+ 
+-        auto zf = zipOpen64(resolvedPath.toLatin1().data(), 0);
++        auto zf = zipOpen64(QFile::encodeName(resolvedPath).constData(), 0);
+         if (!zf) {
+             return {reference.path, ShareObserver::Result::Error, ShareExport::tr("Could not write export container.")};
+         }

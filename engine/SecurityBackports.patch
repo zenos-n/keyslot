@@ -1,0 +1,326 @@
+KeePassXC 2.8 security/correctness backports to the pinned 2.7.12 Qt5 API.
+Upstream KeePassXC Team and individual patch authors retain their original licenses.
+See SecurityBackports.md for source commits, adaptations and verification scope.
+
+--- a/src/format/KeePass1Reader.cpp
++++ b/src/format/KeePass1Reader.cpp
+@@ -193,7 +193,11 @@
+     for (Entry* entry : asConst(entries)) {
+         if (isMetaStream(entry)) {
+             parseMetaStream(entry);
+-
++            for (auto it = m_entryUuids.begin(); it != m_entryUuids.end();) {
++                if (it.value() == entry) it = m_entryUuids.erase(it);
++                else ++it;
++            }
++            m_entryGroupIds.remove(entry);
+             delete entry;
+         } else {
+             quint32 groupId = m_entryGroupIds.value(entry);
+@@ -814,7 +818,7 @@
+     quint32 num = Endian::bytesToSizedInt<quint32>(data.mid(pos, 4), KeePass1::BYTEORDER);
+     pos += 4;
+ 
+-    if (static_cast<quint32>(data.size() - 4) != (num * 5)) {
++    if (static_cast<quint64>(data.size() - 4) != static_cast<quint64>(num) * 5) {
+         return false;
+     }
+ 
+@@ -859,7 +863,7 @@
+         quint32 iconSize = Endian::bytesToSizedInt<quint32>(data.mid(pos, 4), KeePass1::BYTEORDER);
+         pos += 4;
+ 
+-        if (static_cast<quint32>(data.size()) < (pos + iconSize)) {
++        if (static_cast<quint64>(iconSize) > static_cast<quint64>(data.size() - pos)) {
+             return false;
+         }
+         QByteArray icon = data.mid(pos, iconSize);
+@@ -870,7 +874,7 @@
+         m_db->metadata()->addCustomIcon(uuid, icon);
+     }
+ 
+-    if (static_cast<quint32>(data.size()) < (pos + numEntries * 20)) {
++    if (static_cast<quint64>(numEntries) * 20 > static_cast<quint64>(data.size() - pos)) {
+         return false;
+     }
+ 
+@@ -886,7 +890,7 @@
+         }
+     }
+ 
+-    if (static_cast<quint32>(data.size()) < (pos + numGroups * 8)) {
++    if (static_cast<quint64>(numGroups) * 8 > static_cast<quint64>(data.size() - pos)) {
+         return false;
+     }
+ 
+--- a/src/core/Entry.cpp
++++ b/src/core/Entry.cpp
+@@ -1097,6 +1097,7 @@
+     m_tmpHistoryItem->m_attributes->copyDataFrom(m_attributes);
+     m_tmpHistoryItem->m_attachments->copyDataFrom(m_attachments);
+     m_tmpHistoryItem->m_autoTypeAssociations->copyDataFrom(m_autoTypeAssociations);
++    m_tmpHistoryItem->m_customData->copyDataFrom(m_customData);
+ 
+     m_modifiedSinceBegin = false;
+ }
+--- a/src/fdosecrets/objects/Item.cpp
++++ b/src/fdosecrets/objects/Item.cpp
+@@ -119,6 +119,7 @@
+         // add custom attributes
+         const auto customKeys = entryAttrs->customKeys();
+         for (const auto& attr : customKeys) {
++            if (entryAttrs->isProtected(attr)) continue;
+             attrs[attr] = entryAttrs->value(attr);
+         }
+ 
+--- a/src/streams/qtiocompressor.cpp
++++ b/src/streams/qtiocompressor.cpp
+@@ -45,6 +45,8 @@
+ ****************************************************************************/
+ 
+ #include "qtiocompressor.h"
++#include <limits>
++#include <new>
+ #include <zlib.h>
+ 
+ typedef Bytef ZlibByte;
+@@ -95,9 +97,12 @@
+ ,state(Closed)
+ ,streamFormat(QtIOCompressor::ZlibFormat)
+ {
+-    // Use default zlib memory management.
+-    zlibStream.zalloc = Z_NULL;
+-    zlibStream.zfree = Z_NULL;
++    // Use the application's C++ secure-deallocation hooks for decrypted zlib buffers.
++    zlibStream.zalloc = [](voidpf, uInt items, uInt size) -> voidpf {
++        if (size != 0 && items > std::numeric_limits<std::size_t>::max() / size) return nullptr;
++        return ::operator new(static_cast<std::size_t>(items) * size, std::nothrow);
++    };
++    zlibStream.zfree = [](voidpf, voidpf address) { ::operator delete(address); };
+     zlibStream.opaque = Z_NULL;
+ }
+ 
+--- a/src/core/Alloc.cpp
++++ b/src/core/Alloc.cpp
+@@ -15,6 +15,7 @@
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include "config-keepassx.h"
+ #include <QtGlobal>
+ #include <botan/mem_ops.h>
+ #include <cstdlib>
+--- a/src/config-keepassx.h.cmake
++++ b/src/config-keepassx.h.cmake
+@@ -40,6 +40,9 @@
+ #cmakedefine HAVE_RLIMIT_CORE 1
+ #cmakedefine HAVE_PT_DENY_ATTACH 1
+ 
++#cmakedefine HAVE_MALLOC_H 1
++#cmakedefine HAVE_MALLOC_USABLE_SIZE 1
++
+ #cmakedefine01 XC_APPLE_COMPILER_SUPPORT_BIOMETRY()
+ #cmakedefine01 XC_APPLE_COMPILER_SUPPORT_TOUCH_ID()
+ #cmakedefine01 XC_APPLE_COMPILER_SUPPORT_WATCH()
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -603,9 +603,13 @@
+     int main() { return 0; }"
+             HAVE_MALLOC_H)
+ 
+-    check_cxx_source_compiles("#include <malloc.h>
+-    int main() { malloc_usable_size(NULL); return 0; }"
+-            HAVE_MALLOC_USABLE_SIZE)
++    if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
++        check_cxx_source_compiles("#include <malloc_np.h>
++        int main() { malloc_usable_size(nullptr); return 0; }" HAVE_MALLOC_USABLE_SIZE)
++    else()
++        check_cxx_source_compiles("#include <malloc.h>
++        int main() { malloc_usable_size(nullptr); return 0; }" HAVE_MALLOC_USABLE_SIZE)
++    endif()
+ 
+     check_cxx_source_compiles("#include <sys/resource.h>
+     int main() {
+--- a/src/browser/BrowserShared.h
++++ b/src/browser/BrowserShared.h
+@@ -22,7 +22,8 @@
+ 
+ namespace BrowserShared
+ {
+-    constexpr int NATIVEMSG_MAX_LENGTH = 1024 * 1024;
++    constexpr int SOCKET_BUFFER_SIZE = 1024 * 1024;
++    constexpr int NATIVEMSG_MAX_LENGTH = SOCKET_BUFFER_SIZE * 5 / 8;
+ 
+     enum SupportedBrowsers : int
+     {
+--- a/src/browser/BrowserHost.cpp
++++ b/src/browser/BrowserHost.cpp
+@@ -74,10 +74,10 @@
+         return;
+     }
+ 
+-    socket->setReadBufferSize(BrowserShared::NATIVEMSG_MAX_LENGTH);
++    socket->setReadBufferSize(BrowserShared::SOCKET_BUFFER_SIZE);
+     int socketDesc = socket->socketDescriptor();
+     if (socketDesc) {
+-        int max = BrowserShared::NATIVEMSG_MAX_LENGTH;
++        int max = BrowserShared::SOCKET_BUFFER_SIZE;
+         setsockopt(socketDesc, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char*>(&max), sizeof(max));
+     }
+ 
+--- a/src/proxy/NativeMessagingProxy.cpp
++++ b/src/proxy/NativeMessagingProxy.cpp
+@@ -93,10 +93,10 @@
+ {
+     m_localSocket.reset(new QLocalSocket());
+     m_localSocket->connectToServer(BrowserShared::localServerPath());
+-    m_localSocket->setReadBufferSize(BrowserShared::NATIVEMSG_MAX_LENGTH);
++    m_localSocket->setReadBufferSize(BrowserShared::SOCKET_BUFFER_SIZE);
+     int socketDesc = m_localSocket->socketDescriptor();
+     if (socketDesc) {
+-        int max = BrowserShared::NATIVEMSG_MAX_LENGTH;
++        int max = BrowserShared::SOCKET_BUFFER_SIZE;
+         setsockopt(socketDesc, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char*>(&max), sizeof(max));
+     }
+ 
+--- a/src/browser/BrowserMessageBuilder.cpp
++++ b/src/browser/BrowserMessageBuilder.cpp
+@@ -156,6 +156,8 @@
+         return QObject::tr("Challenge is shorter than required minimum length");
+     case ERROR_PASSKEYS_INVALID_USER_ID:
+         return QObject::tr("user.id does not match the required length");
++    case ERROR_KEEPASS_CANNOT_USE_REFERENCES:
++        return QObject::tr("Username or password cannot contain references");
+     default:
+         return QObject::tr("Unknown error");
+     }
+@@ -200,29 +202,19 @@
+                                        const QString& publicKey,
+                                        const QString& secretKey)
+ {
+-    const QByteArray ma = plaintext.toUtf8();
+-    const QByteArray na = base64Decode(nonce);
+-    const QByteArray ca = base64Decode(publicKey);
+-    const QByteArray sa = base64Decode(secretKey);
+-
+-    std::vector<unsigned char> m(ma.cbegin(), ma.cend());
+-    std::vector<unsigned char> n(na.cbegin(), na.cend());
+-    std::vector<unsigned char> ck(ca.cbegin(), ca.cend());
+-    std::vector<unsigned char> sk(sa.cbegin(), sa.cend());
+-
+-    std::vector<unsigned char> e;
+-    e.resize(BrowserShared::NATIVEMSG_MAX_LENGTH);
+-
+-    if (m.empty() || n.empty() || ck.empty() || sk.empty()) {
+-        return {};
+-    }
+-
+-    if (crypto_box_easy(e.data(), m.data(), m.size(), n.data(), ck.data(), sk.data()) == 0) {
+-        QByteArray res = getQByteArray(e.data(), (crypto_box_MACBYTES + ma.length()));
+-        return res.toBase64();
+-    }
+-
+-    return {};
++    const auto message = plaintext.toUtf8();
++    const auto n = base64Decode(nonce), pk = base64Decode(publicKey), sk = base64Decode(secretKey);
++    if (message.isEmpty() || message.size() > BrowserShared::NATIVEMSG_MAX_LENGTH
++        || n.size() != crypto_box_NONCEBYTES || pk.size() != crypto_box_PUBLICKEYBYTES
++        || sk.size() != crypto_box_SECRETKEYBYTES) return {};
++    std::vector<unsigned char> encrypted(message.size() + crypto_box_MACBYTES);
++    if (crypto_box_easy(encrypted.data(),
++                        reinterpret_cast<const unsigned char*>(message.constData()), message.size(),
++                        reinterpret_cast<const unsigned char*>(n.constData()),
++                        reinterpret_cast<const unsigned char*>(pk.constData()),
++                        reinterpret_cast<const unsigned char*>(sk.constData())) != 0) return {};
++    const auto encoded = QByteArray(reinterpret_cast<const char*>(encrypted.data()), encrypted.size()).toBase64();
++    return encoded.size() <= BrowserShared::SOCKET_BUFFER_SIZE ? QString::fromLatin1(encoded) : QString();
+ }
+ 
+ QByteArray BrowserMessageBuilder::decrypt(const QString& encrypted,
+@@ -230,28 +222,19 @@
+                                           const QString& publicKey,
+                                           const QString& secretKey)
+ {
+-    const QByteArray ma = base64Decode(encrypted);
+-    const QByteArray na = base64Decode(nonce);
+-    const QByteArray ca = base64Decode(publicKey);
+-    const QByteArray sa = base64Decode(secretKey);
+-
+-    std::vector<unsigned char> m(ma.cbegin(), ma.cend());
+-    std::vector<unsigned char> n(na.cbegin(), na.cend());
+-    std::vector<unsigned char> ck(ca.cbegin(), ca.cend());
+-    std::vector<unsigned char> sk(sa.cbegin(), sa.cend());
+-
+-    std::vector<unsigned char> d;
+-    d.resize(BrowserShared::NATIVEMSG_MAX_LENGTH);
+-
+-    if (m.empty() || n.empty() || ck.empty() || sk.empty()) {
+-        return {};
+-    }
+-
+-    if (crypto_box_open_easy(d.data(), m.data(), ma.length(), n.data(), ck.data(), sk.data()) == 0) {
+-        return getQByteArray(d.data(), std::char_traits<char>::length(reinterpret_cast<const char*>(d.data())));
+-    }
+-
+-    return {};
++    if (encrypted.size() > BrowserShared::SOCKET_BUFFER_SIZE) return {};
++    const auto message = base64Decode(encrypted);
++    const auto n = base64Decode(nonce), pk = base64Decode(publicKey), sk = base64Decode(secretKey);
++    if (message.size() <= crypto_box_MACBYTES || message.size() - crypto_box_MACBYTES > BrowserShared::NATIVEMSG_MAX_LENGTH
++        || n.size() != crypto_box_NONCEBYTES || pk.size() != crypto_box_PUBLICKEYBYTES
++        || sk.size() != crypto_box_SECRETKEYBYTES) return {};
++    std::vector<unsigned char> plaintext(message.size() - crypto_box_MACBYTES);
++    if (crypto_box_open_easy(plaintext.data(),
++                             reinterpret_cast<const unsigned char*>(message.constData()), message.size(),
++                             reinterpret_cast<const unsigned char*>(n.constData()),
++                             reinterpret_cast<const unsigned char*>(pk.constData()),
++                             reinterpret_cast<const unsigned char*>(sk.constData())) != 0) return {};
++    return QByteArray(reinterpret_cast<const char*>(plaintext.data()), plaintext.size());
+ }
+ 
+ QString BrowserMessageBuilder::getBase64FromKey(const uchar* array, const uint len)
+@@ -297,12 +280,13 @@
+ 
+ QByteArray BrowserMessageBuilder::base64Decode(const QString& str)
+ {
+-    return QByteArray::fromBase64(str.toUtf8());
++    return QByteArray::fromBase64(str.toUtf8(), QByteArray::AbortOnBase64DecodingErrors);
+ }
+ 
+ QString BrowserMessageBuilder::incrementNonce(const QString& nonce)
+ {
+     const QByteArray nonceArray = base64Decode(nonce);
++    if (nonceArray.size() != crypto_box_NONCEBYTES) return {};
+     std::vector<unsigned char> n(nonceArray.cbegin(), nonceArray.cend());
+ 
+     sodium_increment(n.data(), n.size());
+--- a/src/browser/BrowserMessageBuilder.h
++++ b/src/browser/BrowserMessageBuilder.h
+@@ -63,6 +63,7 @@
+         ERROR_PASSKEYS_UNKNOWN_ERROR = 31,
+         ERROR_PASSKEYS_INVALID_CHALLENGE = 32,
+         ERROR_PASSKEYS_INVALID_USER_ID = 33,
++        ERROR_KEEPASS_CANNOT_USE_REFERENCES = 34,
+     };
+ }
+ 
+--- a/src/browser/BrowserAction.cpp
++++ b/src/browser/BrowserAction.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "BrowserAction.h"
++#include "KeyslotBrowserValues.h"
+ #include "BrowserMessageBuilder.h"
+ #ifdef WITH_XC_BROWSER_PASSKEYS
+ #include "BrowserPasskeys.h"
+@@ -314,6 +315,9 @@
+     const auto groupUuid = browserRequest.getString("groupUuid");
+     const auto downloadFavicon = browserRequest.getString("downloadFavicon");
+     const QString realm;
++    if (keyslotBrowserHasPlaceholder(login) || keyslotBrowserHasPlaceholder(password)) {
++        return getErrorReply(action, ERROR_KEEPASS_CANNOT_USE_REFERENCES);
++    }
+ 
+     EntryParameters entryParameters;
+     entryParameters.dbid = id;

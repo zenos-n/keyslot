@@ -13,14 +13,14 @@ class ParserTests(unittest.TestCase):
     def test_duplicates_and_protected_values(self):
         xml = b'''<KeePassFile><Meta/><Root><Group><Name>Root</Name>
         <Entry><UUID>1</UUID><String><Key>Title</Key><Value>Same</Value></String>
-        <String><Key>Password</Key><Value Protected="True">secret</Value></String>
+        <String><Key>Password</Key><Value Protected="True">protected-password-fixture</Value></String>
         <String><Key>UserName</Key><Value Protected="True">private</Value></String></Entry>
         <Entry><UUID>2</UUID><String><Key>Title</Key><Value>Same</Value></String></Entry>
         </Group></Root></KeePassFile>'''
         snapshot = parse_snapshot(xml)
         self.assertFalse(snapshot.entries[0].addressable)
         self.assertEqual(snapshot.entries[0].username, "")
-        self.assertNotIn("secret", repr(snapshot))
+        self.assertNotIn("protected-password-fixture", repr(snapshot))
         with self.assertRaises(VaultError):
             cli_token("entry\nrm /Other")
 

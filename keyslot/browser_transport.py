@@ -102,7 +102,7 @@ class BrowserPipe:
         if self.closed:
             return
         self.close()
-        self.failed("Browser integration stopped. Check whether another KeePassXC instance is using the browser connection.")
+        self.failed("Browser integration stopped. Check whether another Keyslot instance is using the browser connection.")
 
     def close(self):
         if self.closed:

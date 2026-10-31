@@ -397,7 +397,7 @@ class CoreIntegrationTests(unittest.TestCase):
         self.assertEqual(self.vault.attribute(a, "Notes"), "")
         history = self.vault.history(a)
         self.assertTrue(history)
-        self.vault.restore_history(a, history[0]["index"])
+        self.vault.restore_history(a, history[0]["index"], history[0]["revision"])
         a = next(e for e in self.vault.snapshot.entries if e.uuid == a.uuid)
         self.assertEqual(self.vault.attribute(a), "first\npassword\0")
         self.vault.set_attribute(a, "API token", "private\nvalue", True)

@@ -95,7 +95,7 @@ class PasskeyTransferTests(unittest.TestCase):
         self.assertEqual(clean.history_count, old_history + 1)
         with self.assertRaises(EngineError):
             self.vault.passkey_info(clean)
-        self.vault.restore_history(clean, clean.history_count - 1)
+        self.vault.restore_history(clean, clean.history_count - 1, self.vault.history(clean)[-1]["revision"])
         self.assertTrue(self.entry().passkey)
         self.vault.delete_entry(self.entry())
         with self.assertRaises(EngineError):

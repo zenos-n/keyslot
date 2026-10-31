@@ -4,6 +4,14 @@
 #include "CsvImport.h"
 #include "BrowserDatabase.h"
 #include "KeyslotSSH.h"
+#include "KeyslotAutoType.h"
+#include "KeyslotKeeShare.h"
+#include "KeyslotSecrets.h"
+#include "KeyslotTransfer.h"
+#include "KeyslotLaunch.h"
+#include "KeyslotHistory.h"
+#include "KeyslotTotp.h"
+#include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
 #include "core/Database.h"
 #include "core/CustomData.h"
@@ -18,6 +26,7 @@
 #include "core/PasswordHealth.h"
 #include "core/PassphraseGenerator.h"
 #include "core/PasswordGenerator.h"
+#include "core/Resources.h"
 #include "core/Totp.h"
 #include "crypto/Crypto.h"
 #include "crypto/kdf/Argon2Kdf.h"
@@ -36,6 +45,8 @@
 #endif
 
 #include <QCoreApplication>
+#include <QColor>
+#include <QImageReader>
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
@@ -46,9 +57,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QMap>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QTemporaryDir>
+#include <exception>
 #include <functional>
 #include <cstdio>
 #include <cmath>
@@ -60,7 +73,7 @@
 
 namespace {
 constexpr qint64 MaxFrame = 64 * 1024 * 1024;
-struct Failure { QString code; QString message; };
+struct Failure { QString code; QString message; QJsonObject details {}; };
 [[noreturn]] void fail(const char* code, const char* message) { throw Failure{code, message}; }
 QString text(const QJsonObject& o, const char* key, const QString& fallback = {})
 {
@@ -135,6 +148,26 @@ void copyToSaveFile(const QString& source, const QString& target, QFile::Permiss
     beforeCommit();
     if (!output.commit()) fail("file_error", "The encrypted file could not be committed.");
 }
+QString keepRecoveryCopy(const QString& source, const QByteArray& expectedHash)
+{
+    const auto root = qEnvironmentVariable("KEYSLOT_RECOVERY_DIRECTORY");
+    if (root.isEmpty() || !QFileInfo(root).isAbsolute() || !QDir().mkpath(root)) return source;
+    struct stat info {};
+    if (::lstat(QFile::encodeName(root).constData(), &info) || !S_ISDIR(info.st_mode)
+        || info.st_uid != ::getuid() || !QFile::setPermissions(root, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
+        return source;
+    QTemporaryDir kept(root + "/recovery-XXXXXX");
+    if (!kept.isValid()) return source;
+    const auto target = kept.path() + "/database.kdbx";
+    try {
+        copyToSaveFile(source, target, QFile::ReadOwner | QFile::WriteOwner);
+        if (digest(target) != expectedHash) return source;
+    } catch (...) {
+        return source;
+    }
+    kept.setAutoRemove(false);
+    return target;
+}
 QJsonObject summary(const Entry* e)
 {
     auto visible = [e](const QString& key) {
@@ -152,6 +185,10 @@ QJsonObject summary(const Entry* e)
             {"recycled", e->isRecycled()}, {"addressable", true},
             {"expires", e->timeInfo().expires()}, {"expiry", e->timeInfo().expiryTime().toString(Qt::ISODate)},
             {"expired", e->isExpired()}, {"icon", e->iconNumber()},
+            {"custom_icon", e->iconUuid().isNull() ? QString() : uid(e->iconUuid())},
+            {"foreground", e->foregroundColor()}, {"background", e->backgroundColor()},
+            {"override_url", e->overrideUrl()}, {"exclude_reports", e->excludeFromReports()},
+            {"command_approved", KeyslotLaunch::approved(e)},
             {"created", e->timeInfo().creationTime().toString(Qt::ISODate)},
             {"modified", e->timeInfo().lastModificationTime().toString(Qt::ISODate)}};
 }
@@ -168,6 +205,12 @@ void checkImportReview(const QJsonObject& args, const QByteArray& fingerprint) {
 class Engine {
     KeyslotBrowserDatabase browser;
     KeyslotSSH ssh;
+    KeyslotAutoType autotype;
+    KeyslotKeeShare keeshare;
+    KeyslotSecrets secrets;
+    KeyslotSecretSessions secretSessions;
+    KeyslotTransfer transfer;
+    KeyslotLaunch launch;
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash;
@@ -183,6 +226,17 @@ class Engine {
         auto* result = id.isNull() ? nullptr : db->rootGroup()->findEntryByUuid(id);
         if (!result) fail("not_found", "The entry no longer exists. Refresh the database.");
         return result;
+    }
+    void historyRevision(const QJsonObject& args) const {
+        unchanged();
+        if (text(args, "revision") != QString::fromLatin1(hash.toHex()))
+            fail("conflict", "The database changed since history was reviewed. Open history again.");
+    }
+    Entry* historyVersion(Entry* current, const QJsonObject& args, const char* field, bool allowCurrent = true) const {
+        const int index = integer(args, field, allowCurrent ? -1 : 0, std::numeric_limits<int>::max());
+        if (allowCurrent && index == -1) return current;
+        if (index >= current->historyItems().size()) fail("invalid_request", "Select a valid history version.");
+        return current->historyItems().at(index);
     }
     Group* group(const QString& id) const {
         requireDatabase();
@@ -259,13 +313,46 @@ class Engine {
     QJsonObject transaction(const std::function<void()>& change) {
         unchanged();
         const auto originalKey = db->key();
+        const auto originalHash = hash;
+        QTemporaryDir recovery(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/recovery-XXXXXX");
+        if (!recovery.isValid()) fail("file_error", "An encrypted recovery snapshot could not be created. The vault was not changed.");
+        const auto recoveryPath = recovery.path() + "/database.kdbx";
+        const auto pending = recovery.path() + "/pending.kdbx";
+        copyToSaveFile(path, pending, QFile::ReadOwner | QFile::WriteOwner);
+        if (digest(pending) != originalHash)
+            fail("conflict", "The database changed while preparing recovery. Refresh before continuing.");
+        if (!QFile::rename(pending, recoveryPath))
+            fail("file_error", "The encrypted recovery snapshot could not be prepared. The vault was not changed.");
         try {
             change();
             persist();
         } catch (...) {
-            // A failed edit must never leave uncommitted changes in the live engine.
-            try { reload(originalKey); } catch (...) { db.reset(); hash.clear(); }
-            throw;
+            const auto failure = std::current_exception();
+            recovery.setAutoRemove(false);
+            db.reset(); hash.clear();
+            QSharedPointer<Database> restored;
+            bool reopened = false;
+            try {
+                restored = QSharedPointer<Database>::create();
+                reopened = restored->open(recoveryPath, originalKey);
+            } catch (...) {}
+            if (!reopened) {
+                const auto kept = keepRecoveryCopy(recoveryPath, originalHash);
+                if (kept != recoveryPath) recovery.setAutoRemove(true);
+                throw Failure{"recovery_error", "The save failed and the vault could not be reopened. An encrypted copy of the last verified state was kept at:\n\n"
+                    + kept + "\n\nOpen it with the original vault credentials. Keep a permanent copy if this path is temporary.",
+                    {{"recovery_path", kept}, {"retain_runtime", kept == recoveryPath}}};
+            }
+            restored->setFilePath(path);
+            restored->markAsClean();
+            db = std::move(restored); hash = originalHash;
+            recovery.setAutoRemove(true);
+            try { std::rethrow_exception(failure); }
+            catch (const Failure& error) {
+                if (error.code == "save_error" || error.code == "file_error" || error.code == "read_only")
+                    throw Failure{error.code, error.message + "\n\nThe last verified vault state is still open. You can save an encrypted copy."};
+                throw;
+            }
         }
         return snapshot();
     }
@@ -326,7 +413,11 @@ class Engine {
     void walk(const Group* g, int depth, QJsonArray& groups, QJsonArray& entries) const {
         groups.append(QJsonObject{{"uuid", uid(g->uuid())}, {"parent", g->parentGroup() ? uid(g->parentGroup()->uuid()) : QString()},
                      {"path", g->fullPath()}, {"name", g->name()}, {"depth", depth}, {"recycled", g->isRecycled()},
-                     {"notes", g->notes()}, {"addressable", true}});
+                     {"notes", g->notes()}, {"addressable", true}, {"icon", g->iconNumber()},
+                     {"custom_icon", g->iconUuid().isNull() ? QString() : uid(g->iconUuid())},
+                     {"tags", g->tags()}, {"searching", static_cast<int>(g->searchingEnabled())},
+                     {"expires", g->timeInfo().expires()},
+                     {"expiry", g->timeInfo().expiryTime().toString(Qt::ISODate)}, {"expired", g->isExpired()}});
         for (const auto* e : g->entries()) entries.append(summary(e));
         for (const auto* child : g->children()) walk(child, depth + 1, groups, entries);
     }
@@ -334,7 +425,11 @@ class Engine {
         requireDatabase();
         QJsonArray groups, entries;
         walk(db->rootGroup(), 0, groups, entries);
+        auto secretGroup = FdoSecrets::settings()->exposedGroup(db);
+        const auto* exposed = secretGroup.isNull() ? nullptr : db->rootGroup()->findGroupByUuid(secretGroup);
+        if (!exposed || exposed->isRecycled()) secretGroup = {};
         return {{"name", db->metadata()->name()}, {"recycle_bin_enabled", db->metadata()->recycleBinEnabled()},
+                {"secret_group", secretGroup.isNull() ? QString() : uid(secretGroup)},
                 {"groups", groups}, {"entries", entries}, {"root", uid(db->rootGroup()->uuid())},
                 {"default_username", db->metadata()->defaultUserName()}};
     }
@@ -354,13 +449,80 @@ class Engine {
             if (!otp || !Totp::checkValidSettings(otp).isEmpty()) fail("invalid_request", "Enter a valid TOTP URI.");
         }
         e->beginUpdate();
-        for (auto it = fields.begin(); it != fields.end(); ++it) e->setDefaultAttribute(it.key(), it.value().toString());
+        decorate(e, args);
+        for (auto it = fields.begin(); it != fields.end(); ++it) {
+            if (it.key() == EntryAttributes::URLKey) e->setUrl(it.value().toString());
+            else e->setDefaultAttribute(it.key(), it.value().toString());
+        }
         if (args.contains("tags")) e->setTags(text(args, "tags"));
         if (args.contains("expires")) e->setExpires(boolean(args, "expires"));
         if (expiry.isValid()) e->setExpiryTime(expiry);
+        if (args.contains("foreground")) e->setForegroundColor(color(args, "foreground"));
+        if (args.contains("background")) e->setBackgroundColor(color(args, "background"));
+        if (args.contains("override_url")) e->setOverrideUrl(text(args, "override_url"));
+        if (args.contains("exclude_reports")) e->setExcludeFromReports(boolean(args, "exclude_reports"));
         e->endUpdate();
         // setTotp owns its own history update and cannot be nested inside beginUpdate.
         if (args.contains("totp")) e->setTotp(otp);
+    }
+    QString color(const QJsonObject& args, const char* key) const {
+        const auto value = text(args, key);
+        if (value.isEmpty()) return {};
+        const QColor result(value);
+        if (!result.isValid()) fail("invalid_request", "Choose a valid entry color or leave it empty for the default.");
+        return result.name(result.alpha() == 255 ? QColor::HexRgb : QColor::HexArgb);
+    }
+    template <typename T> void decorate(T* item, const QJsonObject& args) {
+        const int standard = args.contains("icon") ? integer(args, "icon", 0, 68) : item->iconNumber();
+        if (args.contains("custom_icon")) {
+            const auto value = text(args, "custom_icon");
+            const QUuid id(value);
+            if (!value.isEmpty()) {
+                if (id.isNull() || !db->metadata()->hasCustomIcon(id)) fail("not_found", "The selected custom icon is no longer available.");
+                item->setIcon(id);
+            } else item->setIcon(standard);
+        } else if (args.contains("icon")) item->setIcon(standard);
+    }
+    QByteArray iconPng(const QByteArray& bytes) const {
+        if (bytes.size() > 8 * 1024 * 1024) fail("invalid_request", "The icon is too large to preview.");
+        QBuffer input;
+        input.setData(bytes); input.open(QIODevice::ReadOnly);
+        QImageReader reader(&input);
+        const auto format = reader.format().toLower();
+        if (!QList<QByteArray>{"png", "jpeg", "jpg", "gif", "bmp", "ico", "webp"}.contains(format))
+            fail("invalid_request", "Convert this image to PNG before importing it.");
+        const auto size = reader.size();
+        if (!size.isValid() || size.width() > 4096 || size.height() > 4096)
+            fail("invalid_request", "Choose an image with dimensions of at most 4096 by 4096 pixels.");
+        if (size.width() > 128 || size.height() > 128) reader.setScaledSize(size.scaled(128, 128, Qt::KeepAspectRatio));
+        const auto image = reader.read();
+        if (image.isNull()) fail("invalid_request", "The icon image could not be decoded.");
+        QByteArray result;
+        QBuffer output(&result); output.open(QIODevice::WriteOnly);
+        if (!image.save(&output, "PNG")) fail("file_error", "The icon image could not be converted.");
+        return result;
+    }
+    QJsonObject icons(const QJsonObject& args) const {
+        QJsonArray standard, custom;
+        const QDir directory(QCoreApplication::applicationDirPath() + "/../share/keepassxc/database-icons");
+        const auto files = directory.entryList({"*.png"}, QDir::Files, QDir::Name);
+        for (int index = 0; index < files.size(); ++index) {
+            auto name = QFileInfo(files[index]).completeBaseName().mid(4).replace('_', ' ');
+            standard.append(QJsonObject{{"icon", index}, {"name", name}});
+        }
+        const auto order = db->metadata()->customIconsOrder();
+        const int offset = args.contains("offset") ? integer(args, "offset", 0, std::numeric_limits<int>::max()) : 0;
+        const int limit = args.contains("limit") ? integer(args, "limit", 1, 200) : 100;
+        for (int index = offset; index < order.size() && index - offset < limit; ++index) {
+            const auto id = order[index];
+            const auto& data = db->metadata()->customIcon(id);
+            int uses = 0;
+            for (const auto* entry : db->rootGroup()->entriesRecursive(true)) if (entry->iconUuid() == id) ++uses;
+            for (const auto* group : db->rootGroup()->groupsRecursive(true)) if (group->iconUuid() == id) ++uses;
+            custom.append(QJsonObject{{"custom_icon", uid(id)}, {"name", data.name}, {"uses", uses},
+                {"modified", data.lastModified.toString(Qt::ISODate)}});
+        }
+        return {{"standard", standard}, {"custom", custom}, {"total", order.size()}, {"offset", offset}};
     }
     QSharedPointer<Database> importSource(const QJsonObject& args) const {
         const auto source = requestedPath(args, "source");
@@ -395,8 +557,23 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "browser-associations", "browser-lookup"}}};
-        if (method == "lock") { db.reset(); path.clear(); hash.clear(); return true; }
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery"}}};
+        if (method == "lock") { launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); return true; }
+        if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
+            try {
+                if (method == "url.cancel") { launch.cancel(args); return true; }
+                if (db) fail("invalid_request", "Close the recipient vault before opening a linked vault.");
+                if (method == "url.offer") return launch.offer(args);
+                const auto opened = launch.accept(args);
+                db = opened.database; path = opened.path; hash = opened.hash;
+                launch.clear();
+                return snapshot();
+            } catch (const LaunchFailure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method.startsWith("secret.session.")) {
+            try { return secretSessions.call(method, args); }
+            catch (const SecretFailure& error) { throw Failure{error.code, error.message}; }
+        }
         if (method == "quick.seal") {
             call("database.key.verify", args);
             const auto pin = text(args, "short_password");
@@ -509,6 +686,8 @@ public:
                 db = std::move(opened);
             } else {
                 if (info.exists()) fail("file_error", "A file already exists at that location.");
+                opened->setFormatVersion(KeePass2::FILE_VERSION_4);
+                opened->setKdf(KeePass2::uuidToKdf(KeePass2::KDF_ARGON2ID));
                 if (!opened->setKey(key)) fail("key_error", "KeePassXC could not set the database key.");
                 opened->metadata()->setName(text(args, "name", info.completeBaseName()));
                 opened->rootGroup()->setName("Passwords");
@@ -517,14 +696,50 @@ public:
             }
             return snapshot();
         }
+        if (method == "generator.info") {
+            QJsonArray lists;
+            for (const auto& name : QDir(resources()->wordlistPath("")).entryList(QDir::Files)) lists.append(name);
+            return QJsonObject{{"wordlists", lists}, {"default_wordlist", PassphraseGenerator::DefaultWordList}};
+        }
+        if (method == "password.health") {
+            const auto value = text(args, "value");
+            const PasswordHealth health(value);
+            return QJsonObject{{"entropy", health.entropy()}, {"quality", static_cast<int>(health.quality())},
+                               {"length", value.size()}};
+        }
         if (method == "generate") {
-            const int length = args.contains("length") ? integer(args, "length", 1, 128) : 24;
-            if (boolean(args, "passphrase")) {
-                if (length < 4 || length > 20) fail("invalid_request", "Choose 4 to 20 words.");
+            const bool passphrase = boolean(args, "passphrase");
+            const int length = args.contains("length") ? integer(args, "length", 1, passphrase ? 100 : 999) : passphrase ? 6 : 24;
+            const auto result = [&](const QString& value, double entropy = -1, bool wordlistValid = true) -> QJsonValue {
+                if (!boolean(args, "details")) return value;
+                const auto health = entropy < 0 ? PasswordHealth(value) : PasswordHealth(entropy);
+                return QJsonObject{{"value", value}, {"entropy", health.entropy()},
+                                   {"quality", static_cast<int>(health.quality())}, {"length", value.size()},
+                                   {"wordlist_valid", wordlistValid}};
+            };
+            if (passphrase) {
                 PassphraseGenerator generator;
-                generator.setDefaultWordList(); generator.setWordCount(length);
-                if (!generator.isWordListValid()) fail("file_error", "The upstream passphrase word list is unavailable.");
-                return generator.generatePassphrase();
+                generator.setWordCount(length);
+                const auto list = text(args, "wordlist", PassphraseGenerator::DefaultWordList);
+                if (list.contains(QChar('\0'))) fail("invalid_request", "Choose a readable word list.");
+                if (QFileInfo(list).isAbsolute()) {
+                    if (!QFileInfo(list).isFile()) fail("file_error", "Choose a regular word-list file.");
+                    generator.setWordList(list);
+                } else {
+                    if (!QDir(resources()->wordlistPath("")).entryList(QDir::Files).contains(list))
+                        fail("invalid_request", "Choose an installed word list or an absolute custom word-list path.");
+                    generator.setWordList(resources()->wordlistPath(list));
+                }
+                const auto wordCase = text(args, "word_case", "lowercase");
+                const QMap<QString, PassphraseGenerator::PassphraseWordCase> cases{
+                    {"lowercase", PassphraseGenerator::LOWERCASE}, {"uppercase", PassphraseGenerator::UPPERCASE},
+                    {"titlecase", PassphraseGenerator::TITLECASE}, {"mixedcase", PassphraseGenerator::MIXEDCASE}};
+                if (!cases.contains(wordCase)) fail("invalid_request", "Choose a supported word case.");
+                generator.setWordCase(cases.value(wordCase));
+                generator.setWordSeparator(text(args, "separator", PassphraseGenerator::DefaultSeparator));
+                const auto value = generator.generatePassphrase();
+                if (value.isEmpty()) fail("file_error", "Choose a readable word list containing at least one word.");
+                return result(value, generator.estimateEntropy(), generator.isWordListValid());
             }
             PasswordGenerator generator;
             generator.setLength(length);
@@ -549,7 +764,8 @@ public:
             generator.setCustomCharacterSet(text(args, "additional"));
             generator.setExcludedCharacterSet(text(args, "excluded"));
             if (!generator.isValid()) fail("invalid_request", "The password generator settings are invalid.");
-            return generator.generatePassword();
+            const auto value = generator.generatePassword();
+            return result(value);
         }
         if (method == "keyfile.generate") {
             const QFileInfo target(requestedPath(args));
@@ -566,6 +782,16 @@ public:
             return true;
         }
         requireDatabase();
+        if (method == "url.prepare" || method == "url.finish" || method == "url.forget") {
+            unchanged();
+            try {
+                if (method == "url.prepare") return launch.prepare(db, entry(args), args, hash);
+                if (method == "url.forget") return transaction([&] { KeyslotLaunch::forget(entry(args)); });
+                auto result = launch.finish(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
+                result.insert("snapshot", snapshot());
+                return result;
+            } catch (const LaunchFailure& error) { throw Failure{error.code, error.message}; }
+        }
         if (method == "refresh") { reload(); return snapshot(); }
         if (method == "database.key.verify") {
             unchanged();
@@ -578,6 +804,136 @@ public:
         // Reads and recovery copies use the open state; transactions still verify the file before writing.
         if (method == "snapshot") return snapshot();
         if (method == "database.settings") return settings();
+        if (method.startsWith("transfer.")) {
+            try {
+                if (method == "transfer.cancel") { transfer.cancel(args); return true; }
+                unchanged();
+                if (method == "transfer.prepare") return transfer.prepare(db, args, hash);
+                if (method == "transfer.listen") return transfer.listen(db, args, hash);
+                if (method == "transfer.send") return transfer.send(db, args, hash);
+                QJsonObject result;
+                const auto commit = [this](const std::function<void()>& change) { transaction(change); };
+                if (method == "transfer.receive") result = transfer.receive(db, args, hash, commit);
+                else if (method == "transfer.finish") result = transfer.finish(db, args, hash, commit);
+                else if (method == "transfer.local") result = transfer.local(db, args, hash, commit);
+                else fail("unknown_method", "This entry transfer operation is unavailable.");
+                result.insert("snapshot", snapshot());
+                return result;
+            } catch (const TransferFailure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method == "icons.list") return icons(args);
+        if (method == "icons.get" || method == "icons.export") {
+            QByteArray bytes;
+            const auto custom = text(args, "custom_icon");
+            if (!custom.isEmpty()) {
+                const QUuid id(custom);
+                if (id.isNull() || !db->metadata()->hasCustomIcon(id)) fail("not_found", "This custom icon is unavailable.");
+                bytes = db->metadata()->customIcon(id).data;
+            } else {
+                const int index = integer(args, "icon", 0, 68);
+                const QDir directory(QCoreApplication::applicationDirPath() + "/../share/keepassxc/database-icons");
+                const auto files = directory.entryList({"*.png"}, QDir::Files, QDir::Name);
+                if (index >= files.size()) fail("not_found", "The standard icon assets are unavailable.");
+                QFile image(directory.filePath(files[index]));
+                if (!image.open(QIODevice::ReadOnly)) fail("file_error", "The standard icon could not be read.");
+                bytes = image.readAll();
+            }
+            if (method == "icons.export") {
+                // Preserve the original custom image bytes, including formats from existing vaults.
+                QSaveFile file(requestedPath(args)); file.setDirectWriteFallback(false);
+                if (!file.open(QIODevice::WriteOnly) || !file.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
+                    || file.write(bytes) != bytes.size() || !file.commit()) fail("file_error", "The icon could not be exported.");
+                return true;
+            }
+            return QString::fromLatin1(iconPng(bytes).toBase64());
+        }
+        if (method == "icons.import") {
+            const auto value = text(args, "data").toLatin1();
+            if (value.size() > 12 * 1024 * 1024) fail("invalid_request", "The icon is too large.");
+            const auto raw = QByteArray::fromBase64(value, QByteArray::AbortOnBase64DecodingErrors);
+            if (raw.toBase64() != value) fail("invalid_request", "The icon encoding is invalid.");
+            const auto png = iconPng(raw);
+            auto id = db->metadata()->findCustomIcon(png);
+            if (id.isNull()) {
+                id = QUuid::createUuid();
+                const auto name = text(args, "name").left(1024);
+                transaction([&] { db->metadata()->addCustomIcon(id, png, name, Clock::currentDateTimeUtc()); });
+            }
+            return QJsonObject{{"icon", uid(id)}, {"snapshot", snapshot()}};
+        }
+        if (method == "icons.remove") {
+            const QUuid id(text(args, "custom_icon"));
+            if (id.isNull() || !db->metadata()->hasCustomIcon(id)) fail("not_found", "This custom icon is unavailable.");
+            return transaction([&] {
+                for (auto* e : db->rootGroup()->entriesRecursive(true)) if (e->iconUuid() == id) {
+                    if (e->group()) { e->beginUpdate(); e->setIcon(Entry::DefaultIconNumber); e->endUpdate(); }
+                    else { e->setUpdateTimeinfo(false); e->setIcon(0); e->setUpdateTimeinfo(true); }
+                }
+                for (auto* g : db->rootGroup()->groupsRecursive(true)) if (g->iconUuid() == id) g->setIcon(Group::DefaultIconNumber);
+                for (auto* e : db->rootGroup()->entriesRecursive(true)) if (!e->group() && e->iconUuid() == id) {
+                    e->setUpdateTimeinfo(false); e->setIcon(0); e->setUpdateTimeinfo(true);
+                }
+                db->metadata()->removeCustomIcon(id);
+            });
+        }
+        if (method.startsWith("secret.")) {
+            try {
+                if (method == "secret.settings") return secrets.settings(db);
+                if (method == "secret.settings.save")
+                    return transaction([&] { secrets.saveSettings(db, args); });
+                if (method == "secret.configure") { secrets.configure(args); return true; }
+                if (method == "secret.drop-peer") { secrets.dropPeer(text(args, "peer")); return true; }
+                // Public clients must not read a stale copy after another app revokes exposure.
+                unchanged();
+                if (method == "secret.info") return secrets.info(db, args);
+                if (method == "secret.search") return secrets.search(db, args);
+                if (method == "secret.get") return secrets.get(db, args);
+                if (method == "secret.prepare") return secrets.prepare(db, args, hash);
+                if (method == "secret.finish") {
+                    auto result = secrets.finish(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
+                    result.insert("snapshot", snapshot());
+                    return result;
+                }
+                if (method == "secret.mutate") {
+                    auto result = secrets.mutate(db, args, [this](const std::function<void()>& change) { transaction(change); });
+                    result.insert("snapshot", snapshot());
+                    return result;
+                }
+            } catch (const SecretFailure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method.startsWith("keeshare.")) {
+            try {
+                if (method == "keeshare.configure") { keeshare.configure(args); return true; }
+                if (method == "keeshare.sync") {
+                    unchanged();
+                    auto result = keeshare.sync(db, hash, [this](const std::function<void()>& change) { transaction(change); },
+                        [this] { unchanged(); return hash; }, boolean(args, "force"));
+                    result.insert("snapshot", snapshot());
+                    return result;
+                }
+                auto* target = group(text(args, "group"));
+                if (method == "keeshare.settings") return keeshare.settings(target);
+                if (method == "keeshare.settings.save")
+                    return transaction([&] { keeshare.saveSettings(target, args); });
+            } catch (const KeeShareFailure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method.startsWith("autotype.")) {
+            try {
+                if (method == "autotype.targets") return autotype.targets();
+                if (method == "autotype.matches") return autotype.matches(db, args);
+                if (method == "autotype.finish") { unchanged(); return autotype.finish(db, args, hash); }
+                if (method == "autotype.group.settings") return autotype.settings(group(text(args, "group")));
+                if (method == "autotype.group.save") {
+                    auto* target = group(text(args, "group"));
+                    return transaction([&] { autotype.saveSettings(target, args); });
+                }
+                auto* item = entry(args);
+                if (method == "autotype.settings") return autotype.settings(item);
+                if (method == "autotype.settings.save")
+                    return transaction([&] { autotype.saveSettings(item, args); });
+                if (method == "autotype.prepare") { unchanged(); return autotype.prepare(db, item, args, hash); }
+            } catch (const AutoTypeFailure& error) { throw Failure{error.code, error.message}; }
+        }
         if (method.startsWith("ssh.")) {
             try {
                 if (method == "ssh.configure") { ssh.configure(args); return true; }
@@ -850,11 +1206,50 @@ public:
             auto* e = entry(args);
             const auto name = text(args, "name");
             if (!e->attributes()->hasKey(name)) fail("not_found", "This attribute does not exist.");
-            return QJsonObject{{"value", e->attribute(name)}, {"protected", e->attributes()->isProtected(name)}};
+            QJsonObject result{{"value", e->attribute(name)}, {"protected", e->attributes()->isProtected(name)}};
+            if (boolean(args, "review")) {
+                unchanged();
+                result.insert("revision", QString::fromLatin1(hash.toHex()));
+            }
+            return result;
         }
-        if (method == "totp.settings") {
+        if (method == "totp.sample" || method == "totp.copy") {
             auto* e = entry(args);
-            return e->hasTotp() ? Totp::writeSettings(e->totpSettings(), e->title(), e->username(), true) : QString();
+            try {
+                const auto sample = KeyslotTotp::sample(e, method == "totp.sample" ? args : QJsonObject());
+                if (method == "totp.sample") return sample;
+                const auto code = sample.value("code").toString();
+                return boolean(args, "combined") ? e->resolveMultiplePlaceholders(e->password()) + code : code;
+            } catch (const KeyslotTotp::Failure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method == "totp.settings" || method == "totp.config" || method == "totp.save"
+            || method == "totp.remove" || method == "totp.qr") {
+            auto* e = entry(args);
+            unchanged();
+            const auto revision = QString::fromLatin1(hash.toHex());
+            if ((method == "totp.save" || method == "totp.remove" || args.contains("revision"))
+                && text(args, "revision") != revision)
+                fail("conflict", "The database changed since setup was opened. Open it again before continuing.");
+            try {
+                if (method == "totp.settings") return e->hasTotp() ? Totp::writeSettings(e->totpSettings(), e->title(), e->username(), true) : QString();
+                if (method == "totp.config") {
+                    auto data = KeyslotTotp::config(e); data.insert("revision", revision); return data;
+                }
+                if (method == "totp.qr") {
+                    const auto bytes = KeyslotTotp::qr(e, !args.contains("path"));
+                    if (!args.contains("path")) return QJsonObject{{"png", QString::fromLatin1(bytes.toBase64())},
+                        {"custom", Totp::hasCustomSettings(e->totpSettings()) || !e->totpSettings()->encoder.shortName.isEmpty()}, {"revision", revision}};
+                    QFile output(requestedPath(args));
+                    if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly)
+                        || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
+                        || output.write(bytes) != bytes.size() || !output.flush() || ::fsync(output.handle()) != 0)
+                        fail("file_error", "The QR code output could not be created completely.");
+                    return true;
+                }
+                if (e->isRecycled()) fail("invalid_request", "Restore this entry before changing its one-time password.");
+                auto settings = method == "totp.remove" ? QSharedPointer<Totp::Settings>() : KeyslotTotp::settings(e, args);
+                return transaction([&] { e->setTotp(settings); });
+            } catch (const KeyslotTotp::Failure& error) { throw Failure{error.code, error.message}; }
         }
         if (method == "entry.save") {
             auto* parent = group(text(args, "group"));
@@ -862,7 +1257,7 @@ public:
             Entry* existing = args.contains("entry") ? entry(args) : nullptr;
             return transaction([&] {
                 auto* e = existing;
-                if (!e) { e = new Entry(); e->setUuid(QUuid::createUuid()); e->setGroup(parent); }
+                if (!e) { e = new Entry(); e->setUuid(QUuid::createUuid()); e->setGroup(parent); parent->applyGroupIconOnCreateTo(e); }
                 editEntry(e, args);
                 if (!existing) {
                     const auto initialHistory = e->historyItems();
@@ -883,6 +1278,20 @@ public:
                 fail("invalid_request", "The recycle bin is disabled or this entry is already recycled.");
             return transaction([&] { db->recycleEntry(e); });
         }
+        if (method == "entries.recycle") {
+            const auto values = args.value("entries");
+            if (!values.isArray() || values.toArray().isEmpty() || !db->metadata()->recycleBinEnabled())
+                fail("invalid_request", "Select entries and enable the recycle bin first.");
+            QList<Entry*> chosen;
+            QSet<QUuid> seen;
+            for (const auto& value : values.toArray()) {
+                auto* e = entry(QJsonObject{{"entry", value}});
+                if (e->isRecycled() || seen.contains(e->uuid()))
+                    fail("invalid_request", "Choose each entry once, outside the recycle bin.");
+                chosen.append(e); seen.insert(e->uuid());
+            }
+            return transaction([&] { for (auto* e : chosen) db->recycleEntry(e); });
+        }
         if (method == "group.save") {
             Group* existing = args.contains("group") ? group(text(args, "group")) : nullptr;
             Group* parent = args.contains("parent") ? group(text(args, "parent")) : nullptr;
@@ -897,6 +1306,15 @@ public:
                 if (!g) { g = new Group(); g->setUuid(QUuid::createUuid()); }
                 g->setName(name);
                 if (args.contains("notes")) g->setNotes(text(args, "notes"));
+                decorate(g, args);
+                if (args.contains("tags")) g->setTags(text(args, "tags"));
+                if (args.contains("searching")) g->setSearchingEnabled(static_cast<Group::TriState>(integer(args, "searching", 0, 2)));
+                if (args.contains("expires")) g->setExpires(boolean(args, "expires"));
+                if (args.contains("expiry")) {
+                    const auto expiry = QDateTime::fromString(text(args, "expiry"), Qt::ISODate).toUTC();
+                    if (!expiry.isValid()) fail("invalid_request", "Enter a valid group expiry timestamp.");
+                    g->setExpiryTime(expiry);
+                }
                 if (parent) g->setParent(parent);
             });
         }
@@ -911,41 +1329,86 @@ public:
             const auto name = text(args, "name");
             if (name.isEmpty() || EntryAttributes::isDefaultAttribute(name))
                 fail("invalid_request", "Choose a nonempty custom attribute name.");
+            if (args.contains("revision")) {
+                unchanged();
+                if (text(args, "revision") != QString::fromLatin1(hash.toHex()))
+                    fail("conflict", "The database changed since this attribute was opened. Open it again before continuing.");
+            }
+            const auto original = text(args, "original_name");
+            const auto rename = method == "attribute.save" && args.contains("original_name");
+            if (rename) {
+                if (EntryAttributes::isPasskeyAttribute(name) || EntryAttributes::isDefaultAttribute(original)
+                    || EntryAttributes::isPasskeyAttribute(original))
+                    fail("invalid_request", "Choose a custom attribute name that is not reserved.");
+                if (!original.isEmpty() && !e->attributes()->hasKey(original))
+                    fail("not_found", "This attribute no longer exists. Open it again before continuing.");
+                if (original != name && e->attributes()->hasKey(name))
+                    fail("conflict", "An attribute with this name already exists. Choose another name.");
+            }
             const auto value = text(args, "value");
             const auto protect = boolean(args, "protected", true);
             return transaction([&] {
                 e->beginUpdate();
                 if (method == "attribute.remove") e->attributes()->remove(name);
-                else e->attributes()->set(name, value, protect);
+                else {
+                    if (rename && !original.isEmpty() && original != name)
+                        e->attributes()->rename(original, name);
+                    e->attributes()->set(name, value, protect);
+                }
                 e->endUpdate();
             });
         }
         if (method == "history") {
+            unchanged();
             auto* e = entry(args);
             QJsonArray items;
             int index = 0;
             for (const auto* old : e->historyItems()) items.append(QJsonObject{
                 {"index", index++}, {"modified", old->timeInfo().lastModificationTime().toString(Qt::ISODate)},
-                {"title", old->title()}, {"username", old->attributes()->isProtected(EntryAttributes::UserNameKey) ? QString() : old->username()}});
+                {"title", old->attributes()->isProtected(EntryAttributes::TitleKey) ? QString() : old->title()},
+                {"username", old->attributes()->isProtected(EntryAttributes::UserNameKey) ? QString() : old->username()},
+                {"revision", QString::fromLatin1(hash.toHex())}});
             return items;
         }
-        if (method == "history.restore" || method == "history.remove") {
+        if (method == "history.compare" || method == "history.value") {
+            historyRevision(args);
             auto* e = entry(args);
-            const auto indexValue = args.value("index");
-            const int index = indexValue.toInt(-1);
-            if (!indexValue.isDouble() || indexValue.toDouble() != index || index < 0 || index >= e->historyItems().size())
-                fail("invalid_request", "Select a valid history version.");
-            auto* old = e->historyItems().at(index);
+            if (method == "history.value") {
+                auto* version = historyVersion(e, args, "index");
+                const auto section = text(args, "section"), key = text(args, "key");
+                const auto comparison = KeyslotHistory::compare(version, version);
+                bool exists = false;
+                for (const auto& value : comparison.value("sections").toArray()) {
+                    const auto item = value.toObject();
+                    if (item.value("section").toString() != section) continue;
+                    for (const auto& row : item.value("rows").toArray())
+                        if (row.toObject().value("key").toString() == key) exists = true;
+                }
+                if (!exists) fail("not_found", "This history field does not exist.");
+                return KeyslotHistory::value(version, section, key);
+            }
+            return KeyslotHistory::compare(historyVersion(e, args, "left"), historyVersion(e, args, "right"));
+        }
+        if (method == "history.restore" || method == "history.remove" || method == "history.clear") {
+            historyRevision(args);
+            auto* e = entry(args);
+            auto* old = method == "history.clear" ? nullptr : historyVersion(e, args, "index", false);
             return transaction([&] {
-                if (method == "history.remove") e->removeHistoryItems({old});
+                if (method == "history.clear") { const auto items = e->historyItems(); e->removeHistoryItems(items); }
+                else if (method == "history.remove") e->removeHistoryItems({old});
                 else {
                     std::unique_ptr<Entry> copy(old->clone(Entry::CloneNoFlags));
                     e->beginUpdate(); e->copyDataFrom(copy.get()); e->endUpdate();
                 }
             });
         }
-        if (method == "attachment.export") {
+        if (method == "attachment.export" || method == "history.attachment") {
             auto* e = entry(args);
+            if (method == "history.attachment") {
+                historyRevision(args);
+                e = historyVersion(e, args, "index");
+                if (!args.contains("path")) fail("invalid_request", "Choose an attachment output file.");
+            }
             const auto name = text(args, "name");
             if (!e->attachments()->hasKey(name)) fail("not_found", "This attachment does not exist.");
             if (args.contains("path")) {
@@ -1015,6 +1478,7 @@ int main(int argc, char** argv)
     struct stat settingsInfo {};
     if (::lstat(QFile::encodeName(settingsDirectory).constData(), &settingsInfo)
         || !S_ISDIR(settingsInfo.st_mode) || settingsInfo.st_uid != ::getuid() || (settingsInfo.st_mode & 0077)) return 1;
+    qputenv("KEYSLOT_ENGINE_CONFIG_DIRECTORY", QFile::encodeName(settingsDirectory));
     Config::createConfigFromFile(settingsDirectory + "/settings.ini", settingsDirectory + "/settings-local.ini");
     Bootstrap::disableCoreDumps();
     if (!Crypto::init()) return 1;
@@ -1041,7 +1505,9 @@ int main(int argc, char** argv)
             if (!request.value("params").isObject()) fail("invalid_request", "Expected request parameters.");
             response.insert("result", engine.call(text(request, "method"), request.value("params").toObject()));
         } catch (const Failure& error) {
-            response.insert("error", QJsonObject{{"code", error.code}, {"message", error.message}});
+            auto details = error.details;
+            details.insert("code", error.code); details.insert("message", error.message);
+            response.insert("error", details);
         } catch (...) {
             response.insert("error", QJsonObject{{"code", "internal_error"}, {"message", "The engine could not complete this operation."}});
         }

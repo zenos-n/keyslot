@@ -1,0 +1,138 @@
+--- a/src/autotype/AutoType.h
++++ b/src/autotype/AutoType.h
+@@ -21,6 +21,7 @@
+ 
+ #include "AutoTypeAction.h"
+ 
++#include <functional>
+ #include <QMutex>
+ #include <QTimer>
+ #include <QWidget>
+@@ -69,6 +70,7 @@
+     void resetAutoTypeState();
+ 
+ private:
++    friend class KeyslotAutoType;
+     enum WindowState
+     {
+         Normal,
+@@ -86,7 +88,8 @@
+     void restoreWindowState();
+ 
+     static QList<QSharedPointer<AutoTypeAction>>
+-    parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly = false);
++    parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly = false,
++                  const std::function<QPair<QString, bool>(const QString&, const QString&)>& picker = {});
+ 
+     QMutex m_inAutoType;
+     QMutex m_inGlobalAutoTypeDialog;
+--- a/src/autotype/AutoType.cpp
++++ b/src/autotype/AutoType.cpp
+@@ -540,7 +540,8 @@
+  * If error is provided then syntax checking will be performed.
+  */
+ QList<QSharedPointer<AutoTypeAction>>
+-AutoType::parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly)
++AutoType::parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly,
++                        const std::function<QPair<QString, bool>(const QString&, const QString&)>& picker)
+ {
+     if (!entry) {
+         error = tr("Invalid entry provided");
+@@ -681,6 +682,15 @@
+             // Show pickchars dialog for the desired attribute
+             auto password = entry->resolvePlaceholder(entry->attribute(attribute));
+             if (!password.isEmpty()) {
++                if (picker) {
++                    const auto selection = picker(attribute, password);
++                    for (const auto& ch : selection.first) {
++                        actions << QSharedPointer<AutoTypeKey>::create(ch);
++                        if (selection.second) actions << QSharedPointer<AutoTypeKey>::create(g_placeholderToKey["tab"]);
++                    }
++                    if (selection.second && !selection.first.isEmpty()) actions.removeLast();
++                    continue;
++                }
+                 PickcharsDialog pickcharsDialog(password);
+                 if (pickcharsDialog.exec() == QDialog::Accepted && !pickcharsDialog.selectedChars().isEmpty()) {
+                     for (const auto& ch : pickcharsDialog.selectedChars()) {
+--- a/src/autotype/xcb/AutoTypeXCB.h
++++ b/src/autotype/xcb/AutoTypeXCB.h
+@@ -51,6 +51,7 @@
+     AutoTypeAction::Result sendKey(KeySym keysym, unsigned int modifiers = 0);
+ 
+ private:
++    friend class KeyslotAutoType;
+     QString windowTitle(Window window, bool useBlacklist);
+     QStringList windowTitlesRecursive(Window window);
+     QString windowClassName(Window window);
+@@ -65,7 +66,7 @@
+ 
+     static int MyErrorHandler(Display* my_dpy, XErrorEvent* event);
+ 
+-    Display* m_dpy;
++    Display* m_dpy = nullptr;
+     Window m_rootWindow;
+     Atom m_atomWmState;
+     Atom m_atomWmName;
+@@ -85,7 +86,7 @@
+         int mask;
+     } KeyDesc;
+ 
+-    XkbDescPtr m_xkb;
++    XkbDescPtr m_xkb = nullptr;
+     QList<KeyDesc> m_keymap;
+     KeyCode m_modifier_keycode[N_MOD_INDICES];
+     KeyCode m_remapKeycode;
+--- a/src/autotype/xcb/AutoTypeXCB.cpp
++++ b/src/autotype/xcb/AutoTypeXCB.cpp
+@@ -38,8 +38,9 @@
+ AutoTypePlatformX11::AutoTypePlatformX11()
+ {
+     // Qt handles XCB slightly differently so we open our own connection
+-    m_dpy = XOpenDisplay(XDisplayString(QX11Info::display()));
+-    m_rootWindow = QX11Info::appRootWindow();
++    m_dpy = XOpenDisplay(nullptr);
++    if (!m_dpy) return;
++    m_rootWindow = DefaultRootWindow(m_dpy);
+ 
+     m_atomWmState = XInternAtom(m_dpy, "WM_STATE", True);
+     m_atomWmName = XInternAtom(m_dpy, "WM_NAME", True);
+@@ -64,6 +65,7 @@
+ bool AutoTypePlatformX11::isAvailable()
+ {
+     int ignore;
++    if (!m_dpy) return false;
+ 
+     if (!XQueryExtension(m_dpy, "XInputExtension", &ignore, &ignore, &ignore)) {
+         return false;
+@@ -85,7 +87,7 @@
+         m_xkb = nullptr;
+     }
+ 
+-    XCloseDisplay(m_dpy);
++    if (m_dpy) XCloseDisplay(m_dpy);
+     m_dpy = nullptr;
+ 
+     m_loaded = false;
+@@ -189,7 +191,9 @@
+             return QString();
+         }
+ 
+-        QList<Window> keepassxWindows = widgetsToX11Windows(QApplication::topLevelWidgets());
++        QList<Window> keepassxWindows;
++        if (qobject_cast<QApplication*>(QCoreApplication::instance()))
++            keepassxWindows = widgetsToX11Windows(QApplication::topLevelWidgets());
+         if (keepassxWindows.contains(window)) {
+             return QString();
+         }
+@@ -625,8 +629,9 @@
+     event.xclient.message_type = m_atomNetActiveWindow;
+     event.xclient.format = 32;
+     event.xclient.data.l[0] = 1; // FromApplication
+-    event.xclient.data.l[1] = QX11Info::appUserTime();
+-    QWidget* activeWindow = QApplication::activeWindow();
++    const bool gui = qobject_cast<QApplication*>(QCoreApplication::instance());
++    event.xclient.data.l[1] = gui ? QX11Info::appUserTime() : CurrentTime;
++    QWidget* activeWindow = gui ? QApplication::activeWindow() : nullptr;
+     if (activeWindow) {
+         event.xclient.data.l[2] = activeWindow->internalWinId();
+     } else {

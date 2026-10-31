@@ -445,6 +445,14 @@ def client():
         assert app.active_session.path.read_bytes() == before
         save_fields = {"id": "Fixture browser", "url": "https://saved.example.net/login", "login": "alice",
                        "password": "public browser saved password"}
+        # Rejected before any GTK save prompt, including already authenticated clients.
+        before = app.active_session.path.read_bytes()
+        for field in ("login", "password"):
+            for expression in ("{REF:P@T:Private}", "{T-CONV:/{PASSWORD}/BASE64/}", "{{{{{USERNAME}}}}}"):
+                fields = dict(save_fields)
+                fields[field] = expression
+                assert request("set-login", **fields)["errorCode"] == "34"
+                assert app.active_session.path.read_bytes() == before
         state["phase"] = "save-cancel"
         before = app.active_session.path.read_bytes()
         assert request("set-login", approved=True, **save_fields)["error"] == "error"

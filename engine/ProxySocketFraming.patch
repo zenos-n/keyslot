@@ -48,8 +48,8 @@
 +        m_socketInput.remove(0, leading);
 +        if (m_socketInput.isEmpty()) return;
 +        const int end = browserFrameEnd(m_socketInput);
-+        if (m_socketInput[0] != '{' || end < 0 || end > BrowserShared::NATIVEMSG_MAX_LENGTH
-+            || (!end && m_socketInput.size() > BrowserShared::NATIVEMSG_MAX_LENGTH)) {
++        if (m_socketInput[0] != '{' || end < 0 || end > BrowserShared::SOCKET_BUFFER_SIZE
++            || (!end && m_socketInput.size() > BrowserShared::SOCKET_BUFFER_SIZE)) {
 +            QCoreApplication::exit(2);
 +            return;
 +        }

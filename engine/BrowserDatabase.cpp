@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "BrowserDatabase.h"
+#include "KeyslotBrowserValues.h"
 #include "browser/BrowserSettings.h"
 #include "core/CustomData.h"
 #include "core/Database.h"
@@ -186,6 +187,8 @@ QJsonObject KeyslotBrowserDatabase::prepareSave(const QSharedPointer<Database>& 
     }
     if (entry && entry->username().isEmpty()) reject("denied", "This entry has no username to update.");
     const auto login = text(args, "login"), password = text(args, "password");
+    if (keyslotBrowserHasPlaceholder(login) || keyslotBrowserHasPlaceholder(password))
+        reject("references_not_allowed", "Browser-supplied credentials cannot contain field placeholders or references.");
     const auto now = clock.elapsed();
     for (auto it = saves.begin(); it != saves.end();) {
         if (it->expires <= now || it->database.isNull()) it = saves.erase(it);

@@ -206,6 +206,15 @@ class BrowserTransportTests(unittest.TestCase):
         self.answer(event2, error_code=6)
         self.assertEqual(self.response(second)['errorCode'], '6')
 
+    def test_current_upstream_error_range_and_unknown_code_fallback(self):
+        client = self.client()
+        crypto = self.handshake(client)
+        for code, expected in [(1, '1'), (33, '33'), (34, '34'), (0, '6'), (35, '6')]:
+            with self.subTest(code=code):
+                client.sendall(encoded(self.request(crypto, action='set-login', url='https://fixture.invalid')))
+                self.answer(self.event(), error_code=code)
+                self.assertEqual(self.response(client)['errorCode'], expected)
+
     def test_rekey_cancels_pending_request_and_discards_late_reply(self):
         client = self.client()
         crypto = self.handshake(client)
@@ -323,7 +332,7 @@ class BrowserTransportTests(unittest.TestCase):
         self.bridge.communicate(timeout=3)
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sockets.append(server)
-        server.bind(str(self.endpoint))
+        server.bind(str(self.endpoint.parent / "Keyslot.BrowserServer"))
         server.listen(2)
         server.settimeout(3)
         return server

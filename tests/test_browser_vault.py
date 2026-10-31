@@ -50,6 +50,37 @@ class BrowserVaultTests(unittest.TestCase):
         return self.vault.browser_prepare_save("browser", self.key, "https://example.org/login", "alice",
                                               "new public browser password", **options)
 
+    def test_browser_cannot_inject_references_or_placeholders(self):
+        self.vault.browser_associate("browser", self.key)
+        existing = self.login("Private credential")
+        before = self.path.read_bytes()
+        expressions = ["{REF:P@T:Private credential}", "{ref:p@t:Private credential}",
+                       "{USERNAME}", "{PASSWORD}", "{S:Private}", "{DB_DIR}",
+                       "{T-CONV:/{PASSWORD}/BASE64/}", r"\{PASSWORD\}",
+                       "{" * 64 + "{REF:P@T:Private credential}" + "}" * 64]
+        for expression in expressions:
+            for field in ("username", "password"):
+                for entry in ("", existing.uuid.replace("-", "")):
+                    with self.subTest(expression=expression, field=field, update=bool(entry)):
+                        values = {"username": "alice", "password": "public replacement"}
+                        values[field] = expression
+                        with self.assertRaises(EngineError) as caught:
+                            self.vault.browser_prepare_save("browser", self.key, "https://example.org/login",
+                                                            values["username"], values["password"], entry=entry)
+                        self.assertEqual(caught.exception.code, "references_not_allowed")
+                        self.assertNotIn(expression, str(caught.exception))
+                        self.assertEqual(self.path.read_bytes(), before)
+        self.assertEqual(self.vault.attribute(existing), "public browser password")
+
+    def test_browser_accepts_literal_braces_without_interpreting_them(self):
+        self.vault.browser_associate("browser", self.key)
+        password = "literal {unknown} {a:b} braces"
+        prepared = self.vault.browser_prepare_save("browser", self.key, "https://example.org", "literal {unknown}", password)
+        self.assertTrue(self.vault.browser_save(prepared["token"], approved=True))
+        entry = self.vault.snapshot.entries[0]
+        self.assertEqual(entry.username, "literal {unknown}")
+        self.assertEqual(self.vault.attribute(entry), password)
+
     def test_browser_deletion_requires_single_use_consent_and_preserves_recycled_history(self):
         self.vault.browser_associate("browser", self.key)
         entry = self.login()

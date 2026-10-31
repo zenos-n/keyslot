@@ -36,6 +36,9 @@
       checks = forAllSystems (system: {
         # The application recipe requires real-core, GTK, login-keyring, signal and browser tests.
         keyslot = self.packages.${system}.keyslot;
+        security-sanitizer = import ./engine/sanitizer.nix {
+          pkgs = import nixpkgs { inherit system; };
+        };
       });
     };
 }

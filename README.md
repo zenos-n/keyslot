@@ -6,8 +6,9 @@ Quick Settings companion. Application and ZenPkgs identity:
 
 **Compatibility work in progress. This is not yet a drop-in replacement.**
 The [coverage matrix](docs/parity.md) distinguishes source implementation from
-verified behavior. Auto-type, remaining SSH platform acceptance, Secret Service,
-KeeShare, breach/browser reports, and several advanced database workflows remain unimplemented.
+verified behavior. The [release requirements](docs/release-readiness.md) track
+production blockers and the upstream 2.8 security review. Broader Secret Service acceptance, breach/browser reports, several advanced database
+workflows and broader platform acceptance remain open.
 
 ## Native engine
 
@@ -15,13 +16,15 @@ Version 0.2 replaces the CLI boundary in the app with a private helper linked
 against the actual **KeePassXC 2.7.12 core**. It does not reconstruct databases
 from XML. The packaged source and dependencies come from the same pinned
 Nixpkgs KeePassXC derivation; a version assertion prevents an unreviewed engine
-upgrade. The old CLI adapter remains only for regression tests.
+upgrade. The old CLI adapter remains only for regression tests. New databases use
+KDBX4 and upstream Argon2id defaults (64 MiB, 10 rounds). Existing databases keep
+their configured KDF; required format upgrades follow upstream serialization rules.
 
 The helper addresses entries and groups by UUID, so duplicate names and slashes
 are no longer ambiguous. Its source supports clearing fields, multiline and
 Unicode values, custom attributes/protection, TOTP configuration, entry expiry
 and tags, group editing/moves/recycling, attachment import/export/removal,
-history restore/removal, and upstream search syntax. Database workflows include
+history preview/comparison/restore/removal, and upstream search syntax. Database workflows include
 metadata, compression, cipher/KDF settings and unlock-cost calibration; key-component
 rotation, generated key files and key-file-only creation; upstream merge; XML/CSV/HTML
 export; encrypted database copies; and local health/statistics reports. Failed refresh
@@ -41,12 +44,55 @@ previewed explicitly with row/column navigation; preview text shortening does
 not truncate imported values. A reviewed source's fingerprint must still match
 at import. Native integration tests cover the pinned upstream import fixtures.
 
-The native helper and complete Nix application package build successfully on
-the GNOME 50 host. All 188 tests pass without skips. Ten package gates cover the backend, GTK,
-login keyring, terminal signals, browser management, encrypted browser workflow, passkey management, SSH management, GCR and real agent forwarding. This verifies implemented workflows, not full KeePassXC parity.
+The development build passes 323 tests and nineteen package gates on the GNOME 50
+host, including native X11 typing, GTK portal/focus/cancellation fixtures,
+encrypted libsecret interoperability, icon/appearance editing and reviewed
+cross-vault transfer, bulk operations, recursive groups, entry URL launching, history inspection and live TOTP/QR workflows.
+Existing gates cover the backend, GTK, login keyring,
+terminal signals, encrypted browser workflow, passkey/SSH management, GCR and
+real agent forwarding. This verifies implemented workflows; full KeePassXC
+parity remains open.
 Separate host acceptance with unmodified KeePassXC-Browser 1.10.4.1 and sandboxed
 Chromium155.0.8059.40 also passes pairing, DOM form filling, TOTP, generation,
 saving, groups and DOM WebAuthn create/get with independent signature verification.
+
+## One-time passwords
+
+Configure an entry with a Base32 secret or an `otpauth://totp/` setup link. Choose
+standard, Steam or custom settings, including SHA-1/SHA-256/SHA-512, code length
+and period. Editing preserves upstream legacy/KeeOtp storage when possible;
+custom legacy settings upgrade to an OTP URL. Removing setup requires confirmation
+and also clears KeePass2 `TimeOtp-*` fields so it stays removed after reopening.
+
+Reveal a live code in the entry row or open its separate window for a countdown
+and progress bar. Passive refresh never resets inactivity lock. Codes disappear
+on expiry, hide, selection change or lock; copying asks the native core for a fresh
+code. The code window can also copy the resolved password followed by its code.
+Repeated copies replace the clipboard provider directly, avoiding an X11
+clear/reclaim race while retaining the owned-content timeout.
+
+**Show Authenticator QR Code** displays a native-generated setup QR for 45 seconds.
+Copy its setup link or explicitly save a private SVG file. QR/settings exports
+are tied to the reviewed vault revision and fail after an intervening edit.
+Custom/Steam settings may not work with every authenticator. Independent zbar
+checks decode the generated PNG back to the exact upstream URI; RFC 6238 vectors,
+clock boundaries, Steam, ten-digit arithmetic, invalid inputs and retained history
+have native regression coverage. Broader authenticator and physical Wayland/desktop
+clipboard acceptance remains open.
+
+## Entry history
+
+Open **View History**, then inspect a saved version to compare it with the
+current entry or another saved version. Turn off **Only Show Changes** for a full
+preview. Each field shows the selected and comparison values; passwords, custom
+fields and sensitive settings require an explicit **Reveal**. Collapsing a field,
+changing the comparison or closing/locking the vault clears revealed text.
+Historical attachments can be saved without restoring the whole entry.
+
+Restore, delete and delete-all require confirmation and a matching reviewed
+database revision. Restore adds the previous current entry to history, subject
+to the database's retention limits; deleting history keeps the current entry.
+A changed vault must be reviewed again.
 
 ## Build and run
 
@@ -115,6 +161,26 @@ closing a window hides it and keeps its vault available; disable background mode
 to lock and close instead. Lock hooks cover configurable inactivity, GNOME screen
 lock and logind suspend; real desktop acceptance of those hooks remains open.
 
+Auto-Type settings are available for entries and groups. Window associations,
+inherited sequences, native placeholders, modifiers, delays, TOTP and character
+position picking use KeePassXC's parser. Ctrl+Shift+V opens the chooser; the GNOME
+companion adds Ctrl+Alt+K. The chooser can search all unlocked vaults. X11 uses
+the upstream executor. GNOME Wayland requests temporary keyboard access through
+the desktop portal and uses an application-only companion interface to guard the
+chosen window; changing focus revokes the typing lease. Portal event generation
+is covered by a private fixture; real portal permission and input delivery still
+need GNOME platform acceptance.
+
+KeeShare settings are available for each group. Enable imports and/or exports in
+Preferences to start checking configured share files every 30 seconds while their
+vaults are unlocked. Standard encrypted `.kdbx` shares and legacy `.kdbx.share`
+containers use upstream cloning/import/merge code. Legacy signatures are ignored
+on import, as in KeePassXC 2.7.12. The helper stages encrypted input/output, rejects
+the open database as a target and detects changes before committing an export.
+Shares and expanded encrypted ZIP payloads are limited to 256 MiB. Signing identity
+data stays in a private `keyslot/keeshare-identity.xml` under the configuration
+directory. Exporting a synchronized group requires imports to be enabled first.
+
 Each database has its own window, helper, key, view and worker queue. Opening the
 same resolved path selects its existing window; opening another file keeps the
 other databases available. Modal dialogs stay with their originating window.
@@ -123,13 +189,105 @@ results. Closing a window with background mode disabled stops its helper.
 The public Quick Settings lock state
 is aggregated: Locked means every database is locked, and Lock locks all databases.
 There are no database tabs. Accessibility still requires manual GNOME acceptance.
-Cross-database entry copy/move remains unfinished.
+
+Use **Copy or Move…** on an entry to choose an unlocked vault and destination
+group, then review the operation. Cross-vault transfers use the pinned upstream
+KDBX reader/writer and entry cloning, preserving protected fields, history,
+attachments, icons and advanced metadata. Credentials and attachment contents
+travel directly between authenticated native helpers; Python handles control
+tokens and public review metadata. No transfer file is written to disk.
+As in upstream KeePassXC, cross-vault copies and moves receive fresh entry UUIDs;
+moving within a vault keeps its UUID. Field references remain as written and the
+review warns when they need checking in the destination. A cross-vault move
+saves and verifies the destination before removing the source entry. Failed or
+unconfirmed cleanup is reported explicitly; check the destination before retrying
+an uncertain transfer.
+
+Entry and custom-attribute editors offer **Insert Field Reference** in their
+header. Choose the destination field, search for an entry, and select which of
+its fields to reference. The picker inserts the standard KeePass UUID reference;
+it does not fetch the referenced password. Custom attributes can also be renamed
+in place. An existing attribute with the new name is never overwritten by a rename.
+
+Group editors also offer **Copy or Move Group…**, including nested and empty
+groups, their entries, icons, history, notes, tags, expiry and group settings.
+The review shows the total group/entry counts and warns that Auto-Type/KeeShare
+settings are retained; review shared-file paths in the destination. Root and
+recycled groups cannot be transferred, and a group cannot be placed inside
+itself. Local moves retain group and entry UUIDs; copies and cross-vault moves
+assign new UUIDs, matching upstream behavior.
+
+Use the entry header's selection button, a hover checkbox, secondary click or
+touch long press to select several entries. Selection mode shows checkboxes, a
+count, Cancel and bottom actions for copy/move or recycling. Clicking toggles
+selection; Shift-click selects a range. Ctrl+A and Ctrl+Shift+A in the entry list
+select/deselect its visible entries, and Escape exits selection. Filtering never
+includes hidden rows in a bulk action. Recycle confirmation is explicit and the
+native operation saves the entire selection atomically; a failed save rolls it
+back. Group transfers use the same saved-destination-first receipt as entries.
+Touch hardware, screen readers and broader platform behavior still need acceptance.
 
 The main header shows the database name. Navigation panes extend to the top of
 the window, boxed lists fit their rows, and row actions stay vertically centered.
 The generator offers lowercase, uppercase, numbers, symbol groups, additional
 and excluded characters, look-alike exclusion and a require-each-group option.
+It supports up to 999 characters or 100 passphrase words, word-case/separator
+controls, installed and custom UTF-8/Diceware lists, and upstream strength and
+entropy estimates. Small custom lists remain usable with the upstream warning.
+Settings are remembered in a private `keyslot/generator.json`; generated results
+are never saved there. Editing a result recalculates its password strength.
+The package also supplies a `keepassxc` launcher for the GTK application, alongside
+the unchanged upstream `keepassxc-cli` and the corrected browser proxy.
+The GUI accepts `--lock`, `--keyfile PATH`, `--pw-stdin`, `--minimized`,
+`--version`/`-v` and `--debug-info`. Lock and diagnostics work without opening a
+window. Stdin unlock reads one UTF-8 password line per database, including an
+already-open or invalid database, with a 1 MiB limit per line. Terminal echo is
+disabled while reading; lock or shutdown cancels pending input.
+An empty password needs an explicit blank line; EOF without a line is an error.
+Relative database and key-file paths use the invoking process’s directory. Generated passwords and
+stdin credentials are never saved in application settings. `--config` and
+`--localconfig` migration are still unimplemented.
+
 The desktop, window and welcome screen temporarily use the themed `keepassxc` icon.
+
+Database entries and groups display KeePassXC's own standard/custom icons. Their
+editors provide an icon picker with all 69 standard icons, custom-image import,
+export and reviewed deletion. Deleting a custom icon replaces affected entry,
+group and saved-version references with their defaults; cancelling preserves
+the database. Images are normalized for previews, and original custom bytes can
+be exported. SVG imports have no base URI and cannot load adjacent files.
+Entry appearance includes text/background colors, URL-override metadata and
+password-report exclusion. Group options include inherited search behavior,
+tags and expiry. New entries inherit their group's icon. Favicon downloading
+and remaining advanced options still need work.
+
+**Open Entry URL** (Ctrl+U) uses the native KeePassXC placeholder resolver and Qt
+URL normalization, then GTK's asynchronous URI launcher and your chosen handler.
+It supports ordinary URI schemes and local files. A separate **Open URL Override**
+action uses the entry's stored override: the pinned KeePassXC 2.7.12 normal Open
+action does not read that metadata, so normal Open keeps the upstream behavior.
+
+`cmd://` entries show a GTK confirmation with a masked preview. Protected fields,
+nested references, conversions and TOTP are masked before preview expansion;
+execution uses the real native values and Qt's argument tokenizer, without an
+implicit shell. Remembered normal-command approvals use upstream `_EXEC_CMD`
+and are revoked when the URL changes. Override approvals are separate and bound
+to both URL templates. **Forget Command Approval** revokes them. Child standard
+streams cannot write into the private protocol and internal helper variables are
+removed from the child environment. Failed starts report an error and refresh
+any saved approval state.
+
+`kdbx://` opens another vault using its entry password and username/key-file path,
+including relative paths, composite and key-only credentials, and legacy empty
+password keys. Credentials are authenticated/encrypted between the native
+helpers using upstream browser crypto; Python carries the sealed packet. Target
+and key-file fingerprints are checked before and after opening. An already-open
+vault is selected, and failed credentials fall back to its unlock screen.
+Locking cancels pending launches and prevents late helper results from opening a
+vault. Linked openings update the remembered path; automatic login-keyring
+enrollment of the linked credential remains unfinished and currently requires
+explicit enrollment through Preferences. **Minimize After Opening Links** hides
+the origin window when background mode is enabled, otherwise requests minimization.
 
 ## Startup preferences
 
@@ -176,17 +334,22 @@ key or quitting clears it as well. Hardware keys can still require interaction.
 ## Browser integration
 
 Preferences → Browser Integration enables filling and saving logins with the
-KeePassXC-Browser extension. Keep Keyslot running, and close official KeePassXC
-before enabling integration: both use the same browser connection. The preference
+KeePassXC-Browser extension. Keep Keyslot running. Its dedicated browser endpoint
+also works while official KeePassXC is running. The preference
 shows when the listener is ready. **Configure…** registers selected Firefox,
-Chrome, Chromium, Brave, Vivaldi, Edge or Tor installations with the packaged
-upstream native proxy, including a socket-message framing fix. Replacing an existing registration requires confirmation;
+Chrome, Chromium, Brave, Vivaldi, Edge, Tor or Gnosis installations with the packaged
+`keyslot-browser-proxy`, including a socket-message framing fix. Replacing an existing registration requires confirmation;
 disabling that browser restores its original file. Registrations changed by
 another application are preserved, with an error rather than silent replacement.
-The package exposes `keepassxc-proxy` and the unchanged upstream `keepassxc-cli`
+The package exposes `keyslot-browser-proxy`, a compatibility `keepassxc-proxy`, and the unchanged upstream `keepassxc-cli`
 on PATH. Its proxy launcher clears inherited browser GUI library paths so wrapped
 Nix browsers cannot load incompatible libraries into the native host. Owned browser
 registrations refresh to this launcher when Keyslot starts.
+
+In Gnosis, open **hamburger menu → Password Manager** to select Keyslot or
+KeePassXC. **Forget Browser Connections…** removes saved pairings from that
+Gnosis profile, with confirmation; vault entries are kept. You can then connect
+again and approve a new pairing in Keyslot.
 
 Connect from KeePassXC-Browser and approve the database connection in Keyslot.
 Site requests show the origin and matching entry names/usernames; select which
@@ -250,6 +413,29 @@ The separate GTK gate covers review, selection, cancellation, overwrite approval
 history-preserving removal, changed-source rejection and stale actions after lock.
 
 ## SSH Agent
+
+Secret Service is opt-in under **Preferences → Secret Service**. Choose the
+group to expose under **Database Settings → Secret Service Exposed Group**;
+other groups and recycled entries remain unavailable. Enabling the provider
+does not replace an existing GNOME keyring service. A conflict is reported with
+a retry control. Login-unlock credentials remain bound to the GNOME login
+collection and cannot be saved back into Keyslot's own provider.
+
+The provider implements collections, items, aliases, peer-owned sessions and
+GTK prompts. Plain and encrypted DH/AES sessions use the native upstream cipher;
+encryption keys stay in the helper. Entry access can be allowed once or until
+that client disconnects. A one-shot approval allows one password read and one
+one-time code read, so metadata loading cannot consume the password permission.
+Creation, replacement and deletion use separate
+reviews. Locking removes grants and discards pending credential replies.
+Disabling the provider releases its bus name without closing vaults. Native
+fixtures and a real libsecret/private-bus GTK gate cover encrypted store, lookup,
+update, delete, denial, independent clients, binary values and lock races.
+Additional real-client checks create an encrypted vault through the GTK
+master-credential form, cancel and complete collection closure while preserving
+its file, and verify TOTP, metadata-cache updates and access-policy revocation.
+Multi-vault replies share a 24 MiB bound; clients can request smaller batches.
+Broader client and desktop interoperability acceptance remains open.
 
 Enable **Preferences → SSH Agent** to use your existing session agent. The socket
 defaults to `SSH_AUTH_SOCK`; optional socket and security-key-provider overrides
@@ -354,11 +540,23 @@ nix develop --command env KEYSLOT_REQUIRE_ENGINE=1 python3 -m unittest discover 
 dbus-run-session --config-file=tools/test-session.conf -- python3 tools/smoke-ui.py
 ```
 
-Host results: all 188 tests pass (seven legacy backend, one upstream CLI installation, fifteen pipe-protocol,
-twelve browser transport, twenty-four browser-vault, twenty-eight browser-request,
-eight native-host registration, seven worker, ten startup, eight window-controller
-eighteen real-core, four native passkey, six passkey transfer, twenty-eight SSH-agent and twelve SSH-controller tests). Ten gates cover backend, GTK, login keyring,
-terminal signals, browser management, the encrypted browser workflow, GTK passkey/SSH management, GCR and actual agent forwarding. Checks
+Host results: all 323 tests pass. Nineteen gates cover backend, GTK, login keyring,
+terminal signals, encrypted browser workflow, GTK passkey/SSH management, GCR,
+actual agent forwarding, auto-type/X11, encrypted libsecret, icon/appearance
+editing, reviewed cross-vault transfers, bulk/group workflows, URL activation, history comparison and live TOTP/QR workflows.
+The bulk/group gate
+uses real pointer events in a private Xvfb to verify hover checkboxes, row toggles,
+Shift ranges and secondary selection, and runs serially to avoid input conflicts.
+The URL gate uses an actual URI handler under private XDG config/data directories,
+command consent/remember/revoke, failed starts, linked-vault handoff/deduplication,
+manual fallback, minimize settings and late-lock cancellation. The history gate
+checks any-version comparison, on-demand reveal/hide/collapse, historical attachment
+export, reviewed restore/delete-all, rapid selector changes and late-lock cleanup.
+The serial OTP gate also checks actual clipboard replacement/foreign-owner
+preservation, passive polling without extending idle lock, setup/removal review,
+QR expiry/export and late replies after selection/hide/idle lock.
+Plain XML with an encrypted-value marker is rejected before dereferencing a missing
+inner stream; valid ProtectInMemory imports retain their field flags. Checks
 require the helper, packaged and unmodified proxies, libsodium and upstream fixtures.
 The GTK smoke test covers CSV field mapping, character-restricted generation,
 multiple database windows, duplicate-path selection, responsive navigation,

@@ -24,12 +24,25 @@ class StartupTests(unittest.TestCase):
         self.assertTrue(loaded.remember)
         self.assertTrue(loaded.login)
         self.assertEqual(loaded.vault, self.vault)
-        self.assertEqual(set(json.loads(self.settings.path.read_text())), {"remember", "login", "vault", "background", "lock_minutes", "browser", "ssh", "ssh_socket", "ssh_provider"})
+        self.assertEqual(set(json.loads(self.settings.path.read_text())), {"remember", "login", "vault", "background", "lock_minutes", "browser", "ssh", "ssh_socket", "ssh_provider", "autotype", "keeshare", "secret_service", "minimize_on_url"})
+
         self.assertEqual(self.settings.path.stat().st_mode & 0o777, 0o600)
         command = self.settings.autostart.read_text()
         self.assertIn('Exec="/a path/Keyslot \\\\"test\\\\"/bin/keyslot" --login', command)
         self.assertIn('Icon=keepassxc', command)
         self.assertNotIn(str(self.vault), command)
+
+    def test_url_minimize_preference_roundtrip_and_type_validation(self):
+        self.assertFalse(self.settings.minimize_on_url)
+        self.settings.save(False, False, minimize_on_url=True)
+        self.assertTrue(Startup(self.root).minimize_on_url)
+        before = self.settings.path.read_bytes()
+        for invalid in (1, "true", []):
+            with self.assertRaises(ValueError):
+                self.settings.save(False, False, minimize_on_url=invalid)
+        self.assertEqual(self.settings.path.read_bytes(), before)
+        self.settings.save(False, False, minimize_on_url=False)
+        self.assertFalse(Startup(self.root).minimize_on_url)
 
     def test_turning_off_remember_forgets_path_and_disables_login(self):
         self.settings.save(True, True, self.vault)
@@ -76,6 +89,7 @@ class StartupTests(unittest.TestCase):
             keyring = object.__new__(LoginKeyring)
             keyring.secret = SimpleNamespace(Service=SimpleNamespace(get_sync=lambda *_args, service=service: service),
                                               ServiceFlags=SimpleNamespace(OPEN_SESSION=1, LOAD_COLLECTIONS=2))
+            keyring._service = lambda _cancellable=None, service=service: service
             with self.subTest(service=service), self.assertRaisesRegex(ValueError, "keyring is unavailable"):
                 keyring._collection()
 

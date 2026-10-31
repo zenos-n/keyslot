@@ -1,0 +1,37 @@
+Keyslot serialization corrections for the pinned KeePassXC 2.7.12 core.
+Original file copyright and GPL-2.0-or-GPL-3.0 licensing remain applicable.
+See SerializationFixes.md for causes, scope and deterministic regression evidence.
+
+--- a/src/streams/SymmetricCipherStream.cpp
++++ b/src/streams/SymmetricCipherStream.cpp
+@@ -204,6 +204,10 @@
+ {
+     Q_ASSERT(m_streamCipher || lastBlock || (m_buffer.size() == blockSize()));
+ 
++    if (lastBlock && m_streamCipher && m_buffer.isEmpty()) {
++        return true;
++    }
++
+     if (lastBlock && !m_streamCipher) {
+         QByteArray end;
+         if (!m_cipher->finish(m_buffer)) {
+--- a/src/format/KdbxXmlWriter.cpp
++++ b/src/format/KdbxXmlWriter.cpp
+@@ -59,7 +59,7 @@
+     m_xml.setAutoFormattingIndent(-1); // 1 tab
+     m_xml.setCodec("UTF-8");
+ 
+-    if (m_kdbxVersion < KeePass2::FILE_VERSION_4) {
++    if (m_kdbxVersion < KeePass2::FILE_VERSION_4 || m_innerStreamProtectionDisabled) {
+         fillBinaryIdxMap();
+     }
+ 
+@@ -163,7 +163,7 @@
+     if (m_kdbxVersion >= KeePass2::FILE_VERSION_4) {
+         writeDateTime("SettingsChanged", m_meta->settingsChanged());
+     }
+-    if (m_kdbxVersion < KeePass2::FILE_VERSION_4) {
++    if (m_kdbxVersion < KeePass2::FILE_VERSION_4 || m_innerStreamProtectionDisabled) {
+         writeBinaries();
+     }
+     writeCustomData(m_meta->customData(), true);

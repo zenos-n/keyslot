@@ -19,8 +19,9 @@ class SessionJobs:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vault")
 
     def run(self, operation, done=None, failed=None, *, interactive=True):
-        # Keep one foreground action behind a background browser read, without dropping its click.
-        if self.closed or (self.busy and (self.interactive or not interactive)):
+        # Queue bounded browser polling behind saves, reserving one foreground action.
+        if (self.closed or (interactive and self.busy and self.interactive)
+                or (not interactive and sum(not value for value in self._active.values()) >= 8)):
             return False
         token = object()
         self._active[token] = interactive

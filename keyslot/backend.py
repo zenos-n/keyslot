@@ -46,6 +46,12 @@ class Entry:
     expiry: str = ""
     expired: bool = False
     icon: int = 0
+    custom_icon: str = ""
+    foreground: str = ""
+    background: str = ""
+    override_url: str = ""
+    command_approved: bool = False
+    exclude_reports: bool = False
     created: str = ""
     modified: str = ""
     _owner: object = field(default=None, repr=False)
@@ -61,6 +67,13 @@ class Group:
     uuid: str = ""
     parent: str = ""
     notes: str = ""
+    icon: int = 48
+    custom_icon: str = ""
+    tags: str = ""
+    searching: int = 0
+    expires: bool = False
+    expiry: str = ""
+    expired: bool = False
 
     @property
     def identity(self):
@@ -75,6 +88,7 @@ class Snapshot:
     entries: list[Entry] = field(default_factory=list)
     root: str = ""
     default_username: str = ""
+    secret_group: str = ""
 
 
 def parse_snapshot(xml: bytes) -> Snapshot:

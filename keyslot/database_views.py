@@ -410,6 +410,12 @@ def settings(app, data=None):
         changes = {key: value for key, value in values.items() if value != data.get(key)}
         app.run_job(lambda: app.vault.save_settings(**changes),
                     lambda snapshot: (dialog.close(), app.window.show_vault(snapshot), app.toast("Database settings saved")))
+    from .secret_views import settings as secret_settings
+    service = Adw.PreferencesGroup(title="Secret Service")
+    exposure = Adw.ActionRow(title="Exposed Group…", subtitle="Choose which entries applications can access", activatable=True)
+    exposure.connect("activated", lambda *_: secret_settings(app))
+    service.add(exposure)
+    box.append(service)
     _save(header, submit)
     dialog.connect("closed", lambda *_: (name.set_text(""), username.set_text(""), description.get_buffer().set_text("")))
     app.present_dialog(dialog)

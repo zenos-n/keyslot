@@ -7,6 +7,33 @@ import threading
 
 from . import APP_ID
 
+AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False, delay=25, start_delay=500)
+SECRET_SERVICE_DEFAULTS = dict(enabled=False, confirm_access=True, confirm_delete=True, notify=True, unlock_before_search=True)
+
+
+def _autotype_options(value):
+    if not isinstance(value, dict) or set(value) != set(AUTO_TYPE_DEFAULTS):
+        raise ValueError("The auto-type settings are invalid.")
+    for key in ("match_title", "match_url", "hide_expired", "relock"):
+        if type(value[key]) is not bool:
+            raise ValueError("The auto-type switches are invalid.")
+    for key, low, high in (("delay", 0, 500), ("start_delay", 100, 10000)):
+        if type(value[key]) is not int or not low <= value[key] <= high:
+            raise ValueError("Choose supported auto-type delays.")
+    return dict(value)
+
+
+def _keeshare_options(value):
+    if not isinstance(value, dict) or set(value) != {"import", "export"} or any(type(v) is not bool for v in value.values()):
+        raise ValueError("The KeeShare settings are invalid.")
+    return dict(value)
+
+
+def _secret_service_options(value):
+    if not isinstance(value, dict) or set(value) != set(SECRET_SERVICE_DEFAULTS) or any(type(v) is not bool for v in value.values()):
+        raise ValueError("The Secret Service settings are invalid.")
+    return dict(value)
+
 
 def _write(path, data):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -21,25 +48,64 @@ def _write(path, data):
         Path(name).unlink(missing_ok=True)
 
 
+def _desktop_argument(value):
+    value = str(value).replace("%", "%%")
+    for char in ('\\', '"', '`', '$'):
+        value = value.replace(char, '\\' + char)
+    value = value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+    return '"' + value + '"'
+
+
 class Startup:
-    def __init__(self, config_home=None, launcher=None):
+    @property
+    def lock_minutes(self):
+        return (self.lock_seconds + 59) // 60
+
+    @lock_minutes.setter
+    def lock_minutes(self, value):
+        self.lock_seconds = value * 60
+
+    def __init__(self, config_home=None, launcher=None, storage=None):
         self.directory = Path(config_home or os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-        self.path = self.directory / "keyslot" / "startup.json"
         self.autostart = self.directory / "autostart" / (APP_ID + ".desktop")
+        self.storage = storage
+        if storage:
+            self.directory = storage.directory
+        self.path = self.directory / "keyslot" / "startup.json"
         self.launcher = launcher
         self.mutex = threading.RLock()
         self.remember = self.login = False
         self.background = True
         self.browser = False
+        self.minimize_on_url = False
         self.ssh = False
         self.ssh_socket = self.ssh_provider = ""
+        self.autotype = dict(AUTO_TYPE_DEFAULTS)
+        self.keeshare = {"import": False, "export": False}
+        self.secret_service = dict(SECRET_SERVICE_DEFAULTS)
         self.lock_minutes = 5
+        self.lock_seconds = 300
+        self.clipboard_seconds = 20
         self.vault = None
+        stored = storage.read_startup() if storage else None
         try:
-            data = json.loads(self.path.read_text())
+            data = stored if storage else json.loads(self.path.read_text())
             self.background = data.get("background", True) is True
             self.browser = data.get("browser") is True
+            self.minimize_on_url = data.get("minimize_on_url") is True
             self.ssh = data.get("ssh") is True
+            try:
+                self.autotype = _autotype_options(data.get("autotype", AUTO_TYPE_DEFAULTS))
+            except ValueError:
+                pass
+            try:
+                self.secret_service = _secret_service_options(data.get("secret_service", SECRET_SERVICE_DEFAULTS))
+            except ValueError:
+                pass
+            try:
+                self.keeshare = _keeshare_options(data.get("keeshare", self.keeshare))
+            except ValueError:
+                pass
             for field in ("ssh_socket", "ssh_provider"):
                 value = data.get(field, "")
                 if isinstance(value, str) and len(value) <= 4096 and not any(c in value for c in ("\0", "\n", "\r")):
@@ -52,6 +118,13 @@ class Startup:
             timeout = data.get("lock_minutes", 5)
             if type(timeout) is int and 0 <= timeout <= 1440:
                 self.lock_minutes = timeout
+                self.lock_seconds = timeout * 60
+            seconds = data.get("lock_seconds", self.lock_seconds)
+            if type(seconds) is int and 0 <= seconds <= 86400:
+                self.lock_seconds = seconds
+            seconds = data.get("clipboard_seconds", 20)
+            if type(seconds) is int and 0 <= seconds <= 3600:
+                self.clipboard_seconds = seconds
             self.remember = data.get("remember") is True
             value = data.get("vault")
             if self.remember and isinstance(value, str) and Path(value).is_absolute():
@@ -61,10 +134,17 @@ class Startup:
             pass
 
     def save(self, remember, login, vault=None, background=None, lock_minutes=None, browser=None,
-             ssh=None, ssh_socket=None, ssh_provider=None):
+             ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
+             minimize_on_url=None, lock_seconds=None, clipboard_seconds=None):
         with self.mutex:
             background = self.background if background is None else bool(background)
+            autotype = _autotype_options(self.autotype if autotype is None else autotype)
+            keeshare = _keeshare_options(self.keeshare if keeshare is None else keeshare)
+            secret_service = _secret_service_options(self.secret_service if secret_service is None else secret_service)
             browser = self.browser if browser is None else bool(browser)
+            minimize_on_url = self.minimize_on_url if minimize_on_url is None else minimize_on_url
+            if type(minimize_on_url) is not bool:
+                raise ValueError("Choose whether to minimize after opening links.")
             ssh = self.ssh if ssh is None else ssh
             ssh_socket = self.ssh_socket if ssh_socket is None else ssh_socket
             ssh_provider = self.ssh_provider if ssh_provider is None else ssh_provider
@@ -75,6 +155,14 @@ class Startup:
             timeout = self.lock_minutes if lock_minutes is None else lock_minutes
             if type(timeout) is not int or not 0 <= timeout <= 1440:
                 raise ValueError("Choose Never or a timeout between 1 and 1440 minutes.")
+            seconds = self.lock_seconds if lock_minutes is None else timeout * 60
+            seconds = seconds if lock_seconds is None else lock_seconds
+            if type(seconds) is not int or not 0 <= seconds <= 86400:
+                raise ValueError("Choose Never or an inactivity timeout between 1 and 86400 seconds.")
+            timeout = (seconds + 59) // 60
+            clipboard_seconds = self.clipboard_seconds if clipboard_seconds is None else clipboard_seconds
+            if type(clipboard_seconds) is not int or not 0 <= clipboard_seconds <= 3600:
+                raise ValueError("Choose Never or a clipboard timeout between 1 and 3600 seconds.")
             vault = Path(vault).expanduser().resolve() if remember and vault else None
             login = bool(login and remember and vault)
             if login and not self.launcher:
@@ -84,20 +172,31 @@ class Startup:
                 raise ValueError("The login launcher path cannot contain a percent sign or a newline.")
             old = self.autostart.read_text() if self.autostart.exists() else None
             if login:
-                command = str(self.launcher).replace("%", "%%")
-                for char in ('\\', '"', '`', '$'):
-                    command = command.replace(char, '\\' + char)
-                # Desktop Entry strings unescape once before the Exec argument parser.
-                command = command.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+                command = _desktop_argument(self.launcher)
+                if self.storage:
+                    for option, value in self.storage.arguments:
+                        command += " " + option + " " + _desktop_argument(value)
                 _write(self.autostart, '[Desktop Entry]\nType=Application\nName=Keyslot\n'
-                       f'Exec="{command}" --login\nIcon=keepassxc\nTerminal=false\n'
+                       f'Exec={command} --login\nIcon=keepassxc\nTerminal=false\n'
                        'OnlyShowIn=GNOME;\nX-GNOME-Autostart-enabled=true\n')
             else:
                 self.autostart.unlink(missing_ok=True)
             try:
-                _write(self.path, json.dumps({"remember": bool(remember), "login": login, "background": background, "lock_minutes": timeout, "browser": browser,
+                data = {"remember": bool(remember), "login": login, "background": background, "lock_minutes": timeout, "browser": browser,
                        "ssh": ssh, "ssh_socket": ssh_socket, "ssh_provider": ssh_provider,
-                       "vault": str(vault) if vault else None}) + "\n")
+                       "autotype": autotype,
+                       "keeshare": keeshare,
+                       "secret_service": secret_service,
+                       "minimize_on_url": minimize_on_url,
+                       "vault": str(vault) if vault else None}
+                if seconds != timeout * 60:
+                    data["lock_seconds"] = seconds
+                if clipboard_seconds != 20:
+                    data["clipboard_seconds"] = clipboard_seconds
+                if self.storage:
+                    self.storage.write_startup(data)
+                else:
+                    _write(self.path, json.dumps(data) + "\n")
             except Exception:
                 if old is None:
                     self.autostart.unlink(missing_ok=True)
@@ -107,8 +206,14 @@ class Startup:
             self.remember, self.login, self.vault = bool(remember), login, vault
             self.background = background
             self.browser = browser
+            self.minimize_on_url = minimize_on_url
             self.ssh, self.ssh_socket, self.ssh_provider = ssh, ssh_socket, ssh_provider
+            self.autotype = autotype
+            self.keeshare = keeshare
+            self.secret_service = secret_service
             self.lock_minutes = timeout
+            self.lock_seconds = seconds
+            self.clipboard_seconds = clipboard_seconds
 
     def opened(self, path):
         with self.mutex:
@@ -126,9 +231,32 @@ class LoginKeyring:
         self.schema = Secret.Schema.new(APP_ID + ".Login", Secret.SchemaFlags.NONE,
             {"application": Secret.SchemaAttributeType.STRING, "vault": Secret.SchemaAttributeType.STRING})
 
+    def _service(self, cancellable=None):
+        from gi.repository import Gio, GLib
+        connection = Gio.bus_get_sync(Gio.BusType.SESSION, cancellable)
+        try:
+            def current_owner():
+                return connection.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetNameOwner",
+                    GLib.Variant("(s)", ("org.freedesktop.secrets",)), GLib.VariantType.new("(s)"),
+                    Gio.DBusCallFlags.NONE, 5000, cancellable).unpack()[0]
+            try:
+                owner = current_owner()
+            except GLib.Error as exc:
+                if not exc.matches(Gio.DBusError, Gio.DBusError.NAME_HAS_NO_OWNER):
+                    raise
+                connection.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "StartServiceByName",
+                    GLib.Variant("(su)", ("org.freedesktop.secrets", 0)), None, Gio.DBusCallFlags.NONE, 5000, cancellable)
+                owner = current_owner()
+            if owner == connection.get_unique_name():
+                raise ValueError("GNOME login unlock is unavailable while Keyslot is the active password service. Unlock this vault manually.")
+            # Pin every operation to this owner; a later provider switch must not receive the master credential.
+            return self.secret.Service.open_sync(self.secret.Service.__gtype__, owner,
+                self.secret.ServiceFlags.OPEN_SESSION | self.secret.ServiceFlags.LOAD_COLLECTIONS, cancellable)
+        except GLib.Error as exc:
+            raise ValueError("The GNOME login keyring is unavailable. Unlock the vault manually.") from exc
+
     def _collection(self, cancellable=None):
-        service = self.secret.Service.get_sync(self.secret.ServiceFlags.OPEN_SESSION |
-                                               self.secret.ServiceFlags.LOAD_COLLECTIONS, cancellable)
+        service = self._service(cancellable)
         collections = service.get_collections() if service is not None else None
         if collections is None:
             raise ValueError("The GNOME login keyring is unavailable. Unlock the vault manually.")
@@ -138,7 +266,8 @@ class LoginKeyring:
             raise ValueError("The GNOME login keyring is unavailable. Unlock the vault manually.")
         if collection.get_locked():
             raise ValueError("The GNOME login keyring is locked. Unlock it in Passwords and Keys first.")
-        return collection
+        # Collection holds only a weak service reference; retain the pinned owner for the entire operation.
+        return service, collection
 
     def _attributes(self, path=None):
         result = {"application": APP_ID}
@@ -147,13 +276,14 @@ class LoginKeyring:
         return result
 
     def store(self, path, credentials, cancellable=None):
-        collection = self._collection(cancellable)
-        if not self.secret.password_store_sync(self.schema, self._attributes(path), collection.get_object_path(),
-                "Keyslot login unlock: " + Path(path).name, json.dumps(credentials), cancellable):
+        service, collection = self._collection(cancellable)
+        value = self.secret.Value.new(json.dumps(credentials), -1, "text/plain")
+        if not service.store_sync(self.schema, self._attributes(path), collection.get_object_path(),
+                "Keyslot login unlock: " + Path(path).name, value, cancellable):
             raise ValueError("The vault credential could not be saved in the GNOME login keyring.")
 
     def lookup(self, path, cancellable=None):
-        collection = self._collection(cancellable)
+        service, collection = self._collection(cancellable)
         items = collection.search_sync(self.schema, self._attributes(path), self.secret.SearchFlags.LOAD_SECRETS, cancellable)
         if not items or items[0].get_secret() is None:
             raise ValueError("No login credential is saved for this vault. Unlock it manually and enable login unlock in Preferences.")
@@ -168,7 +298,7 @@ class LoginKeyring:
             raise ValueError("The saved vault credential is invalid. Configure login unlock again.") from None
 
     def clear(self, cancellable=None):
-        collection = self._collection(cancellable)
+        service, collection = self._collection(cancellable)
         for item in collection.search_sync(self.schema, self._attributes(), self.secret.SearchFlags.NONE, cancellable):
             if not item.delete_sync(cancellable):
                 raise ValueError("A saved Keyslot credential could not be removed from the login keyring.")

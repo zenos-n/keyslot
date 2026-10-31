@@ -5,7 +5,7 @@ import sys
 import time
 
 from .application import Adw, Gio, GLib, Gtk, Vault, VaultSession, VaultError, INTERFACE, OBJECT_PATH, DBUS_XML
-from . import APP_ID, ICON_NAME, database_views, preferences, passkey_views
+from . import APP_ID, ICON_NAME, database_views, preferences, passkey_views, autotype_views, command_line as gui_cli
 from .startup import Startup, LoginKeyring
 
 SHORTCUTS = {
@@ -14,11 +14,14 @@ SHORTCUTS = {
     "refresh": ["<Primary>r"], "save-copy": ["<Primary><Shift>s"], "close": ["<Primary>w"],
     "shortcuts": ["<Primary>question"],
     "preferences": ["<Primary>comma"],
+    "autotype": ["<Primary><Shift>v"],
+    "open-url": ["<Primary>u"],
 }
 
 
 class Keyslot(Adw.Application):
     def __init__(self):
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         executable = Path(sys.argv[0]).resolve().parent / "keyslot"
         self.startup = Startup(launcher=str(executable) if executable.is_file() else None)
@@ -26,9 +29,15 @@ class Keyslot(Adw.Application):
         self.browser = None
         from .ssh_integration import SSHIntegration
         self.ssh = SSHIntegration(self, GLib.idle_add)
+        from .keeshare import KeeShareIntegration
+        self.keeshare = KeeShareIntegration(self)
+        self.secrets = None
+        self.secret_service_error = ""
         self._native_hosts = None
         self.login_attempted = False
         self.background_enabled = False
+        self.command_requests = set()
+        gui_cli.configure(self)
         self.add_main_option("login", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
                              "Unlock the remembered vault using the login keyring", None)
         self.add_main_option("background", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
@@ -96,7 +105,6 @@ class Keyslot(Adw.Application):
         self.emit_state()
 
     def _startup(self, *_):
-        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         Gtk.Window.set_default_icon_name(ICON_NAME)
         self.set_background(self.startup.background)
         if self.startup.login and self.startup.launcher:
@@ -125,8 +133,15 @@ class Keyslot(Adw.Application):
         Gio.bus_get(Gio.BusType.SYSTEM, None, self._system_bus_ready)
         GLib.timeout_add_seconds(5, self._idle_check)
         GLib.timeout_add_seconds(1, self._ssh_check)
+        GLib.timeout_add_seconds(5, self._keeshare_check)
         if self.startup.ssh:
             self.ssh.start()
+        if self.startup.secret_service["enabled"]:
+            try:
+                self.set_secret_service(self.startup.secret_service, persist=False)
+            except (VaultError, GLib.Error, OSError) as exc:
+                self.secret_service_error = str(exc)
+                self.startup_error = str(exc)
         if self.startup.browser:
             try:
                 self.native_hosts().refresh()
@@ -157,12 +172,22 @@ class Keyslot(Adw.Application):
             self.lock()
         elif method == "Quit":
             GLib.idle_add(lambda: (self.quit(), False)[1])
+        elif method == "AutoType":
+            session = self.active_session or next(iter(self.sessions), None)
+            if session and session.vault.unlocked:
+                autotype_views.choose(session)
+            else:
+                self.activate()
         else:
             invocation.return_dbus_error(INTERFACE + ".UnknownMethod", "Unknown method")
             return
         invocation.return_value(None)
 
     def emit_state(self):
+        if secrets := getattr(self, "secrets", None):
+            secrets.state_changed()
+        if keeshare := getattr(self, "keeshare", None):
+            keeshare.state_changed()
         if ssh := getattr(self, "ssh", None):
             ssh.state_changed()
         if browser := getattr(self, "browser", None):
@@ -201,10 +226,12 @@ class Keyslot(Adw.Application):
             self.select_session(self.active_session or self.sessions[0])
 
     def _command_line(self, _application, command_line):
-        background_requested = command_line.get_options_dict().contains("background")
+        options = command_line.get_options_dict()
+        arguments = gui_cli.arguments(options)
+        background_requested = options.contains("background") or options.contains("minimized")
         if background_requested:
             self.set_background(True)
-        if command_line.get_options_dict().contains("login"):
+        if options.contains("login"):
             if self.startup.login and self.startup.vault and not self.login_attempted:
                 self.login_attempted = True
                 path = self.startup.vault
@@ -219,19 +246,31 @@ class Keyslot(Adw.Application):
                     session.requested_path = path
                     session.unlock_at_login(path)
             return 0
-        if background_requested:
+        if background_requested and not arguments:
             if not self.sessions:
                 session = self.new_window(present=False)
                 self.active_session, self.window = session, session.host_window
                 session.requested_path = self.startup.vault
             self.emit_state()
             return 0
-        arguments = command_line.get_arguments()[1:]
+        key_option = options.lookup_value("keyfile", None)
+        keyfile = command_line.create_file_for_arg(key_option.unpack()).get_path() if key_option else ""
+        if key_option and not keyfile:
+            command_line.printerr_literal("The key file must be a local file.\n")
+            return 1
+        paths = []
+        for argument in arguments:
+            path = command_line.create_file_for_arg(argument).get_path()
+            if not path:
+                command_line.printerr_literal("The database must be a local file.\n")
+                return 1
+            paths.append(path)
+        if options.contains("pw-stdin"):
+            gui_cli.PasswordInput(self, command_line, paths, keyfile, background_requested)
+            return 0
         if arguments:
-            for argument in arguments:
-                file = command_line.create_file_for_arg(argument)
-                if path := file.get_path():
-                    self.open_database(path)
+            for path in paths:
+                self.open_database(path, keyfile=keyfile, present=not background_requested)
         else:
             self.activate()
         return 0
@@ -255,16 +294,18 @@ class Keyslot(Adw.Application):
             GLib.idle_add(lambda: (session.error(message), False)[1])
         return session
 
-    def select_session(self, session):
+    def select_session(self, session, activate=True):
         self.active_session = session
         self.window = session.host_window
         session.host_window.present()
-        session.activate()
+        if activate:
+            session.activate()
         self.update_session(session)
 
-    def open_database(self, path, create=False, import_options=None, preferred=None):
+    def open_database(self, path, create=False, import_options=None, preferred=None, *, keyfile="", present=True, defer_unlock=False):
         if not self.sessions:
-            self.new_window()
+            preferred = self.new_window(present=False)
+            self.active_session, self.window = preferred, preferred.host_window
         requested = Path(path).expanduser().absolute()
         canonical = requested.resolve()
         if create and (requested.exists() or requested.is_symlink()):
@@ -275,16 +316,27 @@ class Keyslot(Adw.Application):
             if create:
                 self.active_session.error("This database is already open in another window.")
                 return
-            self.select_session(session)
+            if present:
+                if defer_unlock:
+                    self.select_session(session, activate=False)
+                else:
+                    self.select_session(session)
             if session.vault.unlocked or session.busy:
                 return session
         else:
             candidate = preferred or self.active_session
             session = candidate if candidate and candidate.path is None and not candidate.busy and not candidate.dialogs else self.new_window(present=False)
         session.requested_path = canonical
-        session.pending_unlock = (str(canonical), create, import_options)
+        if not defer_unlock:
+            session.pending_unlock = (str(canonical), create, import_options, keyfile)
         self.update_session(session)
-        self.select_session(session)
+        if present:
+            if defer_unlock:
+                self.select_session(session, activate=False)
+            else:
+                self.select_session(session)
+        elif not self.active_session:
+            self.active_session, self.window = session, session.host_window
         return session
 
     def _open_files(self, _app, files, _hint):
@@ -303,6 +355,8 @@ class Keyslot(Adw.Application):
         self.emit_state()
 
     def lock(self):
+        for request in list(self.command_requests):
+            request.cancel()
         for session in list(self.sessions):
             session.lock()
         self.emit_state()
@@ -311,12 +365,19 @@ class Keyslot(Adw.Application):
         self.last_activity = time.monotonic()
 
     def _idle_check(self):
-        timeout = self.startup.lock_minutes * 60
+        timeout = getattr(self.startup, "lock_seconds", self.startup.lock_minutes * 60)
         if timeout and (not self.locked or self.busy) and time.monotonic() - self.last_activity >= timeout:
             self.lock()
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        for request in list(self.command_requests):
+            request.cancel()
+        gui_cli.restore_echo(self)
+        if self.secrets:
+            self.secrets.close()
+            self.secrets = None
+        self.keeshare.close()
         if self.browser:
             self.browser.close()
             self.browser = None
@@ -347,10 +408,34 @@ class Keyslot(Adw.Application):
         else:
             self.ssh.start()
 
+    def set_secret_service(self, options, persist=True):
+        if persist:
+            self.startup.save(self.startup.remember, self.startup.login, self.startup.vault, secret_service=options)
+        self.secret_service_error = ""
+        if not options["enabled"]:
+            if self.secrets:
+                self.secrets.close()
+                self.secrets = None
+        elif self.secrets and not self.secrets.closed:
+            self.secrets.state_changed()
+        else:
+            from .secret_service import SecretService
+            try:
+                self.secrets = SecretService(self)
+            except Exception as exc:
+                self.secret_service_error = str(exc)
+                raise
+
     def _ssh_check(self):
         if self.ssh.closed:
             return GLib.SOURCE_REMOVE
         self.ssh.check()
+        return GLib.SOURCE_CONTINUE
+
+    def _keeshare_check(self):
+        if self.keeshare.closed:
+            return GLib.SOURCE_REMOVE
+        self.keeshare.state_changed()
         return GLib.SOURCE_CONTINUE
 
 
@@ -381,7 +466,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.set_content(session.window)
         for name, method in [("open", "choose_database"), ("new", "new_database"), ("lock", "lock"),
                              ("new-entry", "edit_entry"), ("search", "focus_search"), ("generator", "generator"),
-                             ("refresh", "refresh"), ("about", "about"), ("shortcuts", "shortcuts")]:
+                             ("refresh", "refresh"), ("about", "about"), ("shortcuts", "shortcuts"), ("open-url", "open_entry_url")]:
             self._action(name, lambda method=method: getattr(session, method)())
         for name, method in [("import", "import_database"), ("settings", "settings"), ("change-key", "change_key"),
                              ("merge", "merge"), ("export", "export"), ("save-copy", "save_copy"), ("reports", "report")]:
@@ -389,6 +474,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._action("close", self.close)
         self._action("preferences", lambda: preferences.show(session))
         self._action("passkeys", lambda: passkey_views.manage(session))
+        self._action("autotype", lambda: autotype_views.choose(session))
 
     def _action(self, name, callback):
         action = Gio.SimpleAction.new(name, None)
@@ -414,6 +500,7 @@ class MainWindow(Adw.ApplicationWindow):
         tools = Gio.Menu()
         tools.append_submenu("Database", database)
         tools.append("Password Generator", "win.generator")
+        tools.append("Auto-Type…", "win.autotype")
         menu.append_section(None, tools)
         help_menu = Gio.Menu()
         help_menu.append("Preferences", "win.preferences")
@@ -432,6 +519,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.set_visible(False)
             self.app.emit_state()
             return True
+
         if self.session:
             self.app.close_session(self.session)
         return False

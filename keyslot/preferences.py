@@ -7,6 +7,9 @@ from .application import Adw, Gio, Gtk, button, margins, scroll
 def show(session):
     from .browser_dialogs import add_preferences
     from .ssh_views import add_preferences as ssh_preferences
+    from .autotype_views import add_preferences as autotype_preferences
+    from .keeshare_views import add_preferences as keeshare_preferences
+    from .secret_views import add_preferences as secret_preferences
     if session.application.busy:
         session.toast("Wait for the current operation to finish")
         return
@@ -37,20 +40,20 @@ def show(session):
     page.add(group)
     security = Adw.PreferencesGroup(title="Security",
         description="Screen lock and suspend still lock your vaults.")
-    timeouts = [0, 1, 5, 10, 15, 30, 60]
+    timeouts = [0, 60, 300, 600, 900, 1800, 3600]
     timeout = Adw.ComboRow(title="Lock When Inactive", model=Gtk.StringList.new([
         "Never", "1 Minute", "5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "Custom…"]))
-    timeout.set_selected(timeouts.index(settings.lock_minutes) if settings.lock_minutes in timeouts else len(timeouts))
-    custom = Adw.SpinRow.new_with_range(1, 1440, 1)
-    custom.set_title("Inactivity Timeout (Minutes)")
-    custom.set_value(settings.lock_minutes or 5)
+    timeout.set_selected(timeouts.index(settings.lock_seconds) if settings.lock_seconds in timeouts else len(timeouts))
+    custom = Adw.SpinRow.new_with_range(1, 86400, 1)
+    custom.set_title("Inactivity Timeout (Seconds)")
+    custom.set_value(settings.lock_seconds or 300)
     custom.set_visible(timeout.get_selected() == len(timeouts))
     def changed_timeout(*_):
         selected = timeout.get_selected()
         custom.set_visible(selected == len(timeouts))
-        minutes = timeouts[selected] if selected < len(timeouts) else int(custom.get_value())
+        seconds = timeouts[selected] if selected < len(timeouts) else int(custom.get_value())
         try:
-            settings.save(settings.remember, settings.login, settings.vault, lock_minutes=minutes)
+            settings.save(settings.remember, settings.login, settings.vault, lock_seconds=seconds)
             session.application.touch()
         except (OSError, ValueError) as exc:
             session.error(str(exc))
@@ -58,6 +61,27 @@ def show(session):
     custom.connect("notify::value", changed_timeout)
     security.add(timeout)
     security.add(custom)
+    clipboard_times = [0, 10, 20, 30, 60]
+    clipboard = Adw.ComboRow(title="Clear Clipboard After", model=Gtk.StringList.new([
+        "Never", "10 Seconds", "20 Seconds", "30 Seconds", "1 Minute", "Custom…"]))
+    clipboard.set_selected(clipboard_times.index(settings.clipboard_seconds)
+                           if settings.clipboard_seconds in clipboard_times else len(clipboard_times))
+    clipboard_custom = Adw.SpinRow.new_with_range(1, 3600, 1)
+    clipboard_custom.set_title("Clipboard Timeout (Seconds)")
+    clipboard_custom.set_value(settings.clipboard_seconds or 20)
+    clipboard_custom.set_visible(clipboard.get_selected() == len(clipboard_times))
+    def changed_clipboard(*_):
+        selected = clipboard.get_selected()
+        clipboard_custom.set_visible(selected == len(clipboard_times))
+        seconds = clipboard_times[selected] if selected < len(clipboard_times) else int(clipboard_custom.get_value())
+        try:
+            settings.save(settings.remember, settings.login, settings.vault, clipboard_seconds=seconds)
+        except (OSError, ValueError) as exc:
+            session.error(str(exc))
+    clipboard.connect("notify::selected", changed_clipboard)
+    clipboard_custom.connect("notify::value", changed_clipboard)
+    security.add(clipboard)
+    security.add(clipboard_custom)
     quick = Adw.ActionRow(title="Quick Unlock",
         subtitle="Use a short password until Keyslot quits; the master password stays unchanged")
     setup = button("document-edit-symbolic", "Set Up Quick Unlock", lambda: (dialog.force_close(), enroll(session, quick=True)))
@@ -68,8 +92,23 @@ def show(session):
                                 lambda: (setattr(session, "quick_blob", None), dialog.close())))
     security.add(quick)
     page.add(security)
+    links = Adw.PreferencesGroup(title="Links")
+    minimize = Adw.SwitchRow(title="Minimize After Opening Links", active=settings.minimize_on_url,
+        subtitle="Hide this window when background mode is enabled")
+    def changed_minimize(*_):
+        try:
+            settings.save(settings.remember, settings.login, settings.vault, minimize_on_url=minimize.get_active())
+        except (OSError, ValueError) as exc:
+            session.error(str(exc))
+            minimize.set_active(settings.minimize_on_url)
+    minimize.connect("notify::active", changed_minimize)
+    links.add(minimize)
+    page.add(links)
     add_preferences(session, page, dialog)
     ssh_preferences(session, page, dialog)
+    autotype_preferences(session, page)
+    keeshare_preferences(session, page)
+    secret_preferences(session, page)
     dialog.add(page)
     updating = [False]
     def refresh():

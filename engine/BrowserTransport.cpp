@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 namespace {
-constexpr int Limit = BrowserShared::NATIVEMSG_MAX_LENGTH;
+constexpr int Limit = BrowserShared::SOCKET_BUFFER_SIZE;
 bool base64(const QString& value, int size) {
     const auto encoded = value.toLatin1();
     const auto bytes = QByteArray::fromBase64(encoded);
@@ -187,7 +187,7 @@ class Transport : public QObject {
         if (client.generation != request.generation) return;
         if (json.contains("error_code")) {
             const int code = json.value("error_code").toInt();
-            error(socket, request.action, code >= 1 && code <= 33 ? code : ERROR_KEEPASS_ACTION_CANCELLED_OR_DENIED);
+            error(socket, request.action, code >= 1 && code <= ERROR_KEEPASS_CANNOT_USE_REFERENCES ? code : ERROR_KEEPASS_ACTION_CANCELLED_OR_DENIED);
             return;
         }
         if (!json.value("result").isObject()) {
@@ -319,15 +319,17 @@ public:
         if (!QDir().mkpath(directory)) return false;
         const auto endpoint = directory + "/org.keepassxc.KeePassXC.BrowserServer";
         const auto encoded = QFile::encodeName(endpoint);
-        if (!::lstat(encoded.constData(), &info) || errno != ENOENT) return false;
         // Qt unlinks its bound name on close, even if another app has replaced it.
         const auto privateEndpoint = directory + "/Keyslot.BrowserServer";
         if (!server.listen(privateEndpoint)) return false;
         target = QFile::encodeName(privateEndpoint);
-        if (::symlink(target.constData(), encoded.constData())) return false;
-        alias = encoded;
-        if (::lstat(alias.constData(), &aliasInfo)) return false;
-        event({{"event", "ready"}, {"protocol", 1}, {"socket", endpoint}});
+        // Stock KeePassXC can own the compatibility endpoint while dedicated
+        // clients reach Keyslot. Never replace another application's socket.
+        if (!::symlink(target.constData(), encoded.constData())) {
+            alias = encoded;
+            if (::lstat(alias.constData(), &aliasInfo)) return false;
+        } else if (errno != EEXIST) return false;
+        event({{"event", "ready"}, {"protocol", 1}, {"socket", alias.isEmpty() ? privateEndpoint : endpoint}});
         return !failed;
     }
 };
