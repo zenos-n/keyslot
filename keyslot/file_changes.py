@@ -14,6 +14,7 @@ class FileChanges:
         self.timer = self.poll = self.epoch = self.serial = 0
         self.pending = self.running = self.force = self.force_query = self.waiting = False
         self.observed = self.failed_serial = None
+        self.review_data = None
 
     def sync(self):
         vault = self.session.vault
@@ -46,6 +47,7 @@ class FileChanges:
         self.timer = self.poll = 0
         self.pending = self.running = self.force = self.force_query = self.waiting = False
         self.observed = self.failed_serial = None
+        self.review_data = None
         self._dismiss()
 
     def _event(self, _monitor, file, other, _event):
@@ -122,6 +124,10 @@ class FileChanges:
                 self.waiting = True
                 if not session.application.startup.auto_reload:
                     self._show("Vault changed elsewhere", "Reload", self.reload)
+            elif state == "conflict":
+                self.failed_serial = serial
+                self.review_data = {key: data[key] for key in ("revision", "source_revision")}
+                self._show("Unsaved changes and changes on disk", "Review", self.review)
             else:
                 self.failed_serial = serial
                 if data.get("code") == "key_error":
@@ -157,7 +163,63 @@ class FileChanges:
             session.touch()
             session._unlock_dialog(str(session.vault.path), reopen=True)
 
+    def review(self):
+        session = self.session
+        if not session.vault.unlocked or session.busy or session.dialogs or session.file_requests:
+            return
+        def checked(data):
+            if data["state"] == "conflict":
+                self.review_data = {key: data[key] for key in ("revision", "source_revision")}
+                self._review_dialog()
+            elif data["state"] == "unavailable":
+                self._show("Vault file is unavailable", "Save Copy", self.save_copy)
+            else:
+                self.refreshed()
+        session.run_job(lambda: session.vault.watch_file(reload=False), checked)
+
+    def _review_dialog(self):
+        session = self.session
+        dialog = Adw.AlertDialog(heading="Vault Changed Elsewhere",
+            body="This vault has unsaved changes and another application changed the file. Merge both versions, reload the saved version, save a separate copy, or overwrite the changes on disk with your version.")
+        review = dict(self.review_data or {})
+        for name, label in (("cancel", "Cancel"), ("copy", "Save Copy…"),
+                            ("discard", "Discard and Reload"), ("merge", "Merge Changes")):
+            dialog.add_response(name, label)
+        if review:
+            dialog.add_response("overwrite", "Overwrite Disk Changes")
+            dialog.set_response_appearance("overwrite", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("merge")
+        dialog.set_close_response("cancel")
+        dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_response_appearance("merge", Adw.ResponseAppearance.SUGGESTED)
+        def selected(_dialog, response):
+            if response == "copy":
+                self.save_copy()
+            elif response in ("merge", "discard", "overwrite"):
+                merge = response == "merge"
+                def perform():
+                    try:
+                        return session.vault.reconcile(merge=merge, discard=response == "discard",
+                                                       overwrite=response == "overwrite", review=review)
+                    except EngineError as exc:
+                        if exc.code == "key_error":
+                            return None
+                        raise
+                def reconciled(snapshot):
+                    if snapshot is None:
+                        session._unlock_dialog(str(session.vault.path), reopen=True, merge=merge,
+                                               discard=response == "discard", review=review)
+                    else:
+                        session.apply_refreshed(snapshot)
+                        self.refreshed()
+                session.run_job(perform, reconciled)
+            else:
+                self._show("Unsaved changes and changes on disk", "Review", self.review)
+        dialog.connect("response", selected)
+        session.present_dialog(dialog)
+
     def refreshed(self):
+        self.review_data = None
         self.serial += 1
         self.failed_serial = None
         self.waiting = self.force = False

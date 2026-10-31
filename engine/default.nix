@@ -1,4 +1,4 @@
-{ pkgs }:
+{ pkgs, doCheck ? false }:
 assert pkgs.keepassxc.version == "2.7.12";
 pkgs.keepassxc.overrideAttrs (old: {
   pname = "keyslot-engine";
@@ -77,15 +77,17 @@ pkgs.keepassxc.overrideAttrs (old: {
     target_link_libraries(keyslot-browser keepassx_core Qt5::Network)
     add_executable(keyslot-ssh-agent core/Alloc.cpp keyslot-ssh-agent.cpp)
     target_link_libraries(keyslot-ssh-agent keepassx_core Qt5::Network)
-    add_executable(keyslot-security-check KeyslotSecurityCheck.cpp core/Alloc.cpp)
-    target_link_libraries(keyslot-security-check keepassx_core)
-    target_link_options(keyslot-security-check PRIVATE "-Wl,--wrap=free")
+    if(${if doCheck then "TRUE" else "FALSE"})
+      add_executable(keyslot-security-check KeyslotSecurityCheck.cpp core/Alloc.cpp)
+      target_link_libraries(keyslot-security-check keepassx_core)
+      target_link_options(keyslot-security-check PRIVATE "-Wl,--wrap=free")
+    endif()
     CMAKE
   '';
   cmakeFlags = (old.cmakeFlags or []) ++ [ "-DWITH_TESTS=OFF" "-DWITH_GUI_TESTS=OFF" ];
   buildPhase = ''
     runHook preBuild
-    cmake --build . --target keyslot-engine keyslot-browser keyslot-browser-proxy keyslot-ssh-agent keyslot-security-check keepassxc-cli keepassxc-proxy keepassxc-proxy-upstream translations --parallel "$NIX_BUILD_CORES"
+    cmake --build . --target keyslot-engine keyslot-browser keyslot-browser-proxy keyslot-ssh-agent ${pkgs.lib.optionalString doCheck "keyslot-security-check"} keepassxc-cli keepassxc-proxy keepassxc-proxy-upstream translations --parallel "$NIX_BUILD_CORES"
     runHook postBuild
   '';
   installPhase = ''
@@ -112,7 +114,7 @@ pkgs.keepassxc.overrideAttrs (old: {
     install -Dm644 ../LICENSE.CC0 "$out/share/licenses/keyslot-engine/LICENSE.CC0"
     runHook postInstall
   '';
-  doCheck = true;
+  inherit doCheck;
   checkPhase = ''
     runHook preCheck
     ./src/keyslot-security-check

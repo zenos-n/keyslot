@@ -51,6 +51,59 @@ def show(session):
         subtitle="Disable login unlock and remove Keyslot’s saved credentials")
     group.add(forget)
     page.add(group)
+    saving = Adw.PreferencesGroup(title="Saving",
+        description="Manual changes are kept in encrypted recovery copies until you save. Security locks still clear the unlocked vault immediately.")
+    automatic = Adw.SwitchRow(title="Save Changes Automatically", active=settings.auto_save)
+    on_exit = Adw.SwitchRow(title="Save When Closing or Locking", active=settings.auto_save_on_exit)
+    saving.add(automatic)
+    saving.add(on_exit)
+    updating = [False]
+    def changed_saving(*_):
+        if updating[0]:
+            return
+        old = settings.auto_save, settings.auto_save_on_exit
+        chosen = automatic.get_active(), on_exit.get_active()
+        def restore_controls():
+            updating[0] = True
+            automatic.set_active(settings.auto_save)
+            on_exit.set_active(settings.auto_save_on_exit)
+            updating[0] = False
+            saving.set_sensitive(True)
+        if session.busy:
+            restore_controls()
+            return
+        sessions = list(session.application.sessions)
+        def apply():
+            try:
+                for item in sessions:
+                    item.vault.save_policy(*chosen)
+                settings.save(settings.remember, settings.login, settings.vault,
+                              auto_save=chosen[0], auto_save_on_exit=chosen[1])
+            except Exception:
+                for item in sessions:
+                    try:
+                        item.vault.save_policy(*old)
+                    except (OSError, ValueError, VaultError):
+                        pass
+                raise
+        def completed(_result):
+            restore_controls()
+            for item in sessions:
+                if item.vault.unlocked:
+                    item.window.show_vault(item.vault.snapshot)
+                item.emit_state()
+        def failed(message):
+            restore_controls()
+            for item in sessions:
+                if item.vault.unlocked:
+                    item.window.show_vault(item.vault.snapshot)
+                item.emit_state()
+            session.error(message)
+        saving.set_sensitive(False)
+        session.run_job(apply, completed, failed)
+    automatic.connect("notify::active", changed_saving)
+    on_exit.connect("notify::active", changed_saving)
+    page.add(saving)
     security = Adw.PreferencesGroup(title="Security",
         description="Screen lock and suspend still lock your vaults.")
     timeouts = [0, 60, 300, 600, 900, 1800, 3600]
@@ -96,7 +149,7 @@ def show(session):
     security.add(clipboard)
     security.add(clipboard_custom)
     quick = Adw.ActionRow(title="Quick Unlock",
-        subtitle="Use a short password until Keyslot quits; the master password stays unchanged")
+        subtitle="Use a short password for this vault location; the master password stays unchanged")
     setup = button("document-edit-symbolic", "Set Up Quick Unlock", lambda: (dialog.force_close(), enroll(session, quick=True)))
     setup.set_sensitive(session.vault.unlocked)
     quick.add_suffix(setup)

@@ -58,11 +58,13 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QLockFile>
 #include <QMap>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QTemporaryDir>
 #include <exception>
+#include <algorithm>
 #include <functional>
 #include <cstdio>
 #include <cmath>
@@ -169,6 +171,122 @@ QString keepRecoveryCopy(const QString& source, const QByteArray& expectedHash)
     kept.setAutoRemove(false);
     return target;
 }
+QString manualRoot(bool create = false)
+{
+    const auto root = qEnvironmentVariable("KEYSLOT_RECOVERY_DIRECTORY");
+    if (root.isEmpty() || !QFileInfo(root).isAbsolute()) {
+        if (!create) return {};
+        fail("file_error", "A private recovery directory is required for manual saving.");
+    }
+    if (!QFileInfo::exists(root) && !create) return root;
+    struct stat info {};
+    if ((create && !QDir().mkpath(root)) || ::lstat(QFile::encodeName(root).constData(), &info)
+        || !S_ISDIR(info.st_mode) || info.st_uid != ::getuid()
+        || !QFile::setPermissions(root, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
+        fail("file_error", "The private recovery directory could not be secured.");
+    return QDir(root).canonicalPath();
+}
+bool recoveryLocation(const QString& path)
+{
+    const auto configured = qEnvironmentVariable("KEYSLOT_RECOVERY_DIRECTORY");
+    if (configured.isEmpty() || !QFileInfo(configured).isAbsolute()) return false;
+    const auto root = QDir(configured).canonicalPath();
+    return !root.isEmpty() && path.startsWith(root + "/");
+}
+QJsonObject manualInfo(const QString& manifest, const QString& source = {})
+{
+    const QFileInfo file(manifest), directory(file.absolutePath());
+    struct stat info {};
+    if (file.fileName() != "manifest.json" || directory.absolutePath() != manualRoot()
+        || !directory.fileName().startsWith("manual-")
+        || ::lstat(QFile::encodeName(directory.absoluteFilePath()).constData(), &info)
+        || !S_ISDIR(info.st_mode) || info.st_uid != ::getuid() || (info.st_mode & 0077)
+        || ::lstat(QFile::encodeName(manifest).constData(), &info)
+        || !S_ISREG(info.st_mode) || info.st_uid != ::getuid() || (info.st_mode & 0077))
+        fail("file_error", "The unsaved-vault recovery record is not a private regular file.");
+    QFile input(manifest);
+    if (!input.open(QIODevice::ReadOnly) || input.size() > 16384) fail("file_error", "The recovery record could not be read.");
+    const auto data = QJsonDocument::fromJson(input.readAll()).object();
+    const auto original = data.value("source").toString(), name = data.value("snapshot").toString();
+    const QRegularExpression sha("^[a-f0-9]{64}$"), snapshot("^snapshot-[a-f0-9-]{36}\\.kdbx$");
+    if (data.value("version").toInt() != 1 || !QFileInfo(original).isAbsolute()
+        || (!source.isEmpty() && original != source) || !snapshot.match(name).hasMatch()
+        || !sha.match(data.value("base_hash").toString()).hasMatch()
+        || !sha.match(data.value("snapshot_hash").toString()).hasMatch())
+        fail("file_error", "The recovery record is invalid or belongs to another vault.");
+    const auto saved = directory.absoluteFilePath() + "/" + name;
+    if (::lstat(QFile::encodeName(saved).constData(), &info) || !S_ISREG(info.st_mode)
+        || info.st_uid != ::getuid() || (info.st_mode & 0077))
+        fail("file_error", "The encrypted recovery snapshot is not a private regular file.");
+    auto result = data;
+    result.insert("manifest", manifest); result.insert("path", saved);
+    return result;
+}
+void discardManual(const QJsonObject& data, bool strict = true)
+{
+    const QFileInfo manifest(data.value("manifest").toString());
+    if (!QFile::remove(manifest.absoluteFilePath())) {
+        if (strict) fail("file_error", "The recovery record could not be removed.");
+        return;
+    }
+    QDir directory(manifest.absolutePath());
+    for (const auto& name : directory.entryList({"snapshot-*.kdbx"}, QDir::Files | QDir::NoSymLinks)) directory.remove(name);
+}
+QByteArray commitManual(const QString& manifest, const QString& source, bool ownsCheckpoint = false)
+{
+    manualInfo(manifest, source);
+    QLockFile owner(manifest + ".owner");
+    if (!ownsCheckpoint && !owner.tryLock()) fail("busy", "The vault owning this recovery copy is still open.");
+    QLockFile lock(manifest + ".lock");
+    if (!lock.tryLock()) fail("busy", "Another process is already saving this recovery snapshot.");
+    const auto data = manualInfo(manifest, source);
+    const auto snapshot = data.value("path").toString();
+    const auto savedHash = QByteArray::fromHex(data.value("snapshot_hash").toString().toLatin1());
+    const auto baseHash = QByteArray::fromHex(data.value("base_hash").toString().toLatin1());
+    if (digest(snapshot) != savedHash) fail("file_error", "The encrypted recovery snapshot changed. It was not saved over the vault.");
+    // A crash after the file commit but before journal removal is safe to retry.
+    if (digest(source) != savedHash) {
+        const auto verify = [&] {
+            if (digest(source) != baseHash || digest(snapshot) != savedHash)
+                fail("conflict", "The vault changed elsewhere. The unsaved encrypted copy was kept for recovery.");
+        };
+        verify();
+        const QFileInfo destination(source);
+        if (!destination.isWritable()) fail("read_only", "The vault is read-only. Its unsaved encrypted copy was kept.");
+        copyToSaveFile(source, source + ".keyslot.bak", QFile::ReadOwner | QFile::WriteOwner, verify);
+        copyToSaveFile(snapshot, source, destination.permissions(), verify);
+        const int directory = ::open(QFile::encodeName(destination.absolutePath()).constData(), O_RDONLY | O_DIRECTORY);
+        if (directory >= 0) { ::fsync(directory); ::close(directory); }
+    }
+    discardManual(data, false);
+    return savedHash;
+}
+QJsonArray manualRecords(const QString& source)
+{
+    QList<QJsonObject> records;
+    const auto location = manualRoot();
+    if (location.isEmpty()) return {};
+    const QDir root(location);
+    for (const auto& item : root.entryInfoList({"manual-*"}, QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks)) {
+        const auto manifest = item.absoluteFilePath() + "/manifest.json";
+        if (!QFileInfo::exists(manifest)) continue;
+        try {
+            auto record = manualInfo(manifest);
+            QLockFile owner(manifest + ".owner");
+            if (!owner.tryLock()) continue;
+            record = manualInfo(manifest);
+            if (!source.isEmpty() && record.value("source").toString() != source) continue;
+            record.insert("modified", double(QFileInfo(record.value("path").toString()).lastModified().toMSecsSinceEpoch()));
+            records.append(record);
+        } catch (const Failure&) {}
+    }
+    std::stable_sort(records.begin(), records.end(), [](const QJsonObject& left, const QJsonObject& right) {
+        return left.value("modified").toDouble() > right.value("modified").toDouble();
+    });
+    QJsonArray result;
+    for (const auto& item : records) result.append(item);
+    return result;
+}
 QJsonObject summary(const Entry* e)
 {
     auto visible = [e](const QString& key) {
@@ -214,12 +332,15 @@ class Engine {
     KeyslotLaunch launch;
     QSharedPointer<Database> db;
     QString path;
-    QByteArray hash;
+    QByteArray hash, diskHash;
+    bool autoSave = true, modified = false;
+    QString manualManifest, manualSnapshot;
+    std::unique_ptr<QLockFile> manualOwner;
 
     void requireDatabase() const { if (!db) fail("locked", "Unlock a database first."); }
     void unchanged() const {
         requireDatabase();
-        if (digest(path) != hash) fail("conflict", "Another application changed this database. Refresh before continuing.");
+        if (digest(path) != diskHash) fail("conflict", "Another application changed this database. Refresh before continuing.");
     }
     Entry* entry(const QJsonObject& args) const {
         requireDatabase();
@@ -272,8 +393,74 @@ class Engine {
         if (!allowEmpty && key->isEmpty()) fail("key_error", "Choose a password, a key file, or a hardware key.");
         return key;
     }
-    void reload(QSharedPointer<const CompositeKey> key = {}) {
+    void clearManual() {
+        if (!manualManifest.isEmpty() && QFileInfo::exists(manualManifest)) {
+            try { discardManual(manualInfo(manualManifest, path), false); } catch (const Failure&) {}
+        }
+        manualSnapshot.clear();
+        modified = false;
+        if (!manualManifest.isEmpty() && !QFileInfo::exists(manualManifest)) {
+            const auto directory = QFileInfo(manualManifest).absolutePath();
+            manualOwner.reset();
+            QDir().rmdir(directory);
+            manualManifest.clear();
+            QFile::remove(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/manual.json");
+        }
+    }
+    void writeState(const QString& target) {
+        QFile output(target);
+        if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly)
+            || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner))
+            fail("file_error", "An encrypted recovery snapshot could not be created.");
+        KeePass2Writer writer;
+        if (!writer.writeDatabase(&output, db.data()) || !output.flush() || ::fsync(output.handle()) != 0)
+            fail("save_error", "The encrypted recovery snapshot could not be written completely.");
+    }
+    void checkpoint() {
+        if (manualManifest.isEmpty()) {
+            QTemporaryDir directory(manualRoot(true) + "/manual-XXXXXX");
+            if (!directory.isValid()) fail("file_error", "A private unsaved-vault directory could not be created.");
+            manualManifest = directory.path() + "/manifest.json";
+            manualOwner = std::make_unique<QLockFile>(manualManifest + ".owner");
+            if (!manualOwner->tryLock()) fail("busy", "The recovery checkpoint could not be reserved.");
+            QSaveFile pointer(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/manual.json");
+            const auto record = QJsonDocument(QJsonObject{{"manifest", manualManifest}}).toJson(QJsonDocument::Compact);
+            if (!pointer.open(QIODevice::WriteOnly) || !pointer.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
+                || pointer.write(record) != record.size() || !pointer.commit()) {
+                manualManifest.clear();
+                fail("file_error", "The unsaved-vault journal could not be prepared.");
+            }
+            directory.setAutoRemove(false);
+        }
+        QLockFile lock(manualManifest + ".lock");
+        if (!lock.tryLock()) fail("busy", "The recovery checkpoint is in use.");
+        QTemporaryDir staging(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/checkpoint-XXXXXX");
+        if (!staging.isValid()) fail("file_error", "The recovery snapshot could not be staged.");
+        const auto stage = staging.path() + "/database.kdbx";
+        writeState(stage);
+        const auto revision = digest(stage);
+        const auto directory = QFileInfo(manualManifest).absolutePath();
+        const auto name = "snapshot-" + uid(QUuid::createUuid()) + ".kdbx";
+        const auto target = directory + "/" + name;
+        copyToSaveFile(stage, target, QFile::ReadOwner | QFile::WriteOwner);
+        if (digest(target) != revision) fail("file_error", "The encrypted checkpoint could not be verified.");
+        const auto data = QJsonDocument(QJsonObject{{"version", 1}, {"source", path}, {"snapshot", name},
+            {"base_hash", QString::fromLatin1(diskHash.toHex())},
+            {"snapshot_hash", QString::fromLatin1(revision.toHex())}}).toJson(QJsonDocument::Compact);
+        QSaveFile journal(manualManifest);
+        if (!journal.open(QIODevice::WriteOnly) || !journal.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
+            || journal.write(data) != data.size() || !journal.commit())
+            fail("file_error", "The encrypted checkpoint could not be recorded. The previous state was kept.");
+        const int dir = ::open(QFile::encodeName(directory).constData(), O_RDONLY | O_DIRECTORY);
+        if (dir >= 0) { ::fsync(dir); ::close(dir); }
+        const auto previous = manualSnapshot;
+        manualSnapshot = target; hash = revision; modified = true;
+        if (!previous.isEmpty() && previous != target) QFile::remove(previous);
+        db->markAsModified();
+    }
+    void reload(QSharedPointer<const CompositeKey> key = {}, bool discard = false) {
         requireDatabase();
+        if (modified && !discard) fail("unsaved_changes", "Save, merge or discard the unsaved changes before reloading.");
         if (!key) key = db->key();
         auto replacement = QSharedPointer<Database>::create();
         const auto before = digest(path);
@@ -281,9 +468,16 @@ class Engine {
             fail("key_error", "The database could not be reopened. The currently open data is still available to save as a copy.");
         }
         db = std::move(replacement);
-        hash = before;
+        clearManual();
+        hash = diskHash = before;
     }
-    void persist(bool creating = false) {
+    void persist(bool creating = false, bool prepared = true) {
+        if (!creating && prepared && modified && !manualSnapshot.isEmpty()) {
+            hash = diskHash = commitManual(manualManifest, path, true);
+            clearManual();
+            db->markAsClean();
+            return;
+        }
         if (!creating) unchanged();
         QFileInfo info(path);
         if (!creating && !info.isWritable()) fail("read_only", "The database is read-only.");
@@ -309,24 +503,34 @@ class Engine {
         db->setFilePath(path);
         db->markAsClean();
         // Fingerprint our serialized output, never an external writer's later replacement.
-        hash = persistedHash;
+        hash = diskHash = persistedHash;
+        clearManual();
     }
-    QJsonObject transaction(const std::function<void()>& change) {
-        unchanged();
+    QJsonObject transaction(const std::function<void()>& change, bool forceSave = false,
+                            const QByteArray& acceptedSource = {}) {
+        if (acceptedSource.isEmpty()) unchanged();
+        else if (digest(path) != acceptedSource) fail("conflict", "The merge source changed before the merge began.");
         const auto originalKey = db->key();
         const auto originalHash = hash;
+        const auto originalDiskHash = diskHash;
+        const auto originalModified = modified;
         QTemporaryDir recovery(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/recovery-XXXXXX");
         if (!recovery.isValid()) fail("file_error", "An encrypted recovery snapshot could not be created. The vault was not changed.");
         const auto recoveryPath = recovery.path() + "/database.kdbx";
         const auto pending = recovery.path() + "/pending.kdbx";
-        copyToSaveFile(path, pending, QFile::ReadOwner | QFile::WriteOwner);
-        if (digest(pending) != originalHash)
+        if (!acceptedSource.isEmpty() && !modified) writeState(pending);
+        else copyToSaveFile(modified ? manualSnapshot : path, pending, QFile::ReadOwner | QFile::WriteOwner);
+        const auto recoveryHash = digest(pending);
+        if (acceptedSource.isEmpty() && recoveryHash != originalHash)
             fail("conflict", "The database changed while preparing recovery. Refresh before continuing.");
         if (!QFile::rename(pending, recoveryPath))
             fail("file_error", "The encrypted recovery snapshot could not be prepared. The vault was not changed.");
         try {
+            if (!acceptedSource.isEmpty()) diskHash = acceptedSource;
             change();
-            persist();
+            // Transfers certify a saved destination before deleting the source.
+            if (autoSave || forceSave) persist(false, false);
+            else checkpoint();
         } catch (...) {
             const auto failure = std::current_exception();
             recovery.setAutoRemove(false);
@@ -338,15 +542,15 @@ class Engine {
                 reopened = restored->open(recoveryPath, originalKey);
             } catch (...) {}
             if (!reopened) {
-                const auto kept = keepRecoveryCopy(recoveryPath, originalHash);
+                const auto kept = keepRecoveryCopy(recoveryPath, recoveryHash);
                 if (kept != recoveryPath) recovery.setAutoRemove(true);
                 throw Failure{"recovery_error", "The save failed and the vault could not be reopened. An encrypted copy of the last verified state was kept at:\n\n"
                     + kept + "\n\nOpen it with the original vault credentials. Keep a permanent copy if this path is temporary.",
                     {{"recovery_path", kept}, {"retain_runtime", kept == recoveryPath}}};
             }
             restored->setFilePath(path);
-            restored->markAsClean();
-            db = std::move(restored); hash = originalHash;
+            if (originalModified) restored->markAsModified(); else restored->markAsClean();
+            db = std::move(restored); hash = originalHash; diskHash = originalDiskHash; modified = originalModified;
             recovery.setAutoRemove(true);
             try { std::rethrow_exception(failure); }
             catch (const Failure& error) {
@@ -430,6 +634,8 @@ class Engine {
         const auto* exposed = secretGroup.isNull() ? nullptr : db->rootGroup()->findGroupByUuid(secretGroup);
         if (!exposed || exposed->isRecycled()) secretGroup = {};
         return {{"name", db->metadata()->name()}, {"recycle_bin_enabled", db->metadata()->recycleBinEnabled()},
+                {"modified", modified}, {"recovery_path", modified ? manualSnapshot : QString()},
+                {"recovery_copy", recoveryLocation(path)},
                 {"secret_group", secretGroup.isNull() ? QString() : uid(secretGroup)},
                 {"groups", groups}, {"entries", entries}, {"root", uid(db->rootGroup()->uuid())},
                 {"default_username", db->metadata()->defaultUserName()}};
@@ -558,15 +764,42 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch"}}};
-        if (method == "lock") { launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); return true; }
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save"}}};
+        if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
+        if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
+        if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
+            const auto manifest = requestedPath(args, "manifest"), source = requestedPath(args, "source");
+            if (method == "recovery.commit") return QString::fromLatin1(commitManual(manifest, source).toHex());
+            manualInfo(manifest, source);
+            QLockFile owner(manifest + ".owner");
+            if (!owner.tryLock()) fail("busy", "The vault owning this recovery copy is still open.");
+            QLockFile lock(manifest + ".lock");
+            if (!lock.tryLock()) fail("busy", "This encrypted recovery copy is in use.");
+            const auto data = manualInfo(manifest, source);
+            if (args.contains("expected_hash") && (text(args, "expected_hash") != data.value("snapshot_hash").toString()
+                || QString::fromLatin1(digest(data.value("path").toString()).toHex()) != text(args, "expected_hash")))
+                fail("conflict", "The recovery copy changed after it was opened. It was kept for review.");
+            if (method == "recovery.clone") {
+                const auto saved = data.value("path").toString();
+                const auto fingerprint = QByteArray::fromHex(data.value("snapshot_hash").toString().toLatin1());
+                if (digest(saved) != fingerprint) fail("file_error", "The encrypted recovery snapshot changed. It was kept for manual recovery.");
+                const auto copy = keepRecoveryCopy(saved, fingerprint);
+                if (copy == saved) fail("file_error", "An independent encrypted working copy could not be created.");
+                return copy;
+            }
+            discardManual(data);
+            return true;
+        }
+        if (method == "lock") { launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
                 if (method == "url.cancel") { launch.cancel(args); return true; }
                 if (db) fail("invalid_request", "Close the recipient vault before opening a linked vault.");
                 if (method == "url.offer") return launch.offer(args);
                 const auto opened = launch.accept(args);
-                db = opened.database; path = opened.path; hash = opened.hash;
+                if (!manualRecords(opened.path).isEmpty())
+                    fail("unsaved_recovery", "Open this linked vault manually to review its unsaved recovery copy first.");
+                db = opened.database; path = opened.path; hash = diskHash = opened.hash;
                 launch.clear();
                 return snapshot();
             } catch (const LaunchFailure& error) { throw Failure{error.code, error.message}; }
@@ -616,9 +849,10 @@ public:
                 fail("quick_password", "The short password is incorrect.");
             const auto entries = sealed.rootGroup()->entries();
             if (entries.size() != 1) fail("invalid_request", "The quick-unlock credential is invalid.");
-            const auto payload = QJsonDocument::fromJson(entries.first()->password().toUtf8()).object();
+            auto payload = QJsonDocument::fromJson(entries.first()->password().toUtf8()).object();
             if (text(payload, "path") != requestedPath(args))
                 fail("invalid_request", "This quick-unlock credential belongs to another vault.");
+            payload.insert("allow_recovery", boolean(args, "allow_recovery"));
             return call("open", payload);
         }
         if (method == "import.csv.inspect") {
@@ -651,6 +885,7 @@ public:
                 {"preview", preview}, {"row_start", start}, {"source_fingerprint", QString::fromLatin1(before.toHex())}};
         }
         if (method == "import.create") {
+            if (modified) fail("unsaved_changes", "Save or discard the open vault before importing another database.");
             const QFileInfo destination(requestedPath(args));
             if (destination.exists() || destination.isSymLink()) fail("file_error", "A file already exists at that location.");
             const auto source = requestedPath(args, "source");
@@ -668,11 +903,14 @@ public:
                 fail("key_error", "KeePassXC could not set the imported database's unlock key.");
             if (imported.db->metadata()->name().isEmpty()) imported.db->metadata()->setName(destination.completeBaseName());
             imported.persist(true);
-            db = std::move(imported.db); path = imported.path; hash = imported.hash;
+            db = std::move(imported.db); path = imported.path; hash = diskHash = imported.hash;
             return snapshot();
         }
         if (method == "open" || method == "create") {
-            db.reset(); hash.clear();
+            if (modified) fail("unsaved_changes", "Save or discard the open vault before opening another database.");
+            db.reset(); hash.clear(); diskHash.clear();
+            manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear();
+            QFile::remove(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/manual.json");
             const auto requested = text(args, "path");
             if (requested.isEmpty() || requested.contains(QChar('\0'))) fail("invalid_request", "Select a database path.");
             auto key = makeKey(args, method == "open");
@@ -680,10 +918,14 @@ public:
             QFileInfo info(requested);
             path = method == "open" ? info.canonicalFilePath() : info.absoluteFilePath();
             if (method == "open") {
+                if (recoveryLocation(path) && QFileInfo(path).dir().dirName().startsWith("manual-"))
+                    fail("invalid_request", "Open the source vault to review an independent recovery copy. Recovery checkpoints cannot be edited directly.");
+                if (!boolean(args, "allow_recovery") && !manualRecords(path).isEmpty())
+                    fail("unsaved_recovery", "An unsaved encrypted recovery copy is available. Open this vault in Keyslot to review it first.");
                 const auto before = digest(path);
                 if (!opened->open(path, key)) fail("key_error", "KeePassXC could not unlock the database. Check your credentials and hardware key.");
                 if (digest(path) != before) fail("conflict", "The database changed while being unlocked.");
-                hash = before;
+                hash = diskHash = before;
                 db = std::move(opened);
             } else {
                 if (info.exists()) fail("file_error", "A file already exists at that location.");
@@ -804,17 +1046,101 @@ public:
         if (method == "database.watch") {
             const QFileInfo info(path);
             if (!info.exists() || !info.isFile() || !info.isReadable()) return QJsonObject{{"state", "unavailable"}};
-            if (digest(path) == hash) return QJsonObject{{"state", "unchanged"}};
+            const auto observed = digest(path);
+            if (observed == diskHash) return QJsonObject{{"state", "unchanged"}};
+            if (modified) return QJsonObject{{"state", "conflict"}, {"revision", QString::fromLatin1(hash.toHex())},
+                {"source_revision", QString::fromLatin1(observed.toHex())}};
             if (!boolean(args, "reload")) return QJsonObject{{"state", "changed"}};
             reload();
             return QJsonObject{{"state", "reloaded"}, {"snapshot", snapshot()}};
         }
+        if (method == "output.inspect") {
+            const QFileInfo requested(requestedPath(args));
+            const auto parent = QDir(requested.absolutePath()).canonicalPath();
+            if (parent.isEmpty()) fail("file_error", "Choose an existing destination folder.");
+            const QFileInfo destination(parent + "/" + requested.fileName());
+            if (recoveryLocation(destination.absoluteFilePath()))
+                fail("invalid_request", "Choose a destination outside Keyslot’s private recovery storage.");
+            if (destination.isSymLink() || (destination.exists() && !destination.isFile()))
+                fail("file_error", "Choose a regular file, not a link or a folder.");
+            return QJsonObject{{"path", destination.absoluteFilePath()}, {"exists", destination.exists()},
+                {"hash", destination.exists() ? QString::fromLatin1(digest(destination.absoluteFilePath()).toHex()) : QString()},
+                {"revision", QString::fromLatin1(hash.toHex())}};
+        }
+        if (method == "database.save_as") {
+            if (text(args, "revision") != QString::fromLatin1(hash.toHex()))
+                fail("conflict", "The working vault changed while choosing its destination. Save it again.");
+            const QFileInfo requested(requestedPath(args));
+            const auto parent = QDir(requested.absolutePath()).canonicalPath();
+            if (parent.isEmpty()) fail("file_error", "The destination folder is unavailable.");
+            const auto target = parent + "/" + requested.fileName();
+            if (recoveryLocation(target)) fail("invalid_request", "Choose a destination outside Keyslot’s private recovery storage.");
+            const auto expected = text(args, "expected_hash");
+            const bool overwrite = boolean(args, "overwrite");
+            if (overwrite && !QRegularExpression("^[a-f0-9]{64}$").match(expected).hasMatch())
+                fail("invalid_request", "Review the existing destination before replacing it.");
+            const auto verify = [&] {
+                const QFileInfo current(target);
+                if (current.isSymLink() || (current.exists() && !current.isFile()))
+                    fail("conflict", "The destination changed into a link or a folder.");
+                if (overwrite) {
+                    if (!current.exists() || QString::fromLatin1(digest(target).toHex()) != expected)
+                        fail("conflict", "The destination changed after review. Choose it again before replacing it.");
+                    if (!current.isWritable()) fail("read_only", "The destination is read-only.");
+                } else if (current.exists()) fail("file_error", "A file appeared at the destination. It was not replaced.");
+            };
+            verify();
+            if (target == path) {
+                transaction([] {}, true, QByteArray::fromHex(expected.toLatin1()));
+                return QJsonObject{{"path", path}, {"snapshot", snapshot()}};
+            }
+            QTemporaryDir staging(parent + "/.keyslot-save-as-XXXXXX");
+            if (!staging.isValid()) fail("file_error", "The destination could not be staged.");
+            const auto stage = staging.path() + "/database.kdbx";
+            writeState(stage);
+            const auto saved = digest(stage);
+            verify();
+            if (overwrite) {
+                copyToSaveFile(target, target + ".keyslot.bak", QFile::ReadOwner | QFile::WriteOwner, verify);
+                copyToSaveFile(stage, target, QFileInfo(target).permissions(), verify);
+            } else if (::link(QFile::encodeName(stage).constData(), QFile::encodeName(target).constData()) != 0)
+                fail("file_error", "The destination could not be created. A file may already exist there.");
+            const int directory = ::open(QFile::encodeName(parent).constData(), O_RDONLY | O_DIRECTORY);
+            if (directory >= 0) { ::fsync(directory); ::close(directory); }
+            clearManual();
+            path = target; hash = diskHash = saved;
+            db->setFilePath(path); db->markAsClean();
+            return QJsonObject{{"path", path}, {"snapshot", snapshot()}};
+        }
+        if (method == "database.save") { if (modified) persist(); return snapshot(); }
         if (method == "refresh") { reload(); return snapshot(); }
-        if (method == "database.reopen") { reload(makeKey(args, true)); return snapshot(); }
+        if (method == "database.reopen" || method == "database.reconcile") {
+            if (args.contains("revision") && text(args, "revision") != QString::fromLatin1(hash.toHex()))
+                fail("conflict", "The unsaved vault changed after review. Review it again before continuing.");
+            const auto reviewed = text(args, "source_revision");
+            if (!reviewed.isEmpty() && (reviewed.size() != 64 || QString::fromLatin1(digest(path).toHex()) != reviewed))
+                fail("conflict", "The file changed again after review. Review the new changes before continuing.");
+            if (boolean(args, "overwrite")) {
+                if (reviewed.isEmpty() || !args.contains("revision")) fail("invalid_request", "Review both versions before overwriting disk changes.");
+                return transaction([] {}, true, QByteArray::fromHex(reviewed.toLatin1()));
+            }
+            const auto key = boolean(args, "same_credentials") ? db->key() : QSharedPointer<const CompositeKey>(makeKey(args, true));
+            if (!boolean(args, "merge")) { reload(key, boolean(args, "discard")); return snapshot(); }
+            auto replacement = QSharedPointer<Database>::create();
+            const auto before = digest(path);
+            if (!replacement->open(path, key)) fail("key_error", "The changed vault requires its current credential before merging.");
+            if (digest(path) != before) fail("conflict", "The changed vault changed again while being opened.");
+            return transaction([&] {
+                Merger merger(db.data(), replacement.data());
+                merger.merge();
+                if (digest(path) != before) fail("conflict", "The vault changed again during the merge.");
+                db = replacement;
+            }, false, before);
+        }
         if (method == "database.key.verify") {
             unchanged();
             Database candidate;
-            if (!candidate.open(path, makeKey(args, true)))
+            if (!candidate.open(modified ? manualSnapshot : path, makeKey(args, true)))
                 fail("key_error", "The vault credential could not be verified. Check the password and key file.");
             unchanged();
             return true;
@@ -830,7 +1156,7 @@ public:
                 if (method == "transfer.listen") return transfer.listen(db, args, hash);
                 if (method == "transfer.send") return transfer.send(db, args, hash);
                 QJsonObject result;
-                const auto commit = [this](const std::function<void()>& change) { transaction(change); };
+                const auto commit = [this](const std::function<void()>& change) { transaction(change, true); };
                 if (method == "transfer.receive") result = transfer.receive(db, args, hash, commit);
                 else if (method == "transfer.finish") result = transfer.finish(db, args, hash, commit);
                 else if (method == "transfer.local") result = transfer.local(db, args, hash, commit);

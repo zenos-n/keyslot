@@ -34,8 +34,11 @@
       });
 
       checks = forAllSystems (system: {
-        # The application recipe requires real-core, GTK, login-keyring, signal and browser tests.
-        keyslot = self.packages.${system}.keyslot;
+        # Opt-in development checks; ordinary packages build only the runtime.
+        keyslot = import ./default.nix {
+          pkgs = import nixpkgs { inherit system; };
+          doCheck = true;
+        };
         security-sanitizer = import ./engine/sanitizer.nix {
           pkgs = import nixpkgs { inherit system; };
         };

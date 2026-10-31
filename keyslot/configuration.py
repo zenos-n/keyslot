@@ -17,6 +17,8 @@ STARTUP_KEYS = {
     "browser": ("global", "Browser/Enabled", False),
     "minimize_on_url": ("global", "MinimizeOnOpenUrl", False),
     "auto_reload": ("global", "AutoReloadOnChange", True),
+    "auto_save": ("global", "AutoSaveAfterEveryChange", True),
+    "auto_save_on_exit": ("global", "AutoSaveOnExit", True),
     "ssh": ("global", "SSHAgent/Enabled", False),
     "ssh_socket": ("local", "SSHAgent/AuthSockOverride", ""),
     "ssh_provider": ("local", "SSHAgent/SecurityKeyProviderOverride", ""),

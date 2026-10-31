@@ -79,6 +79,7 @@ class Startup:
         self.browser = False
         self.minimize_on_url = False
         self.auto_reload = True
+        self.auto_save = self.auto_save_on_exit = True
         self.ssh = False
         self.ssh_socket = self.ssh_provider = ""
         self.autotype = dict(AUTO_TYPE_DEFAULTS)
@@ -95,6 +96,8 @@ class Startup:
             self.browser = data.get("browser") is True
             self.minimize_on_url = data.get("minimize_on_url") is True
             self.auto_reload = data.get("auto_reload", True) is True
+            self.auto_save = data.get("auto_save", True) is True
+            self.auto_save_on_exit = data.get("auto_save_on_exit", True) is True
             self.ssh = data.get("ssh") is True
             try:
                 self.autotype = _autotype_options(data.get("autotype", AUTO_TYPE_DEFAULTS))
@@ -137,7 +140,8 @@ class Startup:
 
     def save(self, remember, login, vault=None, background=None, lock_minutes=None, browser=None,
              ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
-             minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None):
+             minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None,
+             auto_save=None, auto_save_on_exit=None):
         with self.mutex:
             background = self.background if background is None else bool(background)
             autotype = _autotype_options(self.autotype if autotype is None else autotype)
@@ -146,6 +150,10 @@ class Startup:
             browser = self.browser if browser is None else bool(browser)
             minimize_on_url = self.minimize_on_url if minimize_on_url is None else minimize_on_url
             auto_reload = self.auto_reload if auto_reload is None else auto_reload
+            auto_save = self.auto_save if auto_save is None else auto_save
+            auto_save_on_exit = self.auto_save_on_exit if auto_save_on_exit is None else auto_save_on_exit
+            if type(auto_save) is not bool or type(auto_save_on_exit) is not bool:
+                raise ValueError("Choose whether to save vault changes automatically.")
             if type(auto_reload) is not bool:
                 raise ValueError("Choose whether to reload externally changed vaults.")
             if type(minimize_on_url) is not bool:
@@ -200,6 +208,10 @@ class Startup:
                     data["clipboard_seconds"] = clipboard_seconds
                 if not auto_reload:
                     data["auto_reload"] = False
+                if not auto_save:
+                    data["auto_save"] = False
+                if not auto_save_on_exit:
+                    data["auto_save_on_exit"] = False
                 if self.storage:
                     self.storage.write_startup(data)
                 else:
@@ -215,6 +227,7 @@ class Startup:
             self.browser = browser
             self.minimize_on_url = minimize_on_url
             self.auto_reload = auto_reload
+            self.auto_save, self.auto_save_on_exit = auto_save, auto_save_on_exit
             self.ssh, self.ssh_socket, self.ssh_provider = ssh, ssh_socket, ssh_provider
             self.autotype = autotype
             self.keeshare = keeshare

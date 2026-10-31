@@ -1,5 +1,6 @@
 """One cancellable worker queue per database, independent of the visible tab."""
 from concurrent.futures import ThreadPoolExecutor
+import sys
 
 from .backend import VaultError
 
@@ -77,7 +78,13 @@ class SessionJobs:
         self._activity()
         self.clear()
         self.changed()
-        self.executor.submit(self.vault.finish_lock)
+        future = self.executor.submit(self.vault.finish_lock)
+        def locked(_future):
+            warning = getattr(self.vault, "recovery_warning", "")
+            if warning:
+                self.vault.recovery_warning = ""
+                self.dispatch(lambda: self.error(warning) if not self.closed else print(warning, file=sys.stderr))
+        future.add_done_callback(locked)
 
     def close(self):
         if self.closed:

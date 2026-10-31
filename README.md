@@ -27,10 +27,21 @@ and tags, group editing/moves/recycling, attachment import/export/removal,
 history preview/comparison/restore/removal, and upstream search syntax. Database workflows include
 metadata, compression, cipher/KDF settings and unlock-cost calibration; key-component
 rotation, generated key files and key-file-only creation; upstream merge; XML/CSV/HTML
-export; encrypted database copies; and local health/statistics reports. Failed refresh
+export; encrypted database copies and Save As; and local health/statistics reports. Failed refresh
 keeps the current data open so it can be saved as an encrypted copy if the source
 file is unavailable. These operations are wired into GTK
-dialogs. Their real engine integration tests must pass before packaging succeeds.
+dialogs. Normal package builds compile the runtime only; development checks are opt-in.
+
+Saving preferences support automatic saving or explicit Save (Ctrl+S), plus
+save-on-close/lock. Manual edits remain in encrypted recovery checkpoints until
+saved. Closing or quitting prompts when automatic saving on exit is disabled;
+security locks clear the unlocked helper immediately and retain recoverable data
+if the encrypted commit cannot complete. Reopening offers independent recovery
+working copies. Save As (Ctrl+Shift+S) changes the active file and preserves the
+previous file, with reviewed replacement and remembered-key/login migration.
+External conflicts offer merge, discard/reload, copy or reviewed overwrite.
+The main menu’s **Recover Unsaved Changes…** lists recovery copies even when the
+original vault is missing or remembering vaults is disabled.
 
 Import source includes KeePass 1 (`.kdb`), KeePass XML, Bitwarden JSON (including
 password-protected exports), 1Password 1PUX/OPVault, and Proton Pass JSON through
@@ -98,7 +109,7 @@ A changed vault must be reviewed again.
 
 Requires Linux, Nixpkgs with KeePassXC 2.7.12, and a graphical session with GTK4,
 libadwaita, PyGObject, and a session bus. The Nix package supplies runtime
-libraries and the helper, and runs real engine integration tests.
+libraries and the helper. Normal builds do not build or run tests.
 
 ```sh
 nix build
@@ -154,7 +165,7 @@ Select its ZenPkgs package separately and enable `keyslot@neg-zero` in GNOME
 Extensions. The tile goes in **Quick Settings**, the upper-right system menu.
 
 Ctrl+O opens a database; Ctrl+N adds an entry; Ctrl+F searches; Ctrl+L locks the current database;
-Ctrl+G opens the generator; Ctrl+R refreshes; Ctrl+Shift+S saves an encrypted copy;
+Ctrl+G opens the generator; Ctrl+R refreshes; Ctrl+S saves; Ctrl+Shift+S opens Save As;
 Ctrl+W closes the current window; Ctrl+Shift+L locks all databases;
 Ctrl+Q quits and locks every database. With the default background preference,
 closing a window hides it and keeps its vault available; disable background mode

@@ -88,6 +88,8 @@ class VaultSession:
         self.host_window = host_window
         self.needs_attention = False
         self.vault = vault or Vault()
+        self.vault.auto_save = application.startup.auto_save
+        self.vault.auto_save_on_exit = application.startup.auto_save_on_exit
         self.requested_path = None
         self.pending_unlock = None
         self.pending_errors = []
@@ -100,6 +102,7 @@ class VaultSession:
         self.quick_blob = None
         self.quick_path = None
         self.quick_attempts = 0
+        self.recovery_origin = None
         self.window = None
         self.icons = appearance.IconCache(self)
         self.jobs = SessionJobs(self.vault, GLib.idle_add, self._changed, self._clear, self.error)
@@ -193,6 +196,30 @@ class VaultSession:
     def lock(self):
         self.jobs.lock()
 
+    def request_lock(self):
+        from .saving import before_close
+        before_close(self, self.lock)
+
+    def save(self, done=None, failed=None):
+        if not self.vault.unlocked or self.busy:
+            return False
+        if done is None and (self.dialogs or self.file_requests):
+            self.toast("Finish the current dialog before saving the vault")
+            return False
+        def saved(snapshot):
+            self.window.show_vault(snapshot)
+            self.files.refreshed()
+            self.emit_state()
+            if done:
+                done()
+            else:
+                self.toast("Vault saved")
+        return self.run_job(self.vault.save, saved, failed)
+
+    def save_as(self):
+        from .saving import save_as
+        save_as(self)
+
     def shutdown(self):
         self.files.stop()
         self.totp.clear()
@@ -229,11 +256,12 @@ class VaultSession:
     def present_dialog(self, dialog):
         if not self.active or self.jobs.closed:
             clear_dialog_fields(dialog)
-            return
+            return False
         self.dialogs.append(dialog)
         dialog.connect("closed", lambda d: self.dialogs.remove(d) if d in self.dialogs else None)
         dialog.connect("closed", lambda *_: self.files.resume())
         dialog.present(self.host_window)
+        return True
 
     def error(self, message):
         if not self.active:
@@ -321,9 +349,14 @@ class VaultSession:
     def unlock_dialog(self, path, create=False, import_options=None):
         self.application.open_database(path, create, import_options, preferred=self)
 
-    def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None, reopen=False):
+    def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None, reopen=False,
+                       merge=False, discard=False, recovery_checked=False, review=None):
+        if not reopen and not create and not import_options and not recovery_checked:
+            from .saving import offer_recovery
+            if offer_recovery(self, path, lambda: self._unlock_dialog(path, use_quick=use_quick, keyfile=keyfile, recovery_checked=True)):
+                return
         if not reopen and use_quick and not keyfile and not create and not import_options and self.quick_blob and Path(path).resolve() == self.quick_path:
-            return self._quick_unlock_dialog(path)
+            return self._quick_unlock_dialog(path, allow_recovery=recovery_checked)
         components = {"keyfile": "", "yubikey": ""}
         storage = getattr(self.application.startup, "storage", None)
         if storage and not create and not import_options:
@@ -415,9 +448,9 @@ class VaultSession:
             else:
                 dialog.close()
             operation = (lambda: self.vault.create(path, secret, key, hardware, key_only)) if create else (
-                lambda: self.vault.unlock(path, secret, key, hardware, key_only))
+                lambda: self.vault.unlock(path, secret, key, hardware, key_only, allow_recovery=recovery_checked))
             if reopen:
-                operation = lambda: self.vault.reopen(secret, key, hardware, key_only)
+                operation = lambda: self.vault.reopen(secret, key, hardware, key_only, merge=merge, discard=discard, review=review)
             if import_options:
                 operation = lambda: self.vault.import_database(path, password=secret, keyfile=key, yubikey=hardware,
                                                                no_password=key_only, **import_options)
@@ -450,7 +483,7 @@ class VaultSession:
         self.present_dialog(dialog)
         password.grab_focus()
 
-    def _quick_unlock_dialog(self, path):
+    def _quick_unlock_dialog(self, path, allow_recovery=False):
         self.lock()
         dialog = Adw.Dialog(title="Quick Unlock", content_width=440)
         toolbar = Adw.ToolbarView()
@@ -474,7 +507,7 @@ class VaultSession:
             dialog.close()
             def open_vault():
                 try:
-                    return self.vault.quick_unlock(path, blob, short)
+                    return self.vault.quick_unlock(path, blob, short, allow_recovery=allow_recovery)
                 except EngineError as exc:
                     if exc.code == "quick_password":
                         self.quick_attempts += 1
@@ -492,7 +525,7 @@ class VaultSession:
             self.run_job(open_vault, opened)
         def use_full(*_):
             dialog.close()
-            self._unlock_dialog(path, use_quick=False)
+            self._unlock_dialog(path, use_quick=False, recovery_checked=allow_recovery)
         unlock.connect("clicked", submit)
         password.connect("entry-activated", submit)
         full.connect("clicked", use_full)
@@ -845,7 +878,7 @@ class VaultSession:
                                    ("New Entry", "<Control>n"), ("Search", "<Control>f"), ("Open Entry URL", "<Control>u"),
                                    ("Lock Database", "<Control>l"), ("Lock All Databases", "<Control><Shift>l"),
                                    ("Password Generator", "<Control>g"), ("Refresh", "<Control>r"),
-                                   ("Save Database Copy", "<Control><Shift>s"), ("Preferences", "<Control>comma"),
+                                   ("Save Database", "<Control>s"), ("Save Database As", "<Control><Shift>s"), ("Preferences", "<Control>comma"),
                                    ("Select All Entries (Entry List)", "<Control>a"),
                                    ("Deselect All Entries (Entry List)", "<Control><Shift>a"),
                                    ("Leave Entry Selection", "Escape"),
@@ -992,7 +1025,9 @@ class DatabaseView(Gtk.Box):
         detail_header.pack_end(self.app.host_window.menu())
         self.spinner = Gtk.Spinner(visible=False)
         detail_header.pack_end(self.spinner)
-        detail_header.pack_end(button("changes-prevent-symbolic", "Lock Database (Ctrl+L)", self.app.lock))
+        detail_header.pack_end(button("changes-prevent-symbolic", "Lock Database (Ctrl+L)", self.app.request_lock))
+        self.save_button = button("document-save-symbolic", "Save Vault (Ctrl+S)", self.app.save)
+        detail_header.pack_end(self.save_button)
         detail_toolbar.add_top_bar(detail_header)
         self.detail = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
         detail_toolbar.set_content(scroll(Adw.Clamp(child=margins(self.detail, 24), maximum_size=620)))
@@ -1016,6 +1051,20 @@ class DatabaseView(Gtk.Box):
         self.locked_spinner.set_spinning(busy)
         for widget in (self.groups, self.entries, self.detail, self.selection_toggle, self.selection_cancel, self.selection_bar):
             widget.set_sensitive(not busy)
+        self._save_state(busy)
+
+    def _save_state(self, busy):
+        modified = bool(self.app.vault.unlocked and self.app.vault.snapshot.modified)
+        self.save_button.set_sensitive(modified and not busy)
+        self.save_button.set_visible(not self.app.application.startup.auto_save or modified)
+        status = ["Recovery Copy"] if self.app.vault.unlocked and self.app.vault.snapshot.recovery_copy else []
+        if modified:
+            status.append("Unsaved Changes")
+        self.database_title.set_subtitle(" · ".join(status))
+        if action := self.app.host_window.lookup_action("save"):
+            action.set_enabled(modified and not busy)
+        if action := self.app.host_window.lookup_action("save-as"):
+            action.set_enabled(self.app.vault.unlocked and not busy)
 
     def show_locked(self):
         self.snapshot = None
@@ -1042,6 +1091,7 @@ class DatabaseView(Gtk.Box):
         selection = {entry.uuid for entry in self.selected_entries()}
         self.snapshot = snapshot
         self.database_title.set_title(snapshot.name or self.app.vault.path.stem)
+        self._save_state(self.app.busy)
         self.stack.set_visible_child_name("vault")
         old_group = self.selected_group
         self.refreshing_groups = True

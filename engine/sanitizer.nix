@@ -1,5 +1,5 @@
 { pkgs }:
-let engine = import ./default.nix { inherit pkgs; };
+let engine = import ./default.nix { inherit pkgs; doCheck = true; };
 in engine.overrideAttrs (old: {
   pname = "keyslot-engine-security-asan";
   cmakeFlags = old.cmakeFlags ++ [ "-DWITH_ASAN=ON" ];

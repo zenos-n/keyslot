@@ -1,9 +1,28 @@
 # Production release requirements
 
-Keyslot is still a development build. The latest x86_64 Nix flake check passes
-323 backend tests and all 19 application gates. Native gates pass 332 checks in
-the normal build and 331 under AddressSanitizer/LeakSanitizer. This candidate is
-not yet the published package or a production replacement.
+Keyslot is still a development build. Manual saving, interrupted-save recovery
+and Save As are implemented for user stress testing. Normal Nix builds compile
+only the runtime; existing development checks are opt-in. Automated runs were
+stopped at the user's request. The historical results below apply to their frozen
+checkpoints and do not establish production readiness of the current candidate.
+
+The saving model keeps the saved-file revision separate from the current working
+revision. Manual edits create private encrypted checkpoints with atomic journals
+and owner locks. Explicit Save commits them; forced security locks erase the
+unlocked helper before optional keyless encrypted commits. Failed or deferred
+commits remain available through independent recovery working copies. Recovery
+storage cannot be used as a Save As destination, and working copies remain
+labelled until saved to a normal location.
+The main menu also exposes all inactive recovery records independently of the
+original file and last-vault preferences.
+
+Save As reviews the destination and working revision before replacing a file,
+keeps an encrypted backup of a replaced destination, retargets the open vault,
+updates remembered key/login settings and resolves the originating recovery
+record after the new file is durable. External conflicts support merge,
+discard/reload, encrypted copy and reviewed overwrite. Closing and quitting
+support Save/Discard/Cancel. User acceptance of these new paths remains open;
+no further test runs are being performed.
 
 ## Verified checkpoint
 

@@ -7,7 +7,7 @@ security changes are being backported from **2.8.0**, released 2026-10-21.
 The [release requirements](release-readiness.md) track validation and the new
 upstream feature inventory; no 2.8 feature-parity claim is made.
 
-**0.2 development verification:** the native helper and full Nix application
+**Historical 0.2 development verification:** the native helper and full Nix application
 package build on the GNOME 50 host. All 323 tests pass without skips. Nineteen
 gates cover the backend, GTK, real GNOME login keyring, terminal signals,
 encrypted browser workflow, passkey/SSH management, GCR, actual agent forwarding,
@@ -25,7 +25,9 @@ New-vault KDBX4/Argon2id defaults and all 18 advertised KDBX4 cipher/KDF/compres
 combinations pass, alongside upstream KDBX3/4 encrypted-copy fixtures. Actual
 KeePassXC-Browser 1.10.4.1 on Chromium 155 passes pairing, fill, TOTP, save, groups
 and DOM WebAuthn with independently verified signatures after these changes.
-Manual visual review is underway; full feature and platform acceptance remains open.
+These results apply to earlier frozen checkpoints. New manual-saving, recovery
+and Save As changes compile but await user stress testing; no current full-gate
+claim is made. Full feature and platform acceptance remains open.
 
 Inventory sources: [KeePassXC feature list](https://github.com/keepassxreboot/keepassxc),
 [user guide](https://keepassxc.org/docs/KeePassXC_UserGuide), and the installed
@@ -35,7 +37,7 @@ interfaces, integration protocols, data preservation, migrations, and packaging.
 | Capability | Current implementation | Acceptance remaining |
 |---|---|---|
 | GTK4/libadwaita interface | Adaptive sidebar/list/details, native dialogs/actions | Visual review, screen reader and keyboard testing |
-| KDBX open/save | Native upstream Database/format implementation; encrypted copy; failed refresh retains open data | Broader KDBX3/key-component/unknown-data and interrupted-save matrix, full Save As/recovery |
+| KDBX open/save | Native upstream Database/format implementation; encrypted copy; optional manual Save and encrypted dirty checkpoints; Save As retargeting with reviewed destination replacement; failed refresh retains open data | User manual stress acceptance of new saving/recovery workflows; broader KDBX3/key-component/unknown-data and interrupted-save matrix |
 | New databases | Password, existing/generated key file, key-file-only and hardware-key options | Real-core and hardware tests, creation wizard polish |
 | Composite unlock | Password, key file, key-only | Physical YubiKey/OnlyKey and malformed-key tests |
 | Entry editing | UUID-based create/edit/move/recycle; empty/multiline/Unicode fields, tags, expiry, standard/custom icons, text/background colors, URL-override metadata and report exclusion; native/GTK round trips preserve credentials/history | Remaining advanced properties and broader format matrix |

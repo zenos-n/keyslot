@@ -45,6 +45,10 @@ class Vault:
         self.ssh_manager = None
         self._ssh_configuration = None
         self.ssh_warning = None
+        self.auto_save = self.auto_save_on_exit = True
+        self.discard_on_stop = False
+        self.recovery_warning = ""
+        self.finishing = False
 
     @property
     def unlocked(self):
@@ -52,6 +56,7 @@ class Vault:
 
     def cancel(self):
         with self._process_mutex:
+            self.finishing = True
             self._generation += 1
             self._cancelled.set()
             if self._process and self._process.poll() is None:
@@ -96,9 +101,46 @@ class Vault:
                             self.ssh_warning = str(exc)
                     elif not self.ssh_manager.cleanup_ok:
                         self.ssh_warning = "SSH key cleanup was not confirmed. Review your SSH agent."
+            if runtime:
+                self._finish_manual(runtime)
         finally:
-            if runtime and not preserve_runtime:
-                runtime.cleanup()
+            try:
+                if runtime and not preserve_runtime:
+                    runtime.cleanup()
+            finally:
+                self.finishing = False
+
+    def _finish_manual(self, runtime):
+        discard, self.discard_on_stop = self.discard_on_stop, False
+        pointer = Path(runtime.name) / "manual.json"
+        if not pointer.exists():
+            return
+        try:
+            manifest = json.loads(pointer.read_text())["manifest"]
+            if not Path(manifest).exists():
+                return
+            if discard:
+                self.recovery_action("discard", manifest, self.path)
+            elif self.auto_save_on_exit:
+                self.recovery_action("commit", manifest, self.path)
+            else:
+                raise VaultError("Unsaved changes were kept in an encrypted recovery copy.")
+            try:
+                Path(manifest).parent.rmdir()
+            except OSError:
+                pass
+        except (VaultError, OSError, ValueError, KeyError, TypeError) as exc:
+            name = self.path.name if self.path else "Vault"
+            self.recovery_warning = f"{name}: {exc}\nOpen this vault again to review its unsaved recovery copy."
+
+    def recovery_action(self, action, manifest=None, source=None, **options):
+        client = Vault(executable=self.executable, timeout=self.timeout)
+        try:
+            client._start()
+            return client._rpc("recovery." + action, source=str(source or self.path),
+                               **({"manifest": str(manifest)} if manifest else {}), **options)
+        finally:
+            client.lock()
 
     def _recovery_files(self):
         if self._cancelled.is_set() or self._runtime is None:
@@ -140,6 +182,10 @@ class Vault:
             if not isinstance(hello, dict) or hello.get("protocol") != 1 or hello.get("engine") != "keepassxc-core" or hello.get("upstream") != "2.7.12":
                 raise VaultError("The native engine protocol is incompatible with this client.")
             self.capabilities = frozenset(hello.get("capabilities", []))
+            if not self.auto_save:
+                if "manual-save" not in self.capabilities:
+                    raise VaultError("Update the native engine before disabling automatic saving.")
+                self._rpc("save.policy", auto_save=False)
         except Exception:
             self._stop()
             raise
@@ -240,7 +286,8 @@ class Vault:
             entries = [Entry(**{k: v for k, v in item.items() if k in entry_keys}, _owner=self._owner) for item in value["entries"]]
             groups = [Group(**{k: v for k, v in item.items() if k in group_keys}) for item in value["groups"]]
             self.snapshot = Snapshot(value.get("name", ""), value.get("recycle_bin_enabled", True), groups,
-                                     entries, value.get("root", ""), value.get("default_username", ""), value.get("secret_group", ""))
+                                     entries, value.get("root", ""), value.get("default_username", ""), value.get("secret_group", ""),
+                                     value.get("modified") is True, value.get("recovery_path", ""), value.get("recovery_copy") is True)
         except (TypeError, AttributeError) as exc:
             self.lock()
             raise VaultError("The native engine returned invalid database metadata.") from exc
@@ -253,7 +300,7 @@ class Vault:
         if not self.unlocked or entry not in self.snapshot.entries:
             raise VaultError("The entry changed. Refresh and select it again.")
 
-    def unlock(self, path, password, keyfile="", yubikey="", no_password=False):
+    def unlock(self, path, password, keyfile="", yubikey="", no_password=False, allow_recovery=False):
         with self._mutex:
             self._stop()
             self.snapshot = None
@@ -261,7 +308,7 @@ class Vault:
             self._start()
             try:
                 return self._snapshot_call("open", path=str(self.path), password=password,
-                    keyfile=keyfile, yubikey=yubikey, no_password=no_password)
+                    keyfile=keyfile, yubikey=yubikey, no_password=no_password, allow_recovery=allow_recovery)
             except Exception:
                 self.lock()
                 raise
@@ -285,12 +332,40 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("refresh")
 
-    def reopen(self, password, keyfile="", yubikey="", no_password=False):
+    def save(self):
+        with self._mutex:
+            return self._snapshot_call("database.save")
+
+    def inspect_output(self, destination):
+        with self._mutex:
+            return self._rpc("output.inspect", path=str(Path(destination).expanduser().absolute()))
+
+    def save_as(self, destination, revision, expected_hash="", overwrite=False):
+        with self._mutex:
+            data = self._rpc("database.save_as", path=str(destination), revision=revision,
+                             expected_hash=expected_hash, overwrite=overwrite)
+            self.path = Path(data["path"])
+            return self._set_snapshot(data["snapshot"])
+
+    def save_policy(self, auto_save, on_exit):
+        with self._mutex:
+            if auto_save and not self.auto_save and self.unlocked and self.snapshot.modified:
+                self._snapshot_call("database.save")
+            if self.unlocked:
+                self._snapshot_call("save.policy", auto_save=auto_save)
+            self.auto_save, self.auto_save_on_exit = auto_save, on_exit
+
+    def reconcile(self, merge=False, discard=False, overwrite=False, review=None):
+        with self._mutex:
+            return self._snapshot_call("database.reconcile", same_credentials=True, merge=merge, discard=discard,
+                                       overwrite=overwrite, **(review or {}))
+
+    def reopen(self, password, keyfile="", yubikey="", no_password=False, merge=False, discard=False, review=None):
         with self._mutex:
             if not self.unlocked:
                 raise VaultError("Unlock a database first.")
             return self._snapshot_call("database.reopen", password=password, keyfile=keyfile,
-                                       yubikey=yubikey, no_password=no_password)
+                                       yubikey=yubikey, no_password=no_password, merge=merge, discard=discard, **(review or {}))
 
     def watch_file(self, reload=True):
         with self._mutex:
@@ -317,14 +392,14 @@ class Vault:
                 raise VaultError("Unlock the vault before configuring quick unlock.")
             return self._rpc("quick.seal", **credentials, short_password=short_password)
 
-    def quick_unlock(self, path, blob, short_password):
+    def quick_unlock(self, path, blob, short_password, allow_recovery=False):
         with self._mutex:
             self._stop()
             self.snapshot = None
             self.path = Path(path).expanduser().resolve()
             self._start()
             try:
-                return self._snapshot_call("quick.unlock", path=str(self.path), blob=blob, short_password=short_password)
+                return self._snapshot_call("quick.unlock", path=str(self.path), blob=blob, short_password=short_password, allow_recovery=allow_recovery)
             except Exception:
                 self.lock()
                 raise

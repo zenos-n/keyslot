@@ -10,9 +10,11 @@ from . import APP_ID, ICON_NAME, database_views, preferences, passkey_views, aut
 from .startup import Startup, LoginKeyring
 
 SHORTCUTS = {
+    "save": ["<Primary>s"],
+    "save-as": ["<Primary><Shift>s"],
     "open": ["<Primary>o"], "new": ["<Primary><Shift>n"], "new-entry": ["<Primary>n"],
     "search": ["<Primary>f"], "lock": ["<Primary>l"], "generator": ["<Primary>g"],
-    "refresh": ["<Primary>r"], "save-copy": ["<Primary><Shift>s"], "close": ["<Primary>w"],
+    "refresh": ["<Primary>r"], "save-copy": [], "close": ["<Primary>w"],
     "shortcuts": ["<Primary>question"],
     "preferences": ["<Primary>comma"],
     "autotype": ["<Primary><Shift>v"],
@@ -46,6 +48,7 @@ class Keyslot(Adw.Application):
                              "Run without opening a window", None)
         self._initial_vault = Vault()
         self.window = None
+        self.quitting = False
         self.sessions = []
         self.active_session = None
         self.last_activity = time.monotonic()
@@ -116,6 +119,7 @@ class Keyslot(Adw.Application):
             except (OSError, ValueError, VaultError):
                 self.startup_error = "The login launcher could not be updated. Check your configuration folder’s permissions."
         for name, callback, keys in [("new-window", self.new_window, []),
+                                     ("recover", self.recover, []),
                                      ("lock-all", self.lock, ["<Primary><Shift>l"]),
                                      ("quit", self.quit, ["<Primary>q"])]:
             action = Gio.SimpleAction.new(name, None)
@@ -217,6 +221,10 @@ class Keyslot(Adw.Application):
             path = session.path
             title = session.vault.snapshot.name if session.vault.unlocked else ""
             title = title or (path.name if path else "Keyslot")
+            if session.vault.unlocked and session.vault.snapshot.recovery_copy:
+                title += " · Recovery Copy"
+            if session.vault.unlocked and session.vault.snapshot.modified:
+                title += " · Unsaved Changes"
             if session.needs_attention:
                 title += " · Action Needed"
             session.host_window.set_title(title if title == "Keyslot" else title + " — Keyslot")
@@ -319,6 +327,10 @@ class Keyslot(Adw.Application):
             self.keyring = LoginKeyring()
         return self.keyring
 
+    def recover(self):
+        from .saving import show_recoveries
+        show_recoveries(self)
+
     def new_window(self, present=True):
         window = MainWindow(self)
         session = VaultSession(self, self._initial_vault, host_window=window)
@@ -350,7 +362,7 @@ class Keyslot(Adw.Application):
         if create and (requested.exists() or requested.is_symlink()):
             self.active_session.error("Choose a new database file. An existing file cannot be replaced.")
             return
-        session = next((item for item in self.sessions if item.path and item.path.resolve() == canonical), None)
+        session = next((item for item in self.sessions if any(p and p.resolve() == canonical for p in (item.path, item.vault.path))), None)
         if session:
             if create:
                 self.active_session.error("This database is already open in another window.")
@@ -383,8 +395,12 @@ class Keyslot(Adw.Application):
             if path := file.get_path():
                 self.open_database(path)
 
-    def close_session(self, session):
+    def close_session(self, session, confirmed=False):
         if session not in self.sessions:
+            return
+        if not confirmed:
+            from .saving import before_close
+            before_close(session, lambda: self.close_session(session, confirmed=True))
             return
         if len(self.sessions) == 1:
             self.save_session_state()
@@ -394,6 +410,23 @@ class Keyslot(Adw.Application):
             self.active_session = self.sessions[0] if self.sessions else None
             self.window = self.active_session.host_window if self.active_session else None
         self.emit_state()
+        session.host_window.destroy()
+
+    def quit(self):
+        if self.quitting:
+            return
+        self.quitting = True
+        finish = super().quit
+        from .saving import before_close
+        pending = [s for s in self.sessions if s.vault.unlocked and s.vault.snapshot.modified]
+        def advance():
+            if not pending:
+                finish()
+                return
+            session = pending.pop(0)
+            self.select_session(session)
+            before_close(session, lambda: (session.lock(), advance()), lambda: setattr(self, "quitting", False))
+        advance()
 
     def lock(self):
         for request in list(self.command_requests):
@@ -507,7 +540,9 @@ class MainWindow(Adw.ApplicationWindow):
     def attach(self, session):
         self.session = session
         self.set_content(session.window)
-        for name, method in [("open", "choose_database"), ("new", "new_database"), ("lock", "lock"),
+        for name, method in [("open", "choose_database"), ("new", "new_database"), ("lock", "request_lock"),
+                             ("save", "save"),
+                             ("save-as", "save_as"),
                              ("new-entry", "edit_entry"), ("search", "focus_search"), ("generator", "generator"),
                              ("refresh", "refresh"), ("about", "about"), ("shortcuts", "shortcuts"), ("open-url", "open_entry_url")]:
             self._action(name, lambda method=method: getattr(session, method)())
@@ -529,8 +564,11 @@ class MainWindow(Adw.ApplicationWindow):
         opening = Gio.Menu()
         for label, action in [("New Window", "app.new-window"), ("Open Database…", "win.open"), ("New Database…", "win.new")]:
             opening.append(label, action)
+        opening.append("Recover Unsaved Changes…", "app.recover")
         menu.append_section(None, opening)
         database = Gio.Menu()
+        database.append("Save", "win.save")
+        database.append("Save As…", "win.save-as")
         for actions in [[("Database Settings…", "settings"), ("Change Unlock Key…", "change-key"), ("Refresh", "refresh")],
                         [("Import Database…", "import"), ("Save Copy…", "save-copy"), ("Merge Database…", "merge"),
                          ("Export Unencrypted Data…", "export"), ("Reports…", "reports")],
@@ -568,4 +606,4 @@ class MainWindow(Adw.ApplicationWindow):
 
         if self.session:
             self.app.close_session(self.session)
-        return False
+        return True

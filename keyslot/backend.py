@@ -89,6 +89,9 @@ class Snapshot:
     root: str = ""
     default_username: str = ""
     secret_group: str = ""
+    modified: bool = False
+    recovery_path: str = ""
+    recovery_copy: bool = False
 
 
 def parse_snapshot(xml: bytes) -> Snapshot:

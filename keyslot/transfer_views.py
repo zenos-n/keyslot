@@ -106,6 +106,8 @@ def _review(source, destination, transfer, state):
     body += f"\n\nFrom: {source.vault.snapshot.name or Path(source.path).name}\n{transfer.source_ticket['path']}\n\nTo: {target_name}\n{target_path}\nGroup: {group_name}"
     if move and source is not destination:
         body += "\n\nThe destination will be saved before the originals are removed."
+    if not source.application.startup.auto_save:
+        body += "\n\nThis transfer saves the destination vault and any source changes it makes, including existing unsaved changes."
     if transfer.source_ticket["references"]:
         body += "\n\nField references are kept as written; check them in the destination."
     alert = Adw.AlertDialog(heading=heading, body=body, body_use_markup=False)

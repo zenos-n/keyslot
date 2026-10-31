@@ -1,6 +1,6 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}, doCheck ? false }:
 let
-  engine = import ./engine/default.nix { inherit pkgs; };
+  engine = import ./engine/default.nix { inherit pkgs doCheck; };
   proxy = import ./browser-proxy.nix { inherit pkgs engine; };
 in
 pkgs.stdenvNoCC.mkDerivation {
@@ -15,12 +15,14 @@ pkgs.stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ pkgs.meson pkgs.ninja pkgs.wrapGAppsHook4 pkgs.gobject-introspection ];
   nativeCheckInputs = [ pkgs.dbus pkgs.xvfb-run pkgs.gnome-keyring pkgs.libsodium pkgs.openssl pkgs.openssh pkgs.gcr_4 pkgs.nss_wrapper pkgs.zbar ];
   buildInputs = [ pkgs.gtk4 pkgs.libadwaita pkgs.libsecret pkgs.gdk-pixbuf pkgs.librsvg (pkgs.python3.withPackages (p: [ p.pygobject3 ])) ];
+  mesonFlags = [ "-Dtests=${if doCheck then "true" else "false"}" ];
   postInstall = ''
     mkdir -p "$out/share/icons/hicolor"
     cp -r ${pkgs.keepassxc.src}/share/icons/application/* "$out/share/icons/hicolor/"
     install -Dm644 ${pkgs.keepassxc.src}/COPYING "$out/share/licenses/keyslot/UPSTREAM-COPYING"
     install -Dm644 ${pkgs.keepassxc.src}/LICENSE.MIT "$out/share/licenses/keyslot/LICENSE.MIT"
     install -Dm644 ${pkgs.keepassxc.src}/LICENSE.CC0 "$out/share/licenses/keyslot/LICENSE.CC0"
+    python3 -m compileall -q "$out/share/keyslot/keyslot"
   '';
   preFixup = ''
     gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath [ engine ]})
@@ -35,7 +37,7 @@ pkgs.stdenvNoCC.mkDerivation {
     ln -s ${engine}/libexec/keepassxc-proxy "$out/bin/keepassxc-proxy"
     ln -s ${engine}/bin/keepassxc-cli "$out/bin/keepassxc-cli"
   '';
-  doCheck = true;
+  inherit doCheck;
   checkPhase = ''
     runHook preCheck
     export PATH=${engine}/bin:$PATH
