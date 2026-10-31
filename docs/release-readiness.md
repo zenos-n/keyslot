@@ -95,6 +95,22 @@ utilities now precede the catalogue. Native/runtime compilation is the current
 evidence; browser/network/desktop acceptance remains user-owned, with no new
 tests, harnesses or automated behavior runs.
 
+Browser rules now have GTK entry and group settings using upstream custom-data
+flags, tri-state inheritance and connection-restriction IDs. Entry controls show
+forced group rules; group rules include www matching and inherit/all/one-paired-
+connection modes, retaining disconnected existing restrictions. Only changed
+fields are written, preserving unrelated and noncanonical untouched metadata.
+Native target uniqueness, recycled-state and reviewed-revision guards precede
+the existing transaction/save model; entry edits use upstream history updates.
+These new controls have runtime compilation evidence only, with user manual
+browser/inheritance/concurrency acceptance pending and no automated runs.
+Additional Websites now has dedicated GTK create/edit/remove workflows over the
+existing upstream URL attributes. Protected list values are masked and discarded
+before UI delivery, explicit editing uses a masked input, and names are allocated
+without replacing existing fields. Existing attribute revision, duplicate-name,
+history and encrypted-save behavior is reused. User manual URL/reference/privacy
+and desktop acceptance remains pending; no new tests or automated runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and

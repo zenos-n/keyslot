@@ -757,6 +757,10 @@ class VaultSession:
         auto_type = Gtk.Button(label="Auto-Type Settings…")
         auto_type.connect("clicked", lambda *_: autotype_views.settings(self, group=current.identity))
         box.append(auto_type)
+        from . import browser_options
+        browser = Gtk.Button(label="Browser Integration…", sensitive=not current.recycled and current.addressable)
+        browser.connect("clicked", lambda *_: browser_options.settings(self, group=current.identity))
+        box.append(browser)
         sharing = Gtk.Button(label="KeeShare Settings…", sensitive=not current.recycled)
         sharing.connect("clicked", lambda *_: keeshare_views.settings(self, current.identity))
         box.append(sharing)
@@ -1396,6 +1400,19 @@ class DatabaseView(Gtk.Box):
         type_entry.connect("activated", lambda *_: autotype_views.choose(self.app, entry))
         auto_type.add(type_entry)
         self.detail.append(auto_type)
+        from . import browser_options
+        browser = Adw.PreferencesGroup(title="Browser Integration")
+        browser_row = Adw.ActionRow(title="Browser Settings…", subtitle="Visibility, form submission and HTTP authentication",
+                                   activatable=True, sensitive=not entry.recycled and entry.addressable)
+        browser_row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+        browser_row.connect("activated", lambda *_: browser_options.settings(self.app, entry=entry))
+        browser.add(browser_row)
+        websites = Adw.ActionRow(title="Additional Websites…", subtitle="Use this login on other websites",
+                                activatable=True, sensitive=not entry.recycled and entry.addressable)
+        websites.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+        websites.connect("activated", lambda *_: browser_options.websites(self.app, entry))
+        browser.add(websites)
+        self.detail.append(browser)
         if entry.notes:
             group = Adw.PreferencesGroup(title="Notes")
             group.add(margins(Gtk.Label(label=entry.notes, wrap=True, selectable=True, xalign=0), 12))

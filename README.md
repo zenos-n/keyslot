@@ -460,6 +460,18 @@ vault using upstream metadata. Database Settings → Browser Integration reviews
 and revokes connections. Lock, disconnect or rekey cancels outstanding prompts.
 Browser polling does not extend the inactivity timeout or disable the window.
 
+Entry Details → Browser Settings controls browser visibility, automatic form
+submission and HTTP authentication. Edit Group → Browser Integration adds
+inherited rules, www matching and restrictions to a paired browser connection.
+The controls show when a group rule takes precedence. Disconnected restrictions
+stay visible until explicitly changed; allowing all connections is distinct from
+inheriting a parent restriction. Saving refuses a changed vault revision and
+preserves unrelated custom data and entry history.
+Additional Websites in the same entry section adds, edits and removes matching
+websites. Protected addresses stay masked until edited and revealed, and literal
+placeholders/references are retained. Changes use the same revision and history
+guards as custom attributes.
+
 Saving a new login or updating an existing one requires a GTK confirmation.
 The helper retains the incoming password and returns only review metadata;
 approval is single-use and bound to the unchanged database. New entries can use

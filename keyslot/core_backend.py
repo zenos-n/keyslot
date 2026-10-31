@@ -773,6 +773,29 @@ class Vault:
         with self._mutex:
             return self._rpc("browser.associations")
 
+    def _browser_options_target(self, entry, group):
+        if not self.unlocked or "browser-options" not in self.capabilities:
+            raise VaultError("Unlock a vault with the updated native engine before editing browser settings.")
+        if (entry is None) == (group is None):
+            raise VaultError("Choose an entry or group for browser settings.")
+        if entry is not None:
+            self._entry(entry)
+            return {"entry": entry.uuid}
+        if not any(item.identity == group and item.addressable and not item.recycled for item in self.snapshot.groups):
+            raise VaultError("The selected group is unavailable.")
+        return {"group": group}
+
+    def browser_options(self, entry=None, group=None):
+        with self._mutex:
+            return self._rpc("browser.options", **self._browser_options_target(entry, group))
+
+    def save_browser_options(self, entry=None, group=None, *, revision, values, restriction=None):
+        with self._mutex:
+            params = dict(revision=revision, values=values, **self._browser_options_target(entry, group))
+            if restriction is not None:
+                params["restriction"] = restriction
+            return self._snapshot_call("browser.options.save", **params)
+
     def browser_authenticate(self, identifier, key):
         with self._mutex:
             return self._rpc("browser.authenticate", id=identifier, key=key)

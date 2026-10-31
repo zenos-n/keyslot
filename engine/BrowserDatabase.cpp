@@ -7,12 +7,15 @@
 #include "core/Entry.h"
 #include "core/EntryAttributes.h"
 #include "core/Group.h"
+#include "core/Global.h"
 #include "core/Metadata.h"
 #include "core/Tools.h"
 #include <QDateTime>
+#include <QMap>
 #include <QSet>
 #include <QUrl>
 #include <QUuid>
+#include <cmath>
 
 namespace KeyslotBrowser {
 [[noreturn]] void reject(const char* code, const char* message) { throw BrowserFailure{code, message}; }
@@ -51,6 +54,131 @@ bool validUrl(const QUrl& url) {
 }
 
 using namespace KeyslotBrowser;
+
+namespace {
+const QMap<QString, QString>& optionNames() {
+    static const QMap<QString, QString> names{
+        {"hide", BrowserService::OPTION_HIDE_ENTRY}, {"skip_submit", BrowserService::OPTION_SKIP_AUTO_SUBMIT},
+        {"only_http", BrowserService::OPTION_ONLY_HTTP_AUTH}, {"not_http", BrowserService::OPTION_NOT_HTTP_AUTH},
+        {"omit_www", BrowserService::OPTION_OMIT_WWW}};
+    return names;
+}
+struct OptionTarget {
+    Entry* entry = nullptr;
+    Group* group = nullptr;
+    CustomData* data() const { return entry ? entry->customData() : group->customData(); }
+    Group* parent() const { return entry ? entry->group() : group->parentGroup(); }
+};
+OptionTarget optionTarget(const QSharedPointer<Database>& db, const QJsonObject& args) {
+    if (args.contains("entry") == args.contains("group")) reject("invalid_request", "Choose an entry or group for browser settings.");
+    OptionTarget result;
+    const bool entry = args.contains("entry");
+    const QUuid id(text(args, entry ? "entry" : "group", true));
+    if (id.isNull()) reject("invalid_request", "Choose a valid browser settings target.");
+    int count = 0;
+    if (entry) {
+        for (auto* item : db->rootGroup()->entriesRecursive()) if (item->uuid() == id) { result.entry = item; ++count; }
+    } else {
+        for (auto* item : db->rootGroup()->groupsRecursive(true)) if (item->uuid() == id) { result.group = item; ++count; }
+    }
+    if (!count) reject("not_found", "This browser settings target no longer exists.");
+    if (count != 1) reject("conflict", "This browser settings target is ambiguous.");
+    if (entry ? result.entry->isRecycled() : result.group->isRecycled())
+        reject("denied", "Restore this item before editing browser settings.");
+    return result;
+}
+int localOption(const CustomData* data, const QString& key) {
+    return !data->contains(key) ? Group::Inherit : data->value(key) == TRUE_STR ? Group::Enable : Group::Disable;
+}
+}
+
+QJsonObject KeyslotBrowserDatabase::options(const QSharedPointer<Database>& db, const QJsonObject& args,
+                                           const QByteArray& fingerprint) {
+    const auto target = optionTarget(db, args);
+    const auto* data = target.data();
+    const auto* parent = target.parent();
+    QJsonObject values, inherited, effective, forced;
+    const auto& browserOptions = optionNames();
+    for (auto it = browserOptions.cbegin(); it != browserOptions.cend(); ++it) {
+        if (target.entry && it.key() == "omit_www") continue;
+        const auto local = localOption(data, it.value());
+        const auto source = parent ? parent->resolveCustomDataTriState(it.value()) : Group::Inherit;
+        const bool override = target.entry && (it.key() == "hide" || it.key() == "skip_submit"
+            ? source != Group::Inherit : source == Group::Enable);
+        values.insert(it.key(), local); inherited.insert(it.key(), source); forced.insert(it.key(), override);
+        effective.insert(it.key(), override ? source == Group::Enable : local == Group::Enable
+            || (local == Group::Inherit && source == Group::Enable));
+    }
+    const auto key = BrowserService::OPTION_RESTRICT_KEY;
+    const auto connection = data->value(key);
+    QJsonArray connections;
+    for (const auto& name : db->metadata()->customData()->keys()) if (name.startsWith(CustomData::BrowserKeyPrefix))
+        connections.append(name.mid(CustomData::BrowserKeyPrefix.size()));
+    QJsonObject restriction{{"inherited", parent ? parent->resolveCustomDataString(key) : QString()},
+                            {"connections", connections}};
+    if (target.entry) {
+        restriction.insert("mode", "inherit"); restriction.insert("id", QString());
+    } else {
+        restriction.insert("mode", !data->contains(key) ? "inherit" : connection.isEmpty() ? "all" : "connection");
+        restriction.insert("id", connection);
+    }
+    return {{"values", values}, {"inherited", inherited}, {"effective", effective}, {"forced", forced},
+            {"restriction", restriction}, {"revision", QString::fromLatin1(fingerprint.toHex())}};
+}
+
+void KeyslotBrowserDatabase::saveOptions(const QSharedPointer<Database>& db, const QJsonObject& args,
+                                         const QByteArray& fingerprint,
+                                         const std::function<void(const std::function<void()>&)>& commit) {
+    if (text(args, "revision", true) != QString::fromLatin1(fingerprint.toHex()))
+        reject("conflict", "The database changed since browser settings were opened. Open them again before saving.");
+    const auto target = optionTarget(db, args);
+    if (!args.value("values").isObject()) reject("invalid_request", "Specify the browser options to change.");
+    QMap<QString, int> changes;
+    const auto values = args.value("values").toObject();
+    const auto& browserOptions = optionNames();
+    for (auto it = values.begin(); it != values.end(); ++it) {
+        const auto value = it.value().toDouble(-1);
+        if (!browserOptions.contains(it.key()) || (target.entry && it.key() == "omit_www") || !it.value().isDouble()
+            || !std::isfinite(value) || std::floor(value) != value || value < 0 || value > 2)
+            reject("invalid_request", "Choose supported browser settings.");
+        const auto key = browserOptions.value(it.key());
+        const auto* data = target.data();
+        if (int(value) == Group::Inherit ? data->contains(key)
+            : !data->contains(key) || data->value(key) != (int(value) == Group::Enable ? TRUE_STR : FALSE_STR))
+            changes.insert(key, int(value));
+    }
+    const auto key = BrowserService::OPTION_RESTRICT_KEY;
+    bool restrict = false;
+    QString mode, id;
+    if (args.contains("restriction")) {
+        if (target.entry || !args.value("restriction").isObject())
+            reject("invalid_request", "Connection restrictions belong to groups.");
+        const auto value = args.value("restriction").toObject();
+        for (const auto& name : value.keys()) if (name != "mode" && name != "id")
+            reject("invalid_request", "Choose a supported connection restriction.");
+        mode = text(value, "mode", true); id = text(value, "id");
+        if ((mode != "inherit" && mode != "all" && mode != "connection") || (mode != "connection" && !id.isEmpty()))
+            reject("invalid_request", "Choose a supported connection restriction.");
+        if (mode == "connection" && (id.isEmpty() || !db->metadata()->customData()->contains(CustomData::BrowserKeyPrefix + id)))
+            reject("not_found", "This browser connection is no longer paired. Choose another connection.");
+        restrict = mode == "inherit" ? target.data()->contains(key)
+            : !target.data()->contains(key) || target.data()->value(key) != id;
+    }
+    if (changes.isEmpty() && !restrict) return;
+    commit([&] {
+        if (target.entry) target.entry->beginUpdate();
+        for (auto it = changes.cbegin(); it != changes.cend(); ++it) {
+            if (target.group) target.group->setCustomDataTriState(it.key(), Group::TriState(it.value()));
+            else if (it.value() == Group::Inherit) target.data()->remove(it.key());
+            else target.data()->set(it.key(), it.value() == Group::Enable ? TRUE_STR : FALSE_STR);
+        }
+        if (restrict) {
+            if (mode == "inherit") target.data()->remove(key);
+            else target.data()->set(key, id);
+        }
+        if (target.entry) target.entry->endUpdate();
+    });
+}
 
 QJsonObject KeyslotBrowserDatabase::prepareDelete(const QSharedPointer<Database>& db, const QJsonObject& args,
                                                   const QByteArray& fingerprint) {
