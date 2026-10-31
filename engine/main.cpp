@@ -13,6 +13,7 @@
 #include "KeyslotHistory.h"
 #include "KeyslotTotp.h"
 #include "KeyslotTrash.h"
+#include "KeyslotReports.h"
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
 #include "core/Database.h"
@@ -332,6 +333,7 @@ class Engine {
     KeyslotTransfer transfer;
     KeyslotLaunch launch;
     KeyslotTrash trash;
+    KeyslotReports reports;
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash, diskHash;
@@ -767,7 +769,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -793,7 +795,7 @@ public:
             discardManual(data);
             return true;
         }
-        if (method == "lock") { trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
+        if (method == "lock") { reports.clear(); trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
                 if (method == "url.cancel") { launch.cancel(args); return true; }
@@ -1036,6 +1038,17 @@ public:
             return true;
         }
         requireDatabase();
+        if (method == "report.hibp.prepare" || method == "report.hibp.step" || method == "report.hibp.cancel"
+            || method == "database.report.edit") {
+            try {
+                if (method == "report.hibp.cancel") { reports.cancel(text(args, "token")); return true; }
+                unchanged();
+                if (method == "report.hibp.prepare") return reports.prepare(db, args, hash);
+                if (method == "report.hibp.step") return reports.step(db, args, hash);
+                KeyslotReports::edit(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
+                return snapshot();
+            } catch (const KeyslotReports::Failure& error) { throw Failure{error.code, error.message}; }
+        }
         if (method == "trash.review" || method == "trash.apply" || method == "trash.cancel") {
             try {
                 if (method == "trash.cancel") { trash.cancel(text(args, "token")); return true; }
@@ -1523,23 +1536,7 @@ public:
                 fail("file_error", "The export destination already exists or cannot be written.");
             return true;
         }
-        if (method == "database.report") {
-            auto borrowed = db;
-            DatabaseStats stats(borrowed);
-            HealthChecker checker(borrowed);
-            QJsonArray entries;
-            for (const auto* e : db->rootGroup()->entriesRecursive()) {
-                if (e->isRecycled() || e->excludeFromReports()) continue;
-                const auto health = checker.evaluate(e);
-                if (health) entries.append(QJsonObject{{"uuid", uid(e->uuid())}, {"title", e->title()},
-                    {"group", e->group()->fullPath()}, {"score", health->score()},
-                    {"quality", static_cast<int>(health->quality())}, {"entropy", health->entropy()},
-                    {"reason", health->scoreReason()}, {"details", health->scoreDetails()}, {"expired", e->isExpired()}});
-            }
-            return QJsonObject{{"groups", stats.groupCount}, {"entries", stats.entryCount},
-                {"expired", stats.expiredEntries}, {"weak", stats.weakPasswords}, {"reused", stats.reusedPasswords},
-                {"unique", stats.uniquePasswords}, {"average_length", stats.averagePwdLength()}, {"health", entries}};
-        }
+        if (method == "database.report") return KeyslotReports::inventory(db, boolean(args, "excluded"), hash);
         if (method == "search") {
             EntrySearcher searcher(false, true);
             QJsonArray result;

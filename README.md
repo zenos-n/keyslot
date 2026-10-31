@@ -52,6 +52,18 @@ normal deletion and explicit permanent deletion respectively. Permanent deletion
 uses upstream deletion records so a later merge can recognize removed items.
 These new workflows await manual desktop acceptance.
 
+Database Reports includes statistics, password health, reused-password groups
+and browser URL/Allow/Deny inventories. Entries can be included/excluded from
+reports, and saved browser permissions can be cleared individually or for the
+shown entries, with revision-bound confirmation. Protected URL fields stay hidden.
+The exposed-password report checks an extracted HIBP SHA-1 corpus offline or,
+after confirmation for that run, queries the
+[padded HIBP range API](https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange).
+Password resolution, full hashes and result matching stay inside the native
+helper. Checks report progress, cancellation, partial findings and retryable
+network failures. Report refresh clears previous breach results. These new
+workflows await user manual acceptance; no automated runs were added or performed.
+
 Import source includes KeePass 1 (`.kdb`), KeePass XML, Bitwarden JSON (including
 password-protected exports), 1Password 1PUX/OPVault, and Proton Pass JSON through
 the pinned upstream readers. The GTK workflow collects source credentials

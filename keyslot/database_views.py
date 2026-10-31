@@ -670,47 +670,5 @@ def browser_connections(app, data=None):
 
 
 def report(app, data=None):
-    if not app.vault.unlocked or app.busy:
-        return
-    if data is None:
-        app.run_job(app.vault.report, lambda value: report(app, value))
-        return
-    dialog, _header, box = _dialog("Database Reports", width=620)
-    totals = Adw.PreferencesGroup(title="Statistics")
-    for title, key in [("Groups", "groups"), ("Entries", "entries"), ("Expired Entries", "expired"),
-                       ("Weak Passwords", "weak"), ("Reused Passwords", "reused"),
-                       ("Unique Passwords", "unique"), ("Average Password Length", "average_length")]:
-        row = Adw.ActionRow(title=title)
-        row.add_suffix(Gtk.Label(label=str(data[key]), css_classes=["numeric"]))
-        totals.add(row)
-    box.append(totals)
-    health = Adw.PreferencesGroup(title="Password Health")
-    qualities = ["Bad", "Poor", "Weak", "Good", "Excellent"]
-    def show_entry(uuid):
-        app.window.search.set_text("")
-        app.window.search_matches = None
-        app.window.groups.select_row(app.window.groups.get_first_child())
-        app.window.render_entries(uuid)
-        app.window.inner.set_show_content(True)
-        dialog.close()
-    for item in sorted(data["health"], key=lambda item: item["score"]):
-        label = qualities[item["quality"]] if 0 <= item["quality"] < len(qualities) else "Unknown"
-        subtitle = f"{label} · {item['entropy']:.0f} bits · Score {item['score']}"
-        if item["expired"]:
-            subtitle += " · Expired"
-        if item.get("reason"):
-            subtitle += "\n" + item["reason"]
-        row = Adw.ActionRow(title=GLib.markup_escape_text(item["title"] or "Untitled Entry"),
-                            subtitle=GLib.markup_escape_text(subtitle), activatable=True)
-        info = Gtk.Button(icon_name="dialog-information-symbolic", tooltip_text="Health Details", valign=Gtk.Align.CENTER)
-        def details(_button, item=item):
-            alert = Adw.AlertDialog(heading=item["title"] or "Untitled Entry",
-                body="\n\n".join(value for value in [item.get("reason"), item.get("details")] if value) or "No problems detected.")
-            alert.add_response("close", "Close")
-            app.present_dialog(alert)
-        info.connect("clicked", details)
-        row.add_suffix(info)
-        row.connect("activated", lambda _, uuid=item["uuid"]: show_entry(uuid))
-        health.add(row)
-    box.append(health)
-    app.present_dialog(dialog)
+    from .reports_views import show
+    show(app, data)

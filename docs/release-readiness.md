@@ -34,6 +34,18 @@ the restore review also offers an explicit destination. These additions are
 runtime-build candidates for user manual stress testing, with no new tests,
 harnesses or automated runs.
 
+Report additions include reused-password groups, browser permission/URL
+inventory, filtering, reviewed report exclusion and single/shown permission
+reset, plus passkey/TOTP statistics. HIBP online checks require per-run consent,
+send only five SHA-1 characters over HTTPS and request padded responses. Full
+hashes and matching stay in the native helper. Offline checks read an extracted
+SHA-1 corpus in chunks, allowing progress and cancellation between chunks.
+Failures/cancellation retain visibly partial findings; refreshing the report
+clears previous results. Unresolved references and ambiguous IDs are counted as
+unchecked. Empty/malformed data cannot produce a clean result. User desktop,
+live network and large-corpus acceptance remain pending; runtime compilation
+alone does not prove these workflows. No additional tests or automated runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and
@@ -235,7 +247,7 @@ The [official 2.8 release](https://keepassxc.org/blog/2026-10-21-2.8.0-released/
 also requires review of remote database synchronization, configurable shortcuts,
 SSH key generation, Linux Polkit quick unlock, browser entry listing, additional
 Proton Pass record types, passkey/TOTP statistics and custom-attribute suggestions.
-Existing gaps such as broader field-reference acceptance, breach reports, advanced
+Existing gaps such as broader field-reference and breach-report acceptance, advanced
 preferences, import/export coverage and accessibility remain open.
 
 The supported target is Linux/GNOME; one window per database replaces tabs at

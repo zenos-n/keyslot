@@ -808,9 +808,28 @@ class Vault:
                 password=password, keyfile=keyfile, yubikey=yubikey, no_password=no_password,
                 same_credentials=same_credentials)
 
-    def report(self):
+    def report(self, excluded=False):
         with self._mutex:
-            return self._rpc("database.report")
+            return self._rpc("database.report", excluded=excluded)
+
+    def edit_report(self, entries, action, revision):
+        with self._mutex:
+            return self._snapshot_call("database.report.edit", entries=list(entries), action=action, revision=revision)
+
+    def prepare_hibp(self, mode, path="", excluded=False):
+        with self._mutex:
+            if "hibp" not in self.capabilities:
+                raise VaultError("Update the native engine before checking for exposed passwords.")
+            return self._rpc("report.hibp.prepare", mode=mode, path=str(path), excluded=excluded)
+
+    def step_hibp(self, token):
+        with self._mutex:
+            return self._rpc("report.hibp.step", token=token)
+
+    def cancel_hibp(self, token):
+        with self._mutex:
+            if self.unlocked:
+                self._rpc("report.hibp.cancel", token=token)
 
     def _commit_output(self, destination, producer, overwrite=False):
         destination = Path(destination).expanduser().absolute()
