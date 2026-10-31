@@ -810,6 +810,7 @@ public:
             return QJsonObject{{"state", "reloaded"}, {"snapshot", snapshot()}};
         }
         if (method == "refresh") { reload(); return snapshot(); }
+        if (method == "database.reopen") { reload(makeKey(args, true)); return snapshot(); }
         if (method == "database.key.verify") {
             unchanged();
             Database candidate;

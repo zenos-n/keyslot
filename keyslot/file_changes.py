@@ -106,7 +106,7 @@ class FileChanges:
             try:
                 return session.vault.watch_file(reload=reload)
             except EngineError as exc:
-                return {"state": "failed", "message": str(exc)}
+                return {"state": "failed", "message": str(exc), "code": exc.code}
         def checked(data):
             self.running = self.force = False
             state = data["state"]
@@ -116,12 +116,7 @@ class FileChanges:
                 self.failed_serial = None
                 self._dismiss()
                 if state == "reloaded":
-                    session.view_epoch += 1
-                    session.totp.clear()
-                    session.urls.clear()
-                    session.icons.clear()
-                    session.clear_clipboard()
-                    session.window.show_vault(data["snapshot"])
+                    session.apply_refreshed(data["snapshot"])
                     session.toast("Vault updated")
             elif state == "changed":
                 self.waiting = True
@@ -129,8 +124,11 @@ class FileChanges:
                     self._show("Vault changed elsewhere", "Reload", self.reload)
             else:
                 self.failed_serial = serial
-                self._show("Vault file is unavailable" if state == "unavailable" else "Vault could not be reloaded",
-                           "Save Copy", self.save_copy)
+                if data.get("code") == "key_error":
+                    self._show("Vault could not be unlocked after changing", "Unlock", self.unlock_changed)
+                else:
+                    self._show("Vault file is unavailable" if state == "unavailable" else "Vault could not be reloaded",
+                               "Save Copy", self.save_copy)
             self.resume()
         def failed(_message):
             self.running = self.force = False
@@ -152,6 +150,12 @@ class FileChanges:
         from . import database_views
         self.session.touch()
         database_views.save_copy(self.session)
+
+    def unlock_changed(self):
+        session = self.session
+        if session.vault.unlocked and not session.busy and not session.dialogs and not session.file_requests:
+            session.touch()
+            session._unlock_dialog(str(session.vault.path), reopen=True)
 
     def refreshed(self):
         self.serial += 1

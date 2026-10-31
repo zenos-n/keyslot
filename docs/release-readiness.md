@@ -156,6 +156,29 @@ logs `/tmp/keyslot-file-watch-verified.log`,
 `/tmp/keyslot-watch-manual-observations.txt`. Physical network/hardware behavior,
 broader concurrent-source races and changed-key reauthentication remain open.
 
+The subsequent changed-key recovery batch supplies new credentials without
+locking or discarding the previously open database. The native helper swaps in
+a candidate only after successful authentication and a stable source revision.
+The dialog remains open after credential errors and offers an encrypted copy of
+the old data. Successful reopening refreshes the authorized login-keyring
+credential and remembered key components, clears old views and invalidates the
+previous quick-unlock credential. Manual Reload uses the same recovery path and
+defers around forms and file choosers.
+
+Private real GTK use verified password/key-file rotation, wrong-password and
+wrong-component retention, cancellation, dialog-driven encrypted recovery readable
+by stock KeePassXC, successful composite and password-only reopening, actual
+disposable GNOME login-keyring updates, key-file memory removal, quick-unlock
+invalidation, editor deferral and idle-lock cleanup. All existing 323 backend
+checks and 19 application gates pass (backend 328.06 seconds), alongside the
+existing 332 native checks. No tests or harnesses were added. Checked app:
+`/nix/store/b19813zap4zq1h9h1035fd12d50mx8bf-keyslot-0.2.0`;
+engine `/nix/store/5wi36i91zkdnji0y9wpymw99m8a2sq97-keyslot-engine-2.7.12`.
+Evidence: `/tmp/keyslot-reauth-build.log` and
+`/tmp/keyslot-reauth-manual-observations.txt`. Physical hardware keys, network
+filesystem races and source replacement during key derivation remain unverified.
+The running user application and system generation were preserved.
+
 ## Release blockers
 
 - Complete the KDBX 3/4 cipher/KDF and key-component preservation matrix. Exercise

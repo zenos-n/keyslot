@@ -285,6 +285,13 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("refresh")
 
+    def reopen(self, password, keyfile="", yubikey="", no_password=False):
+        with self._mutex:
+            if not self.unlocked:
+                raise VaultError("Unlock a database first.")
+            return self._snapshot_call("database.reopen", password=password, keyfile=keyfile,
+                                       yubikey=yubikey, no_password=no_password)
+
     def watch_file(self, reload=True):
         with self._mutex:
             if not self.unlocked:

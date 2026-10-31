@@ -321,8 +321,8 @@ class VaultSession:
     def unlock_dialog(self, path, create=False, import_options=None):
         self.application.open_database(path, create, import_options, preferred=self)
 
-    def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None):
-        if use_quick and not keyfile and not create and not import_options and self.quick_blob and Path(path).resolve() == self.quick_path:
+    def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None, reopen=False):
+        if not reopen and use_quick and not keyfile and not create and not import_options and self.quick_blob and Path(path).resolve() == self.quick_path:
             return self._quick_unlock_dialog(path)
         components = {"keyfile": "", "yubikey": ""}
         storage = getattr(self.application.startup, "storage", None)
@@ -332,13 +332,16 @@ class VaultSession:
             except (OSError, ValueError, VaultError) as exc:
                 self.toast(str(exc))
         keyfile = components["keyfile"] if keyfile is None else keyfile
-        self.lock()
-        dialog = Adw.Dialog(title="Import Database" if import_options else "New Database" if create else "Unlock Database", content_width=440)
+        if not reopen:
+            self.lock()
+        dialog = Adw.Dialog(title="Unlock Changed Vault" if reopen else "Import Database" if import_options else "New Database" if create else "Unlock Database", content_width=440)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         box.append(Gtk.Image(icon_name="changes-prevent-symbolic", pixel_size=64))
         box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
+        if reopen:
+            box.append(Gtk.Label(label="The vault changed elsewhere. Enter its current credential. Your previous data stays open until unlocking succeeds.", wrap=True))
         group = Adw.PreferencesGroup()
         password = Adw.PasswordEntryRow(title="Master Password")
         group.add(password)
@@ -373,7 +376,17 @@ class VaultSession:
         advanced_group.add(advanced)
         box.append(advanced_group)
         action = Gtk.Button(label="Import Database" if import_options else "Create Database" if create else "Unlock", css_classes=["suggested-action", "pill"])
+        failure = Gtk.Label(wrap=True, css_classes=["error"], visible=False)
+        box.append(failure)
         box.append(action)
+        if reopen:
+            def save_current():
+                if not self.busy:
+                    dialog.close()
+                    database_views.save_copy(self)
+            recovery = Gtk.Button(label="Save Current Data as a Copy…")
+            recovery.connect("clicked", lambda *_: save_current())
+            box.append(recovery)
         seconds = self.application.startup.lock_seconds
         duration = f"{seconds // 60} minutes" if seconds % 60 == 0 else f"{seconds} seconds"
         lock_notice = f"Locks after {duration} of inactivity." if seconds else "Inactivity locking is disabled."
@@ -395,17 +408,38 @@ class VaultSession:
             password.set_text("")
             if repeat:
                 repeat.set_text("")
-            dialog.close()
+            if reopen:
+                dialog.set_can_close(False)
+                box.set_sensitive(False)
+                failure.set_visible(False)
+            else:
+                dialog.close()
             operation = (lambda: self.vault.create(path, secret, key, hardware, key_only)) if create else (
                 lambda: self.vault.unlock(path, secret, key, hardware, key_only))
+            if reopen:
+                operation = lambda: self.vault.reopen(secret, key, hardware, key_only)
             if import_options:
                 operation = lambda: self.vault.import_database(path, password=secret, keyfile=key, yubikey=hardware,
                                                                no_password=key_only, **import_options)
             def unlocked(snapshot):
-                self.window.show_vault(snapshot)
+                if reopen:
+                    dialog.set_can_close(True)
+                    dialog.close()
+                    self.quick_blob = self.quick_path = None
+                    self.quick_attempts = 0
+                    self.apply_refreshed(snapshot)
+                    self.files.refreshed()
+                else:
+                    self.window.show_vault(snapshot)
                 self.remember_unlocked({"password": secret, "keyfile": key,
                                         "yubikey": hardware, "no_password": key_only})
-            self.run_job(operation, unlocked)
+            def failed(message):
+                dialog.set_can_close(True)
+                box.set_sensitive(True)
+                failure.set_label(message)
+                failure.set_visible(True)
+                password.grab_focus()
+            self.run_job(operation, unlocked, failed if reopen else None)
         action.connect("clicked", submit)
         password.connect("entry-activated", submit)
         if repeat:
@@ -473,8 +507,16 @@ class VaultSession:
             self.window.search.grab_focus()
 
     def refresh(self):
-        if self.vault.unlocked:
-            self.run_job(self.vault.refresh, lambda snapshot: (self.files.refreshed(), self.window.show_vault(snapshot)))
+        if self.vault.unlocked and not self.busy and not self.dialogs and not self.file_requests:
+            self.files.reload()
+
+    def apply_refreshed(self, snapshot):
+        self.view_epoch += 1
+        self.totp.clear()
+        self.urls.clear()
+        self.icons.clear()
+        self.clear_clipboard()
+        self.window.show_vault(snapshot)
 
     def edit_entry(self, entry=None, values=None):
         if not self.vault.unlocked or self.busy:
