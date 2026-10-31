@@ -285,6 +285,17 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("refresh")
 
+    def watch_file(self, reload=True):
+        with self._mutex:
+            if not self.unlocked:
+                raise VaultError("Unlock a database first.")
+            if "file-watch" not in self.capabilities:
+                raise VaultError("Update the native engine before using automatic vault reload.")
+            data = self._rpc("database.watch", reload=reload)
+            if data["state"] == "reloaded":
+                data["snapshot"] = self._set_snapshot(data["snapshot"])
+            return data
+
     def verify_credentials(self, password, keyfile="", yubikey="", no_password=False):
         with self._mutex:
             if not self.unlocked:

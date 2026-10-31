@@ -116,6 +116,46 @@ verified against the disposable keyring. No tests/harnesses were added. Evidence
 `/tmp/keyslot-remembered-session-final.log`. Remaining config migration includes
 other unsupported preferences.
 
+First-launch compatibility now reuses an existing stock INI profile when no
+private preferences have been saved. Existing private settings are retained;
+unreadable stock settings queue a notice and fall back without altering either
+stock file. A read-only `GetConfigurationProfile` handshake returns an opaque
+fingerprint and leaves the public status properties unchanged. Explicit requests
+reject older or differently configured primaries before forwarding; ordinary
+launches still attach to an older running app. Private real-primary acceptance
+covered legacy rejection, automatic reuse across restarts/sidecar creation,
+same/different profiles, private-setting preservation and unreadable automatic
+versus explicit settings. The actual live legacy user's primary was also probed
+read-only with aggregate state unchanged. All existing 323 backend checks and 19
+application gates pass (backend 318.44 seconds); the native engine is unchanged.
+No tests/harnesses were added. Source-only checkpoint:
+`/nix/store/2fxh9h5a1v2j881yass1zd8j2qv0c9q6-keyslot-0.2.0`;
+logs `/tmp/keyslot-profile-upgrade-build.log` and
+`/tmp/keyslot-profile-upgrade-manual-observations.txt`. This work awaits the next
+package batch. Legacy INI-key migration, remaining preferences and broader
+concurrent-owner replacement/desktop acceptance remain open.
+
+External-file monitoring now combines directory events (including atomic
+replacement) with asynchronous metadata polling. Native revision checks are
+passive; only a confirmed reload reserves the foreground worker slot. This
+preserves browser/URI actions during ordinary checks and defers reload around
+forms and file choosers. The native core keeps the current open data on reload
+failure; persistent notices offer Reload or encrypted Save Copy. AutoReloadOnChange
+is mapped to the GNOME preference and private settings. Actual GTK use verified
+external changes, no redundant reload after own saves, preserved drafts and
+stale-save refusal, manual reload/revert, missing/corrupt/changed-key retention,
+official-CLI-readable recovery copies, actual chooser deferral, polling fallback,
+unchanged idle time with an active search and cancellation on idle lock. The
+existing browser and URL gates initially exposed foreground contention in checks;
+the passive-check correction passes both unchanged gates and the final full
+323-backend/19-gate package run (backend 324.20 seconds). No tests or harnesses
+were added. Native engine 8ibf9x passes the existing 332 checks. Checked app:
+`/nix/store/f01aszsr68nb0mlqjcnamv711v1kb4is-keyslot-0.2.0`;
+logs `/tmp/keyslot-file-watch-verified.log`,
+`/tmp/keyslot-watch-existing-regressions.log` and
+`/tmp/keyslot-watch-manual-observations.txt`. Physical network/hardware behavior,
+broader concurrent-source races and changed-key reauthentication remain open.
+
 ## Release blockers
 
 - Complete the KDBX 3/4 cipher/KDF and key-component preservation matrix. Exercise

@@ -558,7 +558,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch"}}};
         if (method == "lock") { launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
@@ -800,6 +800,14 @@ public:
                 result.insert("snapshot", snapshot());
                 return result;
             } catch (const LaunchFailure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method == "database.watch") {
+            const QFileInfo info(path);
+            if (!info.exists() || !info.isFile() || !info.isReadable()) return QJsonObject{{"state", "unavailable"}};
+            if (digest(path) == hash) return QJsonObject{{"state", "unchanged"}};
+            if (!boolean(args, "reload")) return QJsonObject{{"state", "changed"}};
+            reload();
+            return QJsonObject{{"state", "reloaded"}, {"snapshot", snapshot()}};
         }
         if (method == "refresh") { reload(); return snapshot(); }
         if (method == "database.key.verify") {

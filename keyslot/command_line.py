@@ -1,6 +1,7 @@
 """KeePassXC-compatible GUI commands; passwords only arrive through stdin."""
 import os
 import platform
+from pathlib import Path
 import subprocess
 import sys
 import termios
@@ -34,6 +35,51 @@ def configure(app):
 def arguments(options):
     value = options.lookup_value(GLib.OPTION_REMAINING, None)
     return value.unpack() if value else []
+
+
+def primary_profile(bus):
+    from .application import INTERFACE, OBJECT_PATH
+    try:
+        return bus.call_sync(APP_ID, OBJECT_PATH, INTERFACE, "GetConfigurationProfile",
+            None, GLib.VariantType.new("(s)"),
+            Gio.DBusCallFlags.NO_AUTO_START, 5000, None).unpack()[0]
+    except GLib.Error as exc:
+        if (exc.matches(Gio.dbus_error_quark(), Gio.DBusError.SERVICE_UNKNOWN)
+                or exc.matches(Gio.dbus_error_quark(), Gio.DBusError.NAME_HAS_NO_OWNER)):
+            return None
+        raise VaultError("The running Keyslot instance cannot verify configuration profiles. Quit it before using these configuration options.") from exc
+
+
+def select_configuration(app, options, bus):
+    from .configuration import IniProfile, default_paths
+    from .startup import Startup
+    profiles = {name: options.lookup_value(name, None) for name in ("config", "localconfig")}
+    explicit = (any(value is not None for value in profiles.values())
+                or bool(os.environ.get("KPXC_CONFIG") or os.environ.get("KPXC_CONFIG_LOCAL")))
+    defaults = default_paths()
+    if not explicit:
+        running = bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+            "NameHasOwner", GLib.Variant("(s)", (APP_ID,)), GLib.VariantType.new("(b)"),
+            Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+        private = app.startup.path.parent
+        if (running or not Path(defaults[0]).is_file()
+                or (private.exists() and any(path.name != "profiles" for path in private.iterdir()))):
+            return
+    try:
+        existing = primary_profile(bus)
+        paths = [Gio.File.new_for_commandline_arg(profiles[name].unpack()).get_path()
+                 if profiles[name] is not None else defaults[index] for index, name in enumerate(profiles)]
+        storage = IniProfile(*paths)
+        if existing is not None and existing != storage.identity:
+            raise VaultError("Keyslot is already running with a different configuration. Quit it before switching profiles.")
+        selected = Startup(launcher=app.startup.launcher, storage=storage)
+        app.startup = selected
+        options.insert_value("keyslot-config-paths", GLib.Variant("as", list(storage.paths.values())))
+    except (OSError, ValueError, VaultError) as exc:
+        if explicit:
+            raise
+        # Keep an unreadable stock configuration intact and allow manual vault access.
+        app.startup_error = f"KeePassXC settings could not be loaded. Keyslot is using its private defaults. {exc}"
 
 
 def restore_echo(app):
@@ -110,22 +156,15 @@ def local_options(app, options):
         print("Keyslot requires a graphical session with GTK4 display access.", file=sys.stderr)
         return 1
     try:
-        Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     except GLib.Error:
         print("Keyslot requires access to the session D-Bus.", file=sys.stderr)
         return 1
-    if any(value is not None for value in profiles.values()) or os.environ.get("KPXC_CONFIG") or os.environ.get("KPXC_CONFIG_LOCAL"):
-        from .configuration import IniProfile, default_paths
-        from .startup import Startup
-        try:
-            defaults = default_paths()
-            paths = [Gio.File.new_for_commandline_arg(profiles[name].unpack()).get_path()
-                     if profiles[name] is not None else defaults[index] for index, name in enumerate(profiles)]
-            app.startup = Startup(launcher=app.startup.launcher, storage=IniProfile(*paths))
-            options.insert_value("keyslot-config-paths", GLib.Variant("as", list(app.startup.storage.paths.values())))
-        except (OSError, ValueError, VaultError) as exc:
-            print(f"Keyslot could not load the configuration: {exc}", file=sys.stderr)
-            return 1
+    try:
+        select_configuration(app, options, bus)
+    except (OSError, ValueError, VaultError, GLib.Error) as exc:
+        print(f"Keyslot could not load the configuration: {exc}", file=sys.stderr)
+        return 1
     if options.contains("pw-stdin"):
         try:
             fd = 0

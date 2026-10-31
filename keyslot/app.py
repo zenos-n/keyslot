@@ -168,6 +168,10 @@ class Keyslot(Adw.Application):
         return GLib.Variant("b", self.busy if prop == "Busy" else self.background if prop == "Background" else self.locked)
 
     def _dbus_call(self, _connection, _sender, _path, _interface, method, _params, invocation):
+        if method == "GetConfigurationProfile":
+            storage = getattr(self.startup, "storage", None)
+            invocation.return_value(GLib.Variant("(s)", (storage.identity if storage else "private",)))
+            return
         if method == "Show":
             self.activate()
         elif method == "Lock":

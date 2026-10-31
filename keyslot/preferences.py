@@ -35,6 +35,18 @@ def show(session):
             session.error(str(exc))
             background.set_active(settings.background)
     background.connect("notify::active", changed_background)
+    auto_reload = Adw.SwitchRow(title="Reload Changed Vaults",
+        subtitle="Load changes from sync tools or other apps after open dialogs close", active=settings.auto_reload)
+    group.add(auto_reload)
+    def changed_reload(*_):
+        try:
+            settings.save(settings.remember, settings.login, settings.vault, auto_reload=auto_reload.get_active())
+            for item in session.application.sessions:
+                item.files.resume()
+        except (OSError, ValueError, VaultError) as exc:
+            session.error(str(exc))
+            auto_reload.set_active(settings.auto_reload)
+    auto_reload.connect("notify::active", changed_reload)
     forget = Adw.ActionRow(title="Forget Login Credentials",
         subtitle="Disable login unlock and remove Keyslot’s saved credentials")
     group.add(forget)

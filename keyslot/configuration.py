@@ -16,6 +16,7 @@ STARTUP_KEYS = {
     "background": ("global", "Keyslot/RunInBackground", True),
     "browser": ("global", "Browser/Enabled", False),
     "minimize_on_url": ("global", "MinimizeOnOpenUrl", False),
+    "auto_reload": ("global", "AutoReloadOnChange", True),
     "ssh": ("global", "SSHAgent/Enabled", False),
     "ssh_socket": ("local", "SSHAgent/AuthSockOverride", ""),
     "ssh_provider": ("local", "SSHAgent/SecurityKeyProviderOverride", ""),
@@ -80,8 +81,8 @@ class IniProfile:
                           ("--localconfig", os.path.abspath(local_path))]
         self.paths = {role: str(Path(path).resolve()) for role, (_option, path) in
                       zip(("global", "local"), self.arguments)}
-        fingerprint = hashlib.sha256(json.dumps(self.paths, sort_keys=True).encode()).hexdigest()
-        self.directory = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "keyslot/profiles" / fingerprint
+        self.identity = hashlib.sha256(json.dumps(self.paths, sort_keys=True).encode()).hexdigest()
+        self.directory = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "keyslot/profiles" / self.identity
         self.schemas = {}
         for role, schema in (("global", GLOBAL), ("local", LOCAL)):
             self.schemas.setdefault(self.paths[role], {}).update(schema)
@@ -228,8 +229,9 @@ class IniProfile:
             def put(key, value, role="global"):
                 changes[role, key] = value
             for field, (role, key, _default) in STARTUP_KEYS.items():
-                if data[field] != self.startup[field]:
-                    put(key, data[field], role)
+                value = data.get(field, _default)
+                if value != self.startup.get(field, _default):
+                    put(key, value, role)
             put("Keyslot/LoginVault", data["vault"] if data["login"] else "", "local")
             if data["remember"] != self.startup["remember"]:
                 put("RememberLastDatabases", data["remember"])

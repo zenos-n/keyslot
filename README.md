@@ -248,8 +248,15 @@ Relative database and key-file paths use the invoking process’s directory. Gen
 stdin credentials are never saved in application settings.
 `--config PATH` and `--localconfig PATH` select KeePassXC global and local INI
 files; `KPXC_CONFIG` and `KPXC_CONFIG_LOCAL` supply their defaults. Unspecified
-paths use KeePassXC's XDG config/cache locations. Normal launches continue to use
-Keyslot's existing private settings. Selected INI profiles share supported
+paths use KeePassXC's XDG config/cache locations. Existing Keyslot private
+preferences stay in use. On first launch, before private preferences have been
+saved, Keyslot reuses an existing stock global/local INI profile automatically.
+An unreadable stock profile produces a notice and private defaults, leaving the
+original files intact. Ordinary launches reconnect to an already running app.
+Explicit profile requests verify the running app's profile before forwarding;
+older instances must be quit before using these options. The read-only handshake
+returns a profile fingerprint, without configuration or vault paths.
+Selected INI profiles share supported
 remembered-vault, browser, idle/clipboard, auto-type, SSH, Secret Service and
 generator options with KeePassXC. Keyslot-specific options use a separate INI
 namespace. Unknown options are preserved by Qt; conflicting concurrent edits,
@@ -265,6 +272,19 @@ files. Passwords and hardware secrets are never written to these dictionaries.
 Other KeePassXC preferences and broader desktop/hardware acceptance remain open.
 
 The desktop, window and welcome screen temporarily use the themed `keepassxc` icon.
+
+Encrypted vault files are monitored for external changes, including atomic
+replacements by sync clients. Asynchronous metadata polling also covers missed
+filesystem notifications. The native core checks the ciphertext against its
+current revision, so Keyslot's own saves do not cause another reload. Automatic
+reload waits for jobs, forms and file choosers to finish, and preserves the open
+database if the changed file cannot be opened. A persistent notice offers Save
+Copy when the source is unavailable or cannot be reloaded. Preferences includes
+Reload Changed Vaults; disabling it leaves a Reload action for external changes
+and preserves native stale-write checks. INI profiles share `AutoReloadOnChange`.
+Monitoring and the resulting search refresh do not count as user activity;
+inactivity locking remains effective. Lock and Quit cancel monitors and pending
+metadata requests.
 
 Database entries and groups display KeePassXC's own standard/custom icons. Their
 editors provide an icon picker with all 69 standard icons, custom-image import,

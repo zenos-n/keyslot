@@ -14,12 +14,14 @@ from . import APP_ID, ICON_NAME, VERSION
 from .backend import VaultError
 from .core_backend import Vault, EngineError
 from .session import SessionJobs
+from .file_changes import FileChanges
 from . import database_views, passkey_views, ssh_views, autotype_views, keeshare_views, appearance, url_views, history_views, totp_views, reference_views, generator_views
 
 INTERFACE = "com.neg_zero.keyslot.Vault1"
 OBJECT_PATH = "/com/neg_zero/keyslot/Vault1"
 DBUS_XML = f'''<node><interface name="{INTERFACE}">
   <method name="Show"/><method name="Lock"/><method name="Quit"/><method name="AutoType"/>
+  <method name="GetConfigurationProfile"><arg name="profile" type="s" direction="out"/></method>
   <property name="Locked" type="b" access="read"/>
   <property name="Busy" type="b" access="read"/>
   <property name="Background" type="b" access="read"/>
@@ -101,6 +103,7 @@ class VaultSession:
         self.window = None
         self.icons = appearance.IconCache(self)
         self.jobs = SessionJobs(self.vault, GLib.idle_add, self._changed, self._clear, self.error)
+        self.files = FileChanges(self)
         self.urls = url_views.UrlController(self)
         self.totp = totp_views.TotpController(self)
         self.window = DatabaseView(self)
@@ -128,11 +131,13 @@ class VaultSession:
         self.application.update_session(self)
 
     def _changed(self):
+        self.files.sync()
         if self.window:
             self.window.set_busy(self.busy)
         self.emit_state()
 
     def _clear(self):
+        self.files.stop()
         self.totp.clear()
         self.urls.clear()
         self.icons.clear()
@@ -189,6 +194,7 @@ class VaultSession:
         self.jobs.lock()
 
     def shutdown(self):
+        self.files.stop()
         self.totp.clear()
         self.urls.clear()
         self.quick_blob = None
@@ -226,6 +232,7 @@ class VaultSession:
             return
         self.dialogs.append(dialog)
         dialog.connect("closed", lambda d: self.dialogs.remove(d) if d in self.dialogs else None)
+        dialog.connect("closed", lambda *_: self.files.resume())
         dialog.present(self.host_window)
 
     def error(self, message):
@@ -291,6 +298,8 @@ class VaultSession:
                 pass
             finally:
                 self.file_requests.discard(cancellable)
+                if hasattr(self, "files"):
+                    self.files.resume()
         (chooser.select_folder if folder else chooser.save if save else chooser.open)(self.host_window, cancellable, selected)
 
     def cancel_file_requests(self):
@@ -465,7 +474,7 @@ class VaultSession:
 
     def refresh(self):
         if self.vault.unlocked:
-            self.run_job(self.vault.refresh, self.window.show_vault)
+            self.run_job(self.vault.refresh, lambda snapshot: (self.files.refreshed(), self.window.show_vault(snapshot)))
 
     def edit_entry(self, entry=None, values=None):
         if not self.vault.unlocked or self.busy:
@@ -1013,7 +1022,7 @@ class DatabaseView(Gtk.Box):
         self.refreshing_groups = False
         self.render_entries(previous, selection)
         if self.search.get_text().strip():
-            self._search_changed()
+            self._search_changed(passive=True)
         self.app.emit_state()
 
     def _select_group(self, _list, row):
@@ -1219,7 +1228,7 @@ class DatabaseView(Gtk.Box):
             return True
         return False
 
-    def _search_changed(self, *_):
+    def _search_changed(self, *_, passive=False):
         self.search_generation += 1
         generation = self.search_generation
         query = self.search.get_text()
@@ -1237,7 +1246,8 @@ class DatabaseView(Gtk.Box):
                 if generation == self.search_generation and self.snapshot:
                     self.search_matches = set(matches)
                     self.render_entries()
-            self.app.run_job(lambda: self.app.vault.search(query), received)
+            queue = self.app.jobs.run if passive else self.app.run_job
+            queue(lambda: self.app.vault.search(query), received)
             return GLib.SOURCE_REMOVE
         start()
 
