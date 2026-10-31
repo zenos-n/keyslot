@@ -43,6 +43,15 @@ External conflicts offer merge, discard/reload, copy or reviewed overwrite.
 The main menu’s **Recover Unsaved Changes…** lists recovery copies even when the
 original vault is missing or remembering vaults is disabled.
 
+Recycle-bin actions include restoring entries or groups to their original
+locations, a destination override, bulk restore, Restore All Contents and Empty
+Recycle Bin in the bin's group editor. Delete reviews the exact selection and
+all nested contents before recycling or permanently deleting; this also works
+when recycling is disabled. Delete and Shift+Delete in the entry list request
+normal deletion and explicit permanent deletion respectively. Permanent deletion
+uses upstream deletion records so a later merge can recognize removed items.
+These new workflows await manual desktop acceptance.
+
 Import source includes KeePass 1 (`.kdb`), KeePass XML, Bitwarden JSON (including
 password-protected exports), 1Password 1PUX/OPVault, and Proton Pass JSON through
 the pinned upstream readers. The GTK workflow collects source credentials

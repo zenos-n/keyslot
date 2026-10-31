@@ -287,7 +287,8 @@ class Vault:
             groups = [Group(**{k: v for k, v in item.items() if k in group_keys}) for item in value["groups"]]
             self.snapshot = Snapshot(value.get("name", ""), value.get("recycle_bin_enabled", True), groups,
                                      entries, value.get("root", ""), value.get("default_username", ""), value.get("secret_group", ""),
-                                     value.get("modified") is True, value.get("recovery_path", ""), value.get("recovery_copy") is True)
+                                     value.get("modified") is True, value.get("recovery_path", ""), value.get("recovery_copy") is True,
+                                     value.get("recycle_bin", ""))
         except (TypeError, AttributeError) as exc:
             self.lock()
             raise VaultError("The native engine returned invalid database metadata.") from exc
@@ -998,6 +999,24 @@ class Vault:
     def recycle_group(self, group):
         with self._mutex:
             return self._snapshot_call("group.recycle", group=group)
+
+    def review_trash(self, action, entries=(), groups=()):
+        with self._mutex:
+            entries = list(entries)
+            for entry in entries:
+                self._entry(entry)
+            if "trash-review" not in self.capabilities:
+                raise VaultError("Update the native engine before managing the recycle bin.")
+            return self._rpc("trash.review", action=action, entries=[entry.uuid for entry in entries], groups=list(groups))
+
+    def apply_trash(self, token, destination=""):
+        with self._mutex:
+            return self._snapshot_call("trash.apply", token=token, destination=destination)
+
+    def cancel_trash(self, token):
+        with self._mutex:
+            if self.unlocked:
+                self._rpc("trash.cancel", token=token)
 
     def delete_entry(self, entry):
         with self._mutex:

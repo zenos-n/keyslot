@@ -24,6 +24,16 @@ discard/reload, encrypted copy and reviewed overwrite. Closing and quitting
 support Save/Discard/Cancel. User acceptance of these new paths remains open;
 no further test runs are being performed.
 
+Recycle-bin workflows now include original-location entry/group restore,
+bulk entry restore, Restore All Contents, Empty Recycle Bin and explicit
+permanent deletion, including when recycling is disabled. The native helper
+binds confirmation to the exact selection and working revision, counts nested
+groups/entries, and uses upstream deletion records inside the existing encrypted
+transaction/save model. Missing original locations fall back to the root group;
+the restore review also offers an explicit destination. These additions are
+runtime-build candidates for user manual stress testing, with no new tests,
+harnesses or automated runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and

@@ -666,37 +666,21 @@ class VaultSession:
         self.present_dialog(dialog)
 
     def delete_entry(self, entry):
-        dialog = Adw.AlertDialog(heading="Move Entry to Recycle Bin?", body=entry.title)
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("delete", "Move to Recycle Bin")
-        dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
-        dialog.connect("response", lambda _d, response: self.run_job(
-            lambda: self.vault.delete_entry(entry), self.window.show_vault) if response == "delete" else None)
-        self.present_dialog(dialog)
+        from .trash_views import choose
+        choose(self, entries=[entry])
 
-    def delete_entries(self, entries):
+    def delete_entries(self, entries, permanent=False):
+        from .trash_views import choose
         entries = list(entries)
-        if self.busy or not entries or any(entry.recycled for entry in entries):
-            return
-        heading = "Move Entry to Recycle Bin?" if len(entries) == 1 else f"Move {len(entries)} Entries to Recycle Bin?"
-        names = "\n".join(entry.title for entry in entries[:10])
-        if len(entries) > 10:
-            names += f"\n…and {len(entries) - 10} more"
-        dialog = Adw.AlertDialog(heading=heading, body=names, body_use_markup=False)
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("recycle", "Move to Recycle Bin")
-        dialog.set_close_response("cancel")
-        dialog.set_response_appearance("recycle", Adw.ResponseAppearance.DESTRUCTIVE)
-        def done(snapshot):
-            self.window.set_selection_mode(False)
-            self.window.show_vault(snapshot)
-        dialog.connect("response", lambda _d, response: self.run_job(
-            lambda: self.vault.recycle_entries(entries), done) if response == "recycle" else None)
-        self.present_dialog(dialog)
+        if entries:
+            choose(self, "purge" if permanent else "delete", entries=entries, bulk=True)
 
     def move_entries(self, entries):
         entries = list(entries)
-        if entries:
+        if entries and all(entry.recycled for entry in entries):
+            from .trash_views import choose
+            choose(self, "restore", entries=entries, bulk=True)
+        elif entries and not any(entry.recycled for entry in entries):
             from .transfer_views import choose
             choose(self, entries)
 
@@ -705,26 +689,12 @@ class VaultSession:
         choose(self, source_group=group.identity)
 
     def move_entry(self, entry):
-        if not entry.recycled:
+        if entry.recycled:
+            from .trash_views import choose
+            choose(self, "restore", entries=[entry])
+        else:
             from .transfer_views import choose
             choose(self, [entry])
-            return
-        groups = [g for g in self.vault.snapshot.groups if g.addressable and not g.recycled and g.identity != entry.group]
-        if not groups:
-            self.toast("Create another group first")
-            return
-        dialog = Adw.AlertDialog(heading="Restore Entry", body="Choose a destination group.")
-        dropdown = Gtk.DropDown.new_from_strings(group_labels(groups))
-        dialog.set_extra_child(dropdown)
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("move", "Move")
-        dialog.set_response_appearance("move", Adw.ResponseAppearance.SUGGESTED)
-        def respond(_dialog, response):
-            if response == "move":
-                destination = groups[dropdown.get_selected()].identity
-                self.run_job(lambda: self.vault.move_entry(entry, destination), self.window.show_vault)
-        dialog.connect("response", respond)
-        self.present_dialog(dialog)
 
     def open_entry_url(self, entry=None, override=False):
         entry = entry or self.window.selected_entry
@@ -761,7 +731,8 @@ class VaultSession:
         parent = Adw.ComboRow(title="Parent Group", model=Gtk.StringList.new(group_labels(groups)))
         parent.set_selected(next((i for i, g in enumerate(groups) if g.identity == current.parent), 0))
         parent.set_sensitive(bool(current.parent))
-        fields.add(parent)
+        if not current.recycled:
+            fields.add(parent)
         icon, decoration = appearance.icon_row(self, current)
         fields.add(icon)
         box.append(fields)
@@ -794,7 +765,7 @@ class VaultSession:
         def submit(*_):
             buf = notes.get_buffer()
             values = (current.identity, name.get_text(), buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True),
-                      groups[parent.get_selected()].identity if current.parent else None)
+                      groups[parent.get_selected()].identity if current.parent and not current.recycled else None)
             advanced = {**decoration, "tags": tags.get_text(), "searching": searching.get_selected(),
                         "expires": expires.get_active()}
             if expires.get_active():
@@ -802,12 +773,22 @@ class VaultSession:
             self.run_job(lambda: self.vault.save_group(*values, **advanced),
                          lambda snapshot: (dialog.close(), self.window.show_vault(snapshot)))
         save.connect("clicked", submit)
-        if current.parent and not current.recycled and self.vault.snapshot.recycle_bin_enabled:
-            recycle = Gtk.Button(label="Move Group to Recycle Bin…", css_classes=["destructive-action"])
-            recycle.connect("clicked", lambda *_: (dialog.close(), self.confirm_change(
-                "Recycle Group and Its Contents?", current.name, "Move to Recycle Bin",
-                lambda: self.vault.recycle_group(current.identity))))
-            box.append(recycle)
+        from .trash_views import choose as trash
+        def trash_action(label, action, *, whole_bin=False, destructive=False):
+            control = Gtk.Button(label=label, sensitive=current.addressable)
+            if destructive:
+                control.add_css_class("destructive-action")
+            control.connect("clicked", lambda *_: (dialog.close(), trash(
+                self, action, groups=() if whole_bin else [current.identity])))
+            box.append(control)
+        if current.identity == self.vault.snapshot.recycle_bin:
+            trash_action("Restore All Contents…", "restore_all", whole_bin=True)
+            trash_action("Empty Recycle Bin…", "empty", whole_bin=True, destructive=True)
+        elif current.recycled:
+            trash_action("Restore Group…", "restore")
+            trash_action("Delete Group Permanently…", "delete", destructive=True)
+        elif current.parent:
+            trash_action("Delete Group…", "delete", destructive=True)
         toolbar.set_content(scroll(box, natural=True))
         dialog.set_child(toolbar)
         dialog.connect("closed", lambda *_: (name.set_text(""), notes.get_buffer().set_text("")))
@@ -1013,7 +994,7 @@ class DatabaseView(Gtk.Box):
         self.bulk_transfer = Gtk.Button(label="Copy or Move…", valign=Gtk.Align.CENTER)
         self.bulk_transfer.connect("clicked", lambda *_: self.app.move_entries(self.selected_entries()))
         self.selection_bar.set_center_widget(self.bulk_transfer)
-        self.bulk_recycle = button("user-trash-symbolic", "Move Selected Entries to Recycle Bin",
+        self.bulk_recycle = button("user-trash-symbolic", "Delete Selected Entries",
                                    lambda: self.app.delete_entries(self.selected_entries()))
         self.selection_bar.pack_end(self.bulk_recycle)
         list_toolbar.add_bottom_bar(self.selection_bar)
@@ -1290,8 +1271,10 @@ class DatabaseView(Gtk.Box):
         self.select_all.set_tooltip_text("Deselect All" if count == self.entry_count else "Select All")
         self.select_all.set_sensitive(self.entry_count > 0)
         eligible = bool(entries) and all(not entry.recycled for entry in entries)
-        self.bulk_transfer.set_sensitive(eligible)
-        self.bulk_recycle.set_sensitive(eligible and bool(self.snapshot and self.snapshot.recycle_bin_enabled))
+        restorable = bool(entries) and all(entry.recycled for entry in entries)
+        self.bulk_transfer.set_label("Restore…" if restorable else "Copy or Move…")
+        self.bulk_transfer.set_sensitive(eligible or restorable)
+        self.bulk_recycle.set_sensitive(bool(entries) and all(entry.addressable for entry in entries))
         row = self.entries.get_first_child()
         while row:
             if check := getattr(row, "selection_check", None):
@@ -1300,7 +1283,7 @@ class DatabaseView(Gtk.Box):
         clear(self.detail)
         noun = "Entry" if count == 1 else "Entries"
         self.detail.append(Adw.StatusPage(title=f"{count} {noun} Selected" if count else "Select Entries",
-            icon_name="edit-select-all-symbolic", description="Use the actions below the entry list to copy, move or recycle your selection."))
+            icon_name="edit-select-all-symbolic", description="Use the actions below the entry list to copy, move, restore or delete your selection."))
 
     def _entry_keys(self, _keys, keyval, _code, state):
         if keyval == Gdk.KEY_Escape and self.selection_mode:
@@ -1311,6 +1294,9 @@ class DatabaseView(Gtk.Box):
             if selected:
                 self.begin_selection(selected[0].uuid)
                 return True
+        if keyval in (Gdk.KEY_Delete, Gdk.KEY_KP_Delete):
+            self.app.delete_entries(self.selected_entries(), permanent=bool(state & Gdk.ModifierType.SHIFT_MASK))
+            return True
         if keyval in (Gdk.KEY_a, Gdk.KEY_A) and state & Gdk.ModifierType.CONTROL_MASK:
             self.set_selection_mode(True)
             if state & Gdk.ModifierType.SHIFT_MASK:
@@ -1456,12 +1442,14 @@ class DatabaseView(Gtk.Box):
         edit.connect("clicked", lambda *_: self.app.edit_entry(entry))
         move = Gtk.Button(label="Restore…" if entry.recycled else "Copy or Move…")
         move.connect("clicked", lambda *_: self.app.move_entry(entry))
-        delete = button("user-trash-symbolic", "Move to Recycle Bin", lambda: self.app.delete_entry(entry))
-        delete.set_sensitive(self.snapshot.recycle_bin_enabled)
-        for widget in (edit, move, delete):
-            widget.set_sensitive(widget.get_sensitive() and entry.addressable and not entry.recycled)
-            actions.append(widget)
+        permanent = entry.recycled or not self.snapshot.recycle_bin_enabled
+        delete = button("user-trash-symbolic", "Delete Permanently…" if permanent else "Move to Recycle Bin…",
+                        lambda: self.app.delete_entry(entry))
+        edit.set_sensitive(entry.addressable and not entry.recycled)
         move.set_sensitive(entry.addressable)
+        delete.set_sensitive(entry.addressable)
+        for widget in (edit, move, delete):
+            actions.append(widget)
         self.detail.append(actions)
         if not entry.addressable:
             self.detail.append(Gtk.Label(label="This entry has an ambiguous path. Rename it in KeePassXC to enable actions here.",

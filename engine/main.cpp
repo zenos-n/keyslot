@@ -12,6 +12,7 @@
 #include "KeyslotConfig.h"
 #include "KeyslotHistory.h"
 #include "KeyslotTotp.h"
+#include "KeyslotTrash.h"
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
 #include "core/Database.h"
@@ -330,6 +331,7 @@ class Engine {
     KeyslotSecretSessions secretSessions;
     KeyslotTransfer transfer;
     KeyslotLaunch launch;
+    KeyslotTrash trash;
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash, diskHash;
@@ -634,6 +636,7 @@ class Engine {
         const auto* exposed = secretGroup.isNull() ? nullptr : db->rootGroup()->findGroupByUuid(secretGroup);
         if (!exposed || exposed->isRecycled()) secretGroup = {};
         return {{"name", db->metadata()->name()}, {"recycle_bin_enabled", db->metadata()->recycleBinEnabled()},
+                {"recycle_bin", db->metadata()->recycleBin() ? uid(db->metadata()->recycleBin()->uuid()) : QString()},
                 {"modified", modified}, {"recovery_path", modified ? manualSnapshot : QString()},
                 {"recovery_copy", recoveryLocation(path)},
                 {"secret_group", secretGroup.isNull() ? QString() : uid(secretGroup)},
@@ -764,7 +767,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -790,7 +793,7 @@ public:
             discardManual(data);
             return true;
         }
-        if (method == "lock") { launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
+        if (method == "lock") { trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
                 if (method == "url.cancel") { launch.cancel(args); return true; }
@@ -1033,6 +1036,15 @@ public:
             return true;
         }
         requireDatabase();
+        if (method == "trash.review" || method == "trash.apply" || method == "trash.cancel") {
+            try {
+                if (method == "trash.cancel") { trash.cancel(text(args, "token")); return true; }
+                unchanged();
+                if (method == "trash.review") return trash.review(db, args, hash);
+                trash.apply(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
+                return snapshot();
+            } catch (const KeyslotTrash::Failure& error) { throw Failure{error.code, error.message}; }
+        }
         if (method == "url.prepare" || method == "url.finish" || method == "url.forget") {
             unchanged();
             try {
@@ -1641,6 +1653,8 @@ public:
             Group* parent = args.contains("parent") ? group(text(args, "parent")) : nullptr;
             const auto name = text(args, "name");
             if (!existing && !parent) fail("invalid_request", "Choose a parent group.");
+            if (existing && existing->isRecycled() && parent)
+                fail("invalid_request", "Use Restore to move a recycled group.");
             if (parent && parent->isRecycled()) fail("invalid_request", "Choose a parent outside the recycle bin.");
             if (existing == db->rootGroup() && parent) fail("invalid_request", "The root group cannot be moved.");
             for (auto* p = parent; p; p = p->parentGroup())

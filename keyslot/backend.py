@@ -92,6 +92,7 @@ class Snapshot:
     modified: bool = False
     recovery_path: str = ""
     recovery_copy: bool = False
+    recycle_bin: str = ""
 
 
 def parse_snapshot(xml: bytes) -> Snapshot:
