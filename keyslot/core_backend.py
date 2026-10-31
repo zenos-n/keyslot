@@ -1119,6 +1119,31 @@ class Vault:
                 raise VaultError("Update the native engine before managing the recycle bin.")
             return self._rpc("trash.review", action=action, entries=[entry.uuid for entry in entries], groups=list(groups))
 
+    def entry_actions_info(self):
+        with self._mutex:
+            if not self.unlocked or "entry-actions" not in self.capabilities:
+                raise VaultError("Unlock a vault with the updated native engine before using entry actions.")
+            return self._rpc("entries.actions.info")
+
+    def review_entry_action(self, entries, **options):
+        with self._mutex:
+            entries = list(entries)
+            for entry in entries:
+                self._entry(entry)
+            if "entry-actions" not in self.capabilities:
+                raise VaultError("Update the native engine before using these entry actions.")
+            return self._rpc("entries.actions.review", entries=[entry.uuid for entry in entries], **options)
+
+    def apply_entry_action(self, token):
+        with self._mutex:
+            result = self._rpc("entries.actions.apply", token=token, approved=True)
+            return self._set_snapshot(result["snapshot"]), result["created"]
+
+    def cancel_entry_action(self, token):
+        with self._mutex:
+            if self.unlocked:
+                self._rpc("entries.actions.cancel", token=token)
+
     def apply_trash(self, token, destination=""):
         with self._mutex:
             return self._snapshot_call("trash.apply", token=token, destination=destination)

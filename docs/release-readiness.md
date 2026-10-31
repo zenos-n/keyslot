@@ -111,6 +111,17 @@ without replacing existing fields. Existing attribute revision, duplicate-name,
 history and encrypted-save behavior is reused. User manual URL/reference/privacy
 and desktop acceptance remains pending; no new tests or automated runs.
 
+Entry actions now include same-group duplication through upstream Entry::clone,
+with new UUID/time information, optional stock title suffix, username/password
+references and history. Selected-entry tag and expiry actions use a single-use,
+two-minute native review bound to database identity, working revision, exact
+unique nonrecycled UUIDs and canonical choices. Review reports selected/changed
+counts and masked protected titles; no-ops do not write. Changed entries commit
+together through the existing encrypted/manual-save transaction, with upstream
+history updates. Password copying and reference creation stay in the native helper. User manual
+clone/metadata/history/save/concurrency acceptance remains pending; this batch
+has runtime compilation evidence only and no new tests or automated runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and

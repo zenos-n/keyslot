@@ -1008,6 +1008,9 @@ class DatabaseView(Gtk.Box):
         self.bulk_recycle = button("user-trash-symbolic", "Delete Selected Entries",
                                    lambda: self.app.delete_entries(self.selected_entries()))
         self.selection_bar.pack_end(self.bulk_recycle)
+        from . import entry_actions
+        self.bulk_more = entry_actions.selection_menu(self.app, self.selected_entries)
+        self.selection_bar.pack_end(self.bulk_more)
         list_toolbar.add_bottom_bar(self.selection_bar)
         self.inner.set_sidebar(Adw.NavigationPage(title="Entries", child=list_toolbar))
         detail_toolbar = Adw.ToolbarView()
@@ -1300,6 +1303,7 @@ class DatabaseView(Gtk.Box):
         self.bulk_transfer.set_label("Restore…" if restorable else "Copy or Move…")
         self.bulk_transfer.set_sensitive(eligible or restorable)
         self.bulk_recycle.set_sensitive(bool(entries) and all(entry.addressable for entry in entries))
+        self.bulk_more.set_sensitive(eligible and all(entry.addressable for entry in entries))
         row = self.entries.get_first_child()
         while row:
             if check := getattr(row, "selection_check", None):
@@ -1308,7 +1312,7 @@ class DatabaseView(Gtk.Box):
         clear(self.detail)
         noun = "Entry" if count == 1 else "Entries"
         self.detail.append(Adw.StatusPage(title=f"{count} {noun} Selected" if count else "Select Entries",
-            icon_name="edit-select-all-symbolic", description="Use the actions below the entry list to copy, move, restore or delete your selection."))
+            icon_name="edit-select-all-symbolic", description="Use the actions below the entry list to copy, move, restore, delete or edit tags and expiry."))
 
     def _entry_keys(self, _keys, keyval, _code, state):
         if keyval == Gdk.KEY_Escape and self.selection_mode:
@@ -1456,6 +1460,10 @@ class DatabaseView(Gtk.Box):
             history.connect("clicked", lambda *_: self.app.show_history(entry))
             self.detail.append(history)
         actions = Gtk.Box(spacing=12, homogeneous=True)
+        from . import entry_actions
+        duplicate = Gtk.Button(label="Duplicate Entry…", sensitive=entry.addressable and not entry.recycled)
+        duplicate.connect("clicked", lambda *_: entry_actions.choose(self.app, [entry], "duplicate"))
+        self.detail.append(duplicate)
         edit = Gtk.Button(label="Edit Entry", css_classes=["suggested-action"])
         edit.connect("clicked", lambda *_: self.app.edit_entry(entry))
         move = Gtk.Button(label="Restore…" if entry.recycled else "Copy or Move…")

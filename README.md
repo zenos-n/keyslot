@@ -391,6 +391,17 @@ enrollment of the linked credential remains unfinished and currently requires
 explicit enrollment through Preferences. **Minimize After Opening Links** hides
 the origin window when background mode is enabled, otherwise requests minimization.
 
+## Entry actions
+
+Duplicate Entry creates a new UUID in the same group, with options for the stock
+title suffix, username/password references and copying history. Attachments,
+icons, passkeys, one-time password setup and custom settings are retained.
+Selection mode’s additional actions add or remove one tag across selected entries
+and set expiry to now, Never or a reviewed timestamp. The native review fixes the
+selection and choices before confirmation; changed vaults or expired reviews are
+refused. Changed entries save together through the existing encrypted transaction
+and history model, and no-op tag/expiry changes avoid another save.
+
 ## Startup preferences
 
 Preferences → Startup offers **Remember Last Opened Vault** and **Unlock at Login**.

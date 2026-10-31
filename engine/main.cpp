@@ -13,6 +13,7 @@
 #include "KeyslotHistory.h"
 #include "KeyslotTotp.h"
 #include "KeyslotTrash.h"
+#include "KeyslotEntryActions.h"
 #include "KeyslotReports.h"
 #include "KeyslotIcons.h"
 #include "KeyslotNetwork.h"
@@ -335,6 +336,7 @@ class Engine {
     KeyslotTransfer transfer;
     KeyslotLaunch launch;
     KeyslotTrash trash;
+    KeyslotEntryActions entryActions;
     KeyslotReports reports;
     KeyslotIcons iconTools;
     QSharedPointer<Database> db;
@@ -783,7 +785,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1071,6 +1073,20 @@ public:
                 {"redirect", result.redirect.toString(QUrl::FullyEncoded)}, {"failed", !result.error.isEmpty()}};
         }
         requireDatabase();
+        if (method.startsWith("entries.actions.")) {
+            try {
+                if (method == "entries.actions.cancel") { entryActions.cancel(text(args, "token")); return true; }
+                unchanged();
+                if (method == "entries.actions.info") return QJsonObject{{"tags", QJsonArray::fromStringList(db->tagList())}};
+                if (method == "entries.actions.review") return entryActions.review(db, args, hash);
+                if (method == "entries.actions.apply") {
+                    const auto created = entryActions.apply(db, args, hash,
+                        [this](const std::function<void()>& change) { transaction(change); });
+                    return QJsonObject{{"created", created}, {"snapshot", snapshot()}};
+                }
+            } catch (const KeyslotEntryActions::Failure& error) { throw Failure{error.code, error.message}; }
+            fail("unsupported", "This entry action is not supported.");
+        }
         if (method.startsWith("icons.favicon.") || method.startsWith("icons.unused.")) {
             try {
                 if (method == "icons.favicon.cancel" || method == "icons.unused.cancel") { iconTools.cancel(text(args, "token")); return true; }
