@@ -295,6 +295,11 @@ and excluded characters, look-alike exclusion and a require-each-group option.
 It supports up to 999 characters or 100 passphrase words, word-case/separator
 controls, installed and custom UTF-8/Diceware lists, and upstream strength and
 entropy estimates. Small custom lists remain usable with the upstream warning.
+Manage Word Lists imports a persistent copy beside the selected KeePassXC
+configuration, so stock KeePassXC can use the same library. Duplicate names get
+separate copies. Removal asks for confirmation and rejects changed files; the
+original imported file is kept. Installed lists remain read-only. Imports use
+the upstream parser and reject empty lists, with a warning below 1296 words.
 Settings are remembered in a private `keyslot/generator.json`; generated results
 are never saved there. Editing a result recalculates its password strength.
 The package also supplies a `keepassxc` launcher for the GTK application, alongside

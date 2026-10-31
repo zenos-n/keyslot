@@ -783,7 +783,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -970,6 +970,18 @@ public:
             QJsonArray lists;
             for (const auto& name : QDir(resources()->wordlistPath("")).entryList(QDir::Files)) lists.append(name);
             return QJsonObject{{"wordlists", lists}, {"default_wordlist", PassphraseGenerator::DefaultWordList}};
+        }
+        if (method == "generator.wordlist.inspect") {
+            const auto path = text(args, "path");
+            if (path.contains(QChar('\0')) || !QFileInfo(path).isAbsolute() || !QFileInfo(path).isFile())
+                fail("file_error", "Choose a regular word-list file.");
+            PassphraseGenerator generator;
+            generator.setWordCount(1);
+            generator.setWordList(path);
+            if (generator.generatePassphrase().isEmpty())
+                fail("file_error", "This file contains no usable passphrase words.");
+            return QJsonObject{{"wordlist_valid", generator.isWordListValid()},
+                               {"entropy", generator.estimateEntropy(1)}};
         }
         if (method == "password.health") {
             const auto value = text(args, "value");

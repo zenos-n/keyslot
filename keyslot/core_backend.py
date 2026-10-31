@@ -1303,6 +1303,15 @@ class Vault:
                 raise VaultError("Update the native engine before using the extended password generator.")
             return self._rpc("generator.info")
 
+    def inspect_wordlist(self, path):
+        with self._mutex:
+            if self._process is None or self._process.poll() is not None:
+                self._stop()
+                self._start()
+            if "wordlist-library" not in self.capabilities:
+                raise VaultError("Update the native engine before importing word lists.")
+            return self._rpc("generator.wordlist.inspect", path=path)
+
     def password_health(self, value):
         with self._mutex:
             if self._process is None or self._process.poll() is not None:

@@ -10,6 +10,7 @@ from gi.repository import Adw, GLib, Gtk
 from .startup import _write
 from .core_backend import EngineError
 from .backend import VaultError
+from .wordlists import WordLists, WordListError
 
 
 DEFAULTS = dict(length=24, word_count=6, passphrase=False, lowercase=True, uppercase=True,
@@ -49,6 +50,7 @@ def show(session, on_apply=None):
         return
     path = session.application.startup.directory / "keyslot" / "generator.json"
     storage = getattr(session.application.startup, "storage", None)
+    library = WordLists(session.application.startup)
     try:
         saved = storage.read_generator() if storage else _load(path)
     except (OSError, ValueError, VaultError) as exc:
@@ -56,7 +58,7 @@ def show(session, on_apply=None):
         return
     state = {"revision": 0, "closed": False, "applied": False, "setting_output": False,
              "health_revision": 0, "health_timer": 0, "mode": saved["passphrase"], "saved": saved,
-             "length": saved["length"], "word_count": saved["word_count"], "lists": [],
+             "length": saved["length"], "word_count": saved["word_count"], "lists": [], "library": [], "system": [],
              "custom": saved["wordlist"] if Path(saved["wordlist"]).is_absolute() else ""}
     dialog = Adw.Dialog(title="Password Generator", content_width=440)
     toolbar = Adw.ToolbarView()
@@ -95,9 +97,12 @@ def show(session, on_apply=None):
     wordlist = Adw.ComboRow(title="Word List", sensitive=False)
     custom = Adw.ActionRow(title="Custom Word List", subtitle=Path(state["custom"]).name or "None selected",
                           subtitle_lines=1, use_markup=False, visible=bool(state["custom"]))
-    phrase.set_description("Choose a UTF-8 or Diceware word list. The selected file is remembered.")
+    phrase.set_description("Choose a UTF-8 or Diceware word list. Import a copy into your library or use a file directly.")
     for row in (word_case, separator, wordlist, custom):
         phrase.add(row)
+    manage = Adw.ActionRow(title="Manage Word Lists…", subtitle="Import or remove custom lists", activatable=True)
+    manage.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+    phrase.add(manage)
     box.append(phrase)
     characters = Adw.PreferencesGroup(title="Characters", visible=not saved["passphrase"])
     rows = {}
@@ -223,7 +228,7 @@ def show(session, on_apply=None):
         state["custom"] = value
         custom.set_subtitle(Path(value).name if value else "None selected")
         if value:
-            wordlist.set_selected(len(state["lists"]))
+            wordlist.set_selected(state["lists"].index(value) if value in state["lists"] else len(state["lists"]))
         else:
             wordlist.set_selected(next((i for i, name in enumerate(state["lists"]) if name == "eff_large.wordlist"), 0))
         invalidate()
@@ -233,6 +238,152 @@ def show(session, on_apply=None):
         custom.set_visible(wordlist.get_selected() == len(state["lists"]))
         invalidate()
     wordlist.connect("notify::selected", list_changed)
+
+    def chosen_list():
+        index = wordlist.get_selected()
+        return state["lists"][index] if index < len(state["lists"]) else state["custom"]
+
+    def update_lists(entries, selected=None):
+        selected = chosen_list() if selected is None else selected
+        state["library"] = entries
+        state["lists"] = state["system"] + [item["path"] for item in entries]
+        if Path(selected).is_absolute() and Path(selected).parent == library.directory and selected not in state["lists"]:
+            selected = "eff_large.wordlist"
+            state["custom"] = ""
+            custom.set_subtitle("None selected")
+        labels = [f"{name} (Installed)" for name in state["system"]] + [item["name"] for item in entries]
+        wordlist.set_model(Gtk.StringList.new(labels + ["Custom…"]))
+        wordlist.set_selected(state["lists"].index(selected) if selected in state["lists"] else len(state["lists"]))
+        custom.set_visible(wordlist.get_selected() == len(state["lists"]))
+        invalidate()
+
+    def manage_lists(*_):
+        if state["closed"] or session.busy:
+            return
+        from .application import scroll
+        view = Adw.Dialog(title="Word Lists", content_width=440, content_height=460)
+        tools = Adw.ToolbarView()
+        top = Adw.HeaderBar()
+        add = Gtk.Button(label="Import…", css_classes=["suggested-action"])
+        top.pack_end(add)
+        tools.add_top_bar(top)
+        content = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 18)
+        description = Gtk.Label(label="Imported lists are copied into this configuration's library. Removing a copy leaves the original file untouched.",
+                                xalign=0, wrap=True, css_classes=["dim-label"])
+        content.append(description)
+        notice = Gtk.Label(xalign=0, wrap=True, visible=False)
+        content.append(notice)
+        entries_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        content.append(entries_box)
+        tools.set_content(scroll(content, natural=True))
+        view.set_child(tools)
+        opened = {"alive": True, "working": False}
+
+        def render(entries):
+            while child := entries_box.get_first_child():
+                entries_box.remove(child)
+            group = Adw.PreferencesGroup(title="Custom Word Lists")
+            entries_box.append(group)
+            if not entries:
+                group.add(Adw.ActionRow(title="No custom word lists", subtitle="Installed word lists remain available in the generator."))
+            for item in entries:
+                row = Adw.ActionRow(title=item["name"], use_markup=False, subtitle=item["path"], subtitle_lines=1)
+                row.add_suffix(button("user-trash-symbolic", "Remove Word List", lambda item=item: remove(item)))
+                group.add(row)
+
+        def failed(message):
+            opened["working"] = False
+            if opened["alive"]:
+                add.set_sensitive(True)
+                entries_box.set_sensitive(True)
+                notice.set_label(message)
+                notice.add_css_class("error")
+                notice.set_visible(True)
+
+        def run(operation, done):
+            if not opened["alive"] or opened["working"] or state["closed"]:
+                return
+            opened["working"] = True
+            add.set_sensitive(False)
+            entries_box.set_sensitive(False)
+            notice.set_visible(False)
+            def finished(result):
+                opened["working"] = False
+                if opened["alive"] and not state["closed"]:
+                    add.set_sensitive(True)
+                    entries_box.set_sensitive(True)
+                    if "error" in result:
+                        failed(result["error"])
+                    else:
+                        done(result["value"])
+            def perform():
+                try:
+                    return {"value": operation()}
+                except EngineError as exc:
+                    if exc.code not in {"invalid_request", "file_error"}:
+                        raise
+                    return {"error": str(exc)}
+                except (WordListError, OSError, ValueError) as exc:
+                    return {"error": str(exc)}
+            if not session.run_job(perform, finished, failed):
+                failed("Wait for the current operation, then try again.")
+
+        def imported(result):
+            update_lists(result["entries"], result["path"])
+            render(result["entries"])
+            notice.remove_css_class("error")
+            notice.set_label("Word list imported." if result["wordlist_valid"] else
+                             "Imported. This list has fewer than 1296 distinct words; use a longer passphrase or a larger list.")
+            notice.set_visible(True)
+
+        def import_file(path):
+            epoch = session.epoch
+            def alive():
+                return opened["alive"] and not state["closed"] and not session.jobs.closed and session.epoch == epoch
+            def operation():
+                result = library.add(path, session.vault.inspect_wordlist, alive)
+                return {**result, "entries": library.entries()}
+            if alive():
+                run(operation, imported)
+        add.connect("clicked", lambda *_: session.choose_file(import_file))
+
+        def remove(item):
+            if opened["working"]:
+                return
+            alert = Adw.AlertDialog(heading="Remove Word List?", body=f'Remove “{item["name"]}” from this library? The original imported file is kept.')
+            alert.add_response("cancel", "Cancel")
+            alert.add_response("remove", "Remove")
+            alert.set_close_response("cancel")
+            alert.set_default_response("cancel")
+            alert.set_response_appearance("remove", Adw.ResponseAppearance.DESTRUCTIVE)
+            def response(_alert, answer):
+                if answer != "remove" or not opened["alive"]:
+                    return
+                def operation():
+                    library.remove(item)
+                    return library.entries()
+                def removed(entries):
+                    selected = chosen_list()
+                    if selected == item["path"]:
+                        selected = "eff_large.wordlist"
+                    if state["custom"] == item["path"]:
+                        state["custom"] = ""
+                        custom.set_subtitle("None selected")
+                    update_lists(entries, selected)
+                    render(entries)
+                run(operation, removed)
+            alert.connect("response", response)
+            session.present_dialog(alert)
+        render(state["library"])
+        view.connect("closed", lambda *_: opened.update(alive=False))
+        session.present_dialog(view)
+        def refreshed(entries):
+            if entries != state["library"]:
+                update_lists(entries)
+            render(entries)
+        run(library.entries, refreshed)
+
+    manage.connect("activated", manage_lists)
 
     def settings():
         state["word_count" if words.get_active() else "length"] = int(length.get_value())
@@ -305,15 +456,16 @@ def show(session, on_apply=None):
     def catalogue(data):
         if state["closed"]:
             return
-        state["lists"] = data["wordlists"]
-        model = Gtk.StringList.new(state["lists"] + ["Custom…"])
-        wordlist.set_model(model)
-        wordlist.set_selected(state["lists"].index(saved["wordlist"]) if saved["wordlist"] in state["lists"] else len(state["lists"]))
+        state["system"] = data["wordlists"]
+        update_lists(data["user_wordlists"], saved["wordlist"])
         wordlist.set_sensitive(True)
+        manage.set_sensitive("wordlist-library" in session.vault.capabilities)
         generate.set_sensitive(True)
         request(initial=True)
+    def load_catalogue():
+        return {**session.vault.generator_info(), "user_wordlists": library.entries()}
     if on_apply:
-        session.jobs.run(session.vault.generator_info, catalogue, interactive=False)
+        session.jobs.run(load_catalogue, catalogue, interactive=False)
     else:
-        session.run_job(session.vault.generator_info, catalogue)
+        session.run_job(load_catalogue, catalogue)
     return dialog

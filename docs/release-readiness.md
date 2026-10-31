@@ -6,6 +6,15 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+The generator now manages a persistent custom word-list library beside the
+selected KeePassXC configuration, using its existing wordlists directory.
+Import copies the selected regular file through private staging, validates it
+with the upstream parser, and publishes without overwriting existing names.
+Empty lists are rejected and small lists retain the upstream warning. Removal
+requires confirmation and an unchanged regular file; original sources and
+installed lists are preserved. UI and file/parser acceptance remain with the
+user; this batch has runtime compilation only and no new tests or automated runs.
+
 The saving model keeps the saved-file revision separate from the current working
 revision. Manual edits create private encrypted checkpoints with atomic journals
 and owner locks. Explicit Save commits them; forced security locks erase the
