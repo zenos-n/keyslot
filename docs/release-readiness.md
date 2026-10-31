@@ -71,6 +71,20 @@ largest supported frame. HIBP now shares the bounded transport while retaining
 its fixed HTTPS/padded-range policy. New GUI/network/image/cleanup acceptance is
 pending, with runtime compilation only and no new tests or automated runs.
 
+Authenticated browser new-login saves now honor boolean/string downloadFavicon
+requests through an explicit switch in the existing GTK consent dialog. The
+legacy save RPC still returns a boolean; an additive result RPC identifies the
+exact new native entry for optional queued icon work. Browser response and
+credentials complete before network activity, with nonfatal icon failure. The
+target remains bound to database identity, UUID, website and original icon;
+unrelated in-vault saves may continue, while target changes/deletion/reload
+prevent attachment. Assignment waits for modal editors, manual downloads take
+priority, and lock/close/integration disable cancels queued/active work without
+extending idle time. Existing-entry updates retain upstream icon behavior. Picker
+utilities now precede the catalogue. Native/runtime compilation is the current
+evidence; browser/network/desktop acceptance remains user-owned, with no new
+tests, harnesses or automated behavior runs.
+
 ## Verified checkpoint
 
 The [2.8 security backports](../engine/SecurityBackports.md) and

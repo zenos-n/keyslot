@@ -35,9 +35,14 @@ private:
     QSet<QString> m_visited;
     QByteArray m_png;
     QString m_name;
+    QUuid m_entry;
+    QString m_entryUrl;
+    QUuid m_entryIcon;
+    int m_entryStandardIcon = 0;
     QElapsedTimer m_clock;
     int m_timeout = 10000, m_tried = 0;
     bool m_waiting = false;
     static void require(const Ticket& ticket, const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision);
+    void requireDownload(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) const;
     QJsonObject progress() const;
 };

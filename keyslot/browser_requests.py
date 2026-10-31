@@ -362,6 +362,14 @@ class BrowserRequests:
         if any(not isinstance(value, str) for value in fields.values()):
             self._finish(request, error=12)
             return
+        favicon = body.get("downloadFavicon", False)
+        if type(favicon) is bool:
+            favicon_requested = favicon
+        elif isinstance(favicon, str) and favicon in ("", "true", "false"):
+            favicon_requested = favicon == "true"
+        else:
+            self._finish(request, error=12)
+            return
         vault = request.session.vault
 
         def ready(value):
@@ -370,24 +378,45 @@ class BrowserRequests:
             fields.clear()
             body.pop("password", None)
 
-            def saved(changed):
+            review["favicon_requested"] = favicon_requested and not review["update"]
+
+            def saved(outcome, icon_options=None):
+                changed = outcome["changed"]
                 if changed:
                     self.ui.saved(request.session)
                 self._finish(request, {"hash": info["hash"], "count": None, "entries": None,
                                        "error": "success" if changed else "error"})
+                if changed and outcome.get("entry") and icon_options is not None:
+                    try:
+                        self.ui.favicon_saved(request.session, outcome["entry"], icon_options)
+                    except Exception:
+                        request.session.toast("Login saved; its website icon could not be started")
+
+            def legacy_save(approved=False, group=""):
+                return {"changed": vault.browser_save(review["token"], approved=approved, group=group), "entry": ""}
 
             def chosen(choice):
                 if choice is None:
-                    self._job(request, lambda: vault.browser_save(review["token"]), saved)
+                    self._job(request, legacy_save, saved)
                     return
-                if not isinstance(choice, dict) or not isinstance(choice.get("group"), str):
+                if not isinstance(choice, dict) or not isinstance(choice.get("group"), str) or type(choice.get("favicon", False)) is not bool:
+                    self._finish(request, error=6)
+                    return
+                icon_options = choice.get("icon_options") if review["favicon_requested"] and choice.get("favicon") else None
+                if icon_options is not None and (not isinstance(icon_options, dict) or set(icon_options) != {"timeout", "fallback"}
+                    or type(icon_options["timeout"]) is not int or not 1 <= icon_options["timeout"] <= 300
+                    or type(icon_options["fallback"]) is not bool):
                     self._finish(request, error=6)
                     return
                 request.session.touch()
-                self._job(request, lambda: vault.browser_save(review["token"], approved=True, group=choice["group"]), saved)
+                if icon_options is not None:
+                    self._job(request, lambda: vault.browser_save_details(review["token"], approved=True, group=choice["group"]),
+                              lambda outcome: saved(outcome, icon_options))
+                else:
+                    self._job(request, lambda: legacy_save(True, choice["group"]), saved)
 
             if not review["changed"]:
-                self._job(request, lambda: vault.browser_save(review["token"]), saved)
+                self._job(request, legacy_save, saved)
             else:
                 self._prompt(request, self.ui.save_login, review, chosen)
         self._job(request, lambda: (vault.browser_info(), vault.browser_prepare_save(

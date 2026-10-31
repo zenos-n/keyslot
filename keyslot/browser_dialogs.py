@@ -311,6 +311,19 @@ class BrowserDialogs:
         session.window.show_vault(session.vault.snapshot)
         session.toast("Login saved")
 
+    def favicon_saved(self, session, entry, options):
+        epoch, identity = session.epoch, session.vault.identity
+        def start():
+            if (not session.jobs.closed and session.vault.unlocked and session.epoch == epoch
+                    and session.vault.identity is identity and self.app.startup.browser):
+                from .icon_views import BrowserFavicon
+                try:
+                    BrowserFavicon(session, entry, dict(options))
+                except Exception:
+                    session.toast("Login saved; its website icon could not be started")
+            return False
+        GLib.idle_add(start)
+
     def group_created(self, session):
         session.window.show_vault(session.vault.snapshot)
         session.toast("Group created")
@@ -359,6 +372,24 @@ class BrowserDialogs:
         entry.add(Adw.ActionRow(title="Username", subtitle=data["username"] or "None", use_markup=False))
         entry.add(Adw.ActionRow(title="Password", subtitle="The browser supplied a password", use_markup=False))
         box.append(entry)
+        favicon = None
+        icon_options = None
+        if data.get("favicon_requested") and not updating:
+            available = {"browser-save-result", "favicon-entry"} <= session.vault.capabilities
+            reason = "Update the native helper to enable website icons."
+            if available:
+                try:
+                    storage = getattr(session.application.startup, "storage", None)
+                    icon_options = storage.read_icon_options() if storage else {"timeout": 10, "fallback": False}
+                except (OSError, ValueError, VaultError) as error:
+                    available, reason = False, str(error)
+            subtitle = ("Contact this website and its parent domain without login credentials or cookies."
+                        + (" Also use DuckDuckGo's icon service." if icon_options and icon_options["fallback"] else "")) if available else reason
+            favicon = Adw.SwitchRow(title="Download Website Icon", subtitle=subtitle, subtitle_lines=3,
+                                    active=available, sensitive=available)
+            icons = Adw.PreferencesGroup(description="The browser requested an icon. The login is saved before the download starts.")
+            icons.add(favicon)
+            box.append(icons)
         group_ids = [""] + [item["uuid"] for item in data["groups"]]
         if not updating:
             choices = Gtk.StringList.new(["KeePassXC-Browser Passwords (Default)"] + [item["name"] for item in data["groups"]])
@@ -380,7 +411,8 @@ class BrowserDialogs:
                 return
             save.set_sensitive(False)
             cancel.set_sensitive(False)
-            choose({"group": "" if updating else group_ids[group.get_selected()]})
+            choose({"group": "" if updating else group_ids[group.get_selected()],
+                    "favicon": bool(favicon and favicon.get_active()), "icon_options": icon_options})
         save.connect("clicked", submit)
         cancel.connect("clicked", lambda *_: choose(None))
         return dismiss

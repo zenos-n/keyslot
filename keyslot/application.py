@@ -143,6 +143,7 @@ class VaultSession:
         self.files.stop()
         self.totp.clear()
         self.urls.clear()
+        self.icons.cancel_downloads()
         self.icons.clear()
         if self.credential_request:
             self.credential_request.cancel()

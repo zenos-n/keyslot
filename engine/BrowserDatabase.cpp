@@ -215,7 +215,8 @@ QJsonObject KeyslotBrowserDatabase::prepareSave(const QSharedPointer<Database>& 
 }
 
 bool KeyslotBrowserDatabase::save(const QSharedPointer<Database>& db, const QJsonObject& args,
-        const QByteArray& fingerprint, const std::function<void(const std::function<void()>&)>& commit) {
+        const QByteArray& fingerprint, const std::function<void(const std::function<void()>&)>& commit, QString* savedEntry) {
+    if (savedEntry) savedEntry->clear();
     const auto token = text(args, "token", true);
     if (!saves.contains(token)) reject("expired", "The browser save confirmation is no longer valid.");
     const auto request = saves.take(token);
@@ -236,6 +237,8 @@ bool KeyslotBrowserDatabase::save(const QSharedPointer<Database>& db, const QJso
             entry->setPassword(request.password);
             entry->endUpdate();
         } else {
+            QSet<const Entry*> previous;
+            if (savedEntry) for (const auto* item : db->rootGroup()->entriesRecursive()) previous.insert(item);
             EntryParameters parameters{};
             parameters.dbid = request.id;
             parameters.login = request.login;
@@ -243,8 +246,16 @@ bool KeyslotBrowserDatabase::save(const QSharedPointer<Database>& db, const QJso
             parameters.siteUrl = request.site;
             parameters.formUrl = request.form;
             service.addEntry(parameters, group, group, false, db);
+            if (savedEntry) {
+                for (auto* item : db->rootGroup()->entriesRecursive()) if (!previous.contains(item)) {
+                    if (entry) reject("conflict", "The new browser entry could not be identified unambiguously.");
+                    entry = item;
+                }
+                if (!entry) reject("not_found", "The new browser entry could not be identified.");
+            }
         }
     });
+    if (savedEntry) *savedEntry = entry->uuid().toString(QUuid::WithoutBraces);
     return true;
 }
 

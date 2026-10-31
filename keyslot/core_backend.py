@@ -797,6 +797,15 @@ class Vault:
                 self._snapshot_call("snapshot")
             return changed
 
+    def browser_save_details(self, token, approved=False, group=""):
+        with self._mutex:
+            if "browser-save-result" not in self.capabilities:
+                raise VaultError("Update the native engine before using browser-requested icons.")
+            result = self._rpc("browser.save.details", token=token, approved=approved, group=group)
+            if result["changed"]:
+                self._snapshot_call("snapshot")
+            return result
+
     def browser_lookup(self, identifier, key, url, submit_url="", **options):
         with self._mutex:
             return self._rpc("browser.lookup", id=identifier, key=key, url=url, submit_url=submit_url, **options)
@@ -1026,11 +1035,16 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("icons.unused.remove", token=token)
 
-    def prepare_favicon(self, url, fallback=False, path=False, timeout=10):
+    def prepare_favicon(self, url, fallback=False, path=False, timeout=10, entry=""):
         with self._mutex:
             if "favicon" not in self.capabilities:
                 raise VaultError("Update the native engine before downloading website icons.")
-            return self._rpc("icons.favicon.prepare", url=url, fallback=fallback, path=path, timeout=timeout)
+            if entry and "favicon-entry" not in self.capabilities:
+                raise VaultError("Update the native engine before assigning downloaded entry icons.")
+            parameters = dict(url=url, fallback=fallback, path=path, timeout=timeout)
+            if entry:
+                parameters["entry"] = entry
+            return self._rpc("icons.favicon.prepare", **parameters)
 
     def step_favicon(self, token, network):
         import base64

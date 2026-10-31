@@ -28,11 +28,28 @@ QSet<QUuid> used(Database* db) {
     for (const auto* group : db->rootGroup()->groupsRecursive(true)) result.insert(group->iconUuid());
     return result;
 }
+Entry* target(Database* db, const QUuid& id) {
+    Entry* result = nullptr;
+    for (auto* entry : db->rootGroup()->entriesRecursive()) if (entry->uuid() == id) {
+        if (result) fail("conflict", "The website icon target is ambiguous.");
+        result = entry;
+    }
+    if (!result || result->isRecycled()) fail("not_found", "The website icon entry is no longer available.");
+    return result;
+}
 }
 
 void KeyslotIcons::require(const Ticket& ticket, const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
     if (ticket.token.isEmpty() || text(args, "token") != ticket.token || ticket.database.toStrongRef() != db || ticket.revision != revision)
         fail("conflict", "The database changed or this icon review ended. Start again.");
+}
+void KeyslotIcons::requireDownload(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) const {
+    require(m_download, db, args, m_entry.isNull() ? revision : m_download.revision);
+    if (!m_entry.isNull()) {
+        const auto* entry = target(db.data(), m_entry);
+        if (entry->url() != m_entryUrl || entry->iconUuid() != m_entryIcon || entry->iconNumber() != m_entryStandardIcon)
+            fail("conflict", "The entry website or icon changed. Its current icon was kept.");
+    }
 }
 QJsonObject KeyslotIcons::reviewUnused(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
     m_unused = {}; m_remove.clear(); m_keep.clear();
@@ -62,7 +79,13 @@ void KeyslotIcons::removeUnused(const QSharedPointer<Database>& db, const QJsonO
 }
 QJsonObject KeyslotIcons::prepare(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
     cancel(m_download.token);
-    const auto raw = text(args, "url").trimmed();
+    if (args.contains("entry")) {
+        m_entry = QUuid(text(args, "entry"));
+        if (m_entry.isNull()) fail("invalid_request", "Choose a valid website icon entry.");
+        const auto* entry = target(db.data(), m_entry);
+        m_entryUrl = entry->url(); m_entryIcon = entry->iconUuid(); m_entryStandardIcon = entry->iconNumber();
+    }
+    const auto raw = (m_entry.isNull() ? text(args, "url") : target(db.data(), m_entry)->url()).trimmed();
     if (raw.isEmpty() || raw.size() > 32767 || raw.contains(QChar('\0')) || raw.contains('{') || raw.contains('}'))
         fail("invalid_request", "Enter a website address without unresolved field placeholders.");
     auto url = QUrl::fromUserInput(raw);
@@ -103,7 +126,7 @@ QJsonObject KeyslotIcons::progress() const {
     return result;
 }
 QJsonObject KeyslotIcons::step(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
-    require(m_download, db, args, revision);
+    requireDownload(db, args, revision);
     if (!m_png.isEmpty()) return progress();
     if (!flag(args, "approved")) fail("denied", "Review and approve the website icon download first.");
     if (m_waiting) fail("invalid_request", "Finish decoding the current icon before downloading another.");
@@ -121,7 +144,7 @@ QJsonObject KeyslotIcons::step(const QSharedPointer<Database>& db, const QJsonOb
     return result;
 }
 QJsonObject KeyslotIcons::accept(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision, const Normalize& normalize) {
-    require(m_download, db, args, revision);
+    requireDownload(db, args, revision);
     if (!m_waiting || text(args, "request") != m_request) fail("conflict", "This icon download reply is no longer expected.");
     const auto candidate = m_current;
     m_waiting = false; m_request.clear();
@@ -149,13 +172,18 @@ QJsonObject KeyslotIcons::accept(const QSharedPointer<Database>& db, const QJson
     return progress();
 }
 QString KeyslotIcons::finish(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision, const Commit& commit) {
-    require(m_download, db, args, revision);
+    requireDownload(db, args, revision);
     if (m_png.isEmpty()) fail("invalid_request", "Download and preview an icon before adding it.");
     const auto png = m_png, name = m_name.toUtf8();
+    auto* entry = m_entry.isNull() ? nullptr : target(db.data(), m_entry);
     auto id = db->metadata()->findCustomIcon(png);
-    if (id.isNull()) {
-        id = QUuid::createUuid();
-        commit([&] { db->metadata()->addCustomIcon(id, png, QString::fromUtf8(name), Clock::currentDateTimeUtc()); });
+    const bool add = id.isNull();
+    if (add) id = QUuid::createUuid();
+    if (add || entry) {
+        commit([&] {
+            if (add) db->metadata()->addCustomIcon(id, png, QString::fromUtf8(name), Clock::currentDateTimeUtc());
+            if (entry) entry->setIcon(id);
+        });
     }
     cancel(m_download.token);
     return uid(id);
@@ -164,7 +192,8 @@ void KeyslotIcons::cancel(const QString& token) {
     if (token == m_unused.token) { m_unused = {}; m_remove.clear(); m_keep.clear(); }
     if (token == m_download.token) {
         m_download = {}; m_candidates.clear(); m_visited.clear(); m_png.clear(); m_name.clear();
-        m_clock.invalidate(); m_tried = 0; m_waiting = false; m_request.clear(); m_current = {};
+        m_clock.invalidate(); m_tried = 0; m_waiting = false; m_request.clear(); m_current = {}; m_entry = {};
+        m_entryUrl.clear(); m_entryIcon = {}; m_entryStandardIcon = 0;
     }
 }
 void KeyslotIcons::clear() { cancel(m_unused.token); cancel(m_download.token); }

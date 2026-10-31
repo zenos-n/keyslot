@@ -76,7 +76,7 @@ public:
                        const std::function<void(const std::function<void()>&)>& commit);
     QJsonObject prepareSave(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint);
     bool save(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint,
-              const std::function<void(const std::function<void()>&)>& commit);
+              const std::function<void(const std::function<void()>&)>& commit, QString* savedEntry = nullptr);
     QString totp(const QSharedPointer<Database>& db, const QJsonObject& args);
     QJsonObject databaseGroups(const QSharedPointer<Database>& db, const QJsonObject& args);
     QJsonObject prepareGroup(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint);

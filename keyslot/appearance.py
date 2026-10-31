@@ -14,6 +14,8 @@ class IconCache:
         self.owner = session.vault.identity
         self.cache, self.pending = {}, {}
         self.drafts = {}
+        self.downloads = []
+        self.manual_downloads = set()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vault-icons")
 
     def clear(self):
@@ -23,9 +25,14 @@ class IconCache:
 
     def close(self):
         self.clear()
+        self.cancel_downloads()
         self.drafts.clear()
         self.closed = True
         self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def cancel_downloads(self):
+        for operation in list(self.downloads) + list(self.manual_downloads):
+            operation.close()
 
     def image(self, item, size=32):
         image = Gtk.Image(icon_name="image-missing-symbolic", pixel_size=size,
@@ -159,7 +166,6 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
     from . import icon_views
     download = Gtk.Button(label="Download Website Icon…", valign=Gtk.Align.CENTER)
     download.connect("clicked", lambda *_: icon_views.download(session, imported, website() if website else ""))
-    box.append(download)
     def cleaned(snapshot):
         session.icons.clear()
         session.window.show_vault(snapshot)
@@ -171,7 +177,10 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
             keep.add(current())
         icon_views.cleanup(session, keep, cleaned)
     clean.connect("clicked", cleanup)
-    box.append(clean)
+    utilities = Gtk.Box(spacing=12, homogeneous=True)
+    utilities.append(download)
+    utilities.append(clean)
+    box.prepend(utilities)
     session.present_dialog(dialog)
 
 

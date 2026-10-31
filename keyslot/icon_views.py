@@ -61,12 +61,60 @@ def download(session, callback, website=""):
     Favicon(session, callback, website, settings)
 
 
+class IconWorker:
+    def __init__(self, session):
+        self.session, self.network, self.closed, self.serial = session, None, False, 0
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="favicon")
+
+    def step(self, token, ready, failed):
+        if self.closed:
+            return
+        self.serial += 1
+        serial = self.serial
+        network = Vault(executable=self.session.vault.executable, timeout=30)
+        self.network = network
+        generation, network_generation = self.session.vault.generation, network.generation
+        def perform():
+            try:
+                with self.session.vault.operation(generation), network.operation(network_generation):
+                    return self.session.vault.step_favicon(token, network)
+            finally:
+                network.lock()
+        future = self.executor.submit(perform)
+        def deliver():
+            if self.network is network:
+                self.network = None
+            if self.closed or serial != self.serial:
+                return False
+            try:
+                ready(future.result())
+            except (VaultError, OSError, ValueError) as error:
+                if not self.session.vault.unlocked:
+                    self.session.jobs.lock()
+                    self.session.error(str(error))
+                else:
+                    failed(str(error))
+            except Exception:
+                failed("The icon download could not be completed. Start a new download.")
+            return False
+        future.add_done_callback(lambda _future: GLib.idle_add(deliver))
+
+    def cancel(self):
+        self.serial += 1
+        if self.network:
+            self.network.cancel()
+
+    def close(self):
+        self.cancel()
+        self.closed = True
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+
 class Favicon:
     def __init__(self, session, callback, website, settings):
         self.session, self.callback = session, callback
         self.token, self.serial, self.closed, self.phase = "", 0, False, "idle"
-        self.network = None
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="favicon")
+        self.worker = IconWorker(session)
         self.dialog, header, box = _dialog("Download Website Icon", width=500, height=460)
         self.options = Adw.PreferencesGroup(description="Download an icon without browser cookies or saved login credentials.")
         self.website = Adw.EntryRow(title="Website", text=website)
@@ -92,6 +140,10 @@ class Favicon:
         header.pack_end(self.action)
         self.dialog._clear_sensitive_fields = self.close
         self.dialog.connect("closed", self.close)
+        session.icons.manual_downloads.add(self)
+        for operation in list(session.icons.downloads):
+            if operation.phase != "queued":
+                operation.close()
         session.present_dialog(self.dialog)
 
     def release(self, token=None):
@@ -191,33 +243,7 @@ class Favicon:
                 self.state("idle")
                 self.status.set_label(message)
         self.status.set_label("Downloading website icon…")
-        network = Vault(executable=self.session.vault.executable, timeout=30)
-        self.network = network
-        generation, network_generation = self.session.vault.generation, network.generation
-        def perform():
-            try:
-                with self.session.vault.operation(generation), network.operation(network_generation):
-                    return self.session.vault.step_favicon(token, network)
-            finally:
-                network.lock()
-        future = self.executor.submit(perform)
-        def deliver():
-            if self.network is network:
-                self.network = None
-            if self.closed or serial != self.serial:
-                return False
-            try:
-                ready(future.result())
-            except (VaultError, OSError, ValueError) as error:
-                if not self.session.vault.unlocked:
-                    self.session.jobs.lock()
-                    self.session.error(str(error))
-                else:
-                    failed(str(error))
-            except Exception:
-                failed("The icon download could not be completed. Start a new download.")
-            return False
-        future.add_done_callback(lambda _future: GLib.idle_add(deliver))
+        self.worker.step(token, ready, failed)
         return False
 
     def finish(self):
@@ -245,8 +271,7 @@ class Favicon:
 
     def stop(self):
         self.serial += 1
-        if self.network:
-            self.network.cancel()
+        self.worker.cancel()
         self.release()
         self.state("idle")
         self.preview.clear()
@@ -258,10 +283,87 @@ class Favicon:
             return
         self.closed = True
         self.serial += 1
-        if self.network:
-            self.network.cancel()
-        self.executor.shutdown(wait=False, cancel_futures=True)
+        self.worker.close()
+        self.session.icons.manual_downloads.discard(self)
         self.release()
         self.preview.clear()
         self.website.set_text("")
         self.status.set_label("")
+
+
+class BrowserFavicon:
+    """Optional post-save work; never delays or rolls back the browser's credential reply."""
+    def __init__(self, session, entry, options):
+        self.session, self.entry, self.options = session, entry, options
+        self.epoch, self.identity = session.epoch, session.vault.identity
+        self.closed, self.phase, self.token = False, "queued", ""
+        self.worker = IconWorker(session)
+        self.timer = GLib.timeout_add(200, self.tick)
+        session.icons.downloads.append(self)
+
+    def valid(self):
+        return (not self.closed and not self.session.jobs.closed and self.session.vault.unlocked
+                and self.epoch == self.session.epoch and self.identity is self.session.vault.identity
+                and self.session.application.startup.browser)
+
+    def tick(self):
+        if not self.valid():
+            self.close()
+            return False
+        icons = self.session.icons
+        if icons.manual_downloads or not icons.downloads or icons.downloads[0] is not self:
+            return True
+        if self.session.busy or self.session.dialogs or self.session.file_requests:
+            return True
+        if self.phase == "queued":
+            self.phase = "preparing"
+            def ready(data):
+                if not self.valid():
+                    _release(self.session, data["token"])
+                    return
+                self.token, self.phase = data["token"], "next"
+            if not self.session.jobs.run(lambda: self.session.vault.prepare_favicon("", entry=self.entry, **self.options),
+                                         ready, self.failed, interactive=False):
+                self.phase = "queued"
+        elif self.phase == "next":
+            self.phase = "downloading"
+            self.worker.step(self.token, self.received, self.failed)
+        elif self.phase == "ready":
+            self.phase = "saving"
+            token = self.token
+            if not self.session.jobs.run(lambda: self.session.vault.finish_favicon(token), self.saved, self.failed, interactive=False):
+                self.phase = "ready"
+        return True
+
+    def received(self, data):
+        if not self.valid():
+            self.close()
+            return
+        self.phase = "ready" if data["ready"] else "next"
+
+    def saved(self, _identifier):
+        self.token = ""
+        self.close()
+        if (not self.session.jobs.closed and self.session.vault.unlocked
+                and self.session.epoch == self.epoch and self.session.vault.identity is self.identity):
+            self.session.icons.clear()
+            self.session.window.show_vault(self.session.vault.snapshot)
+
+    def failed(self, _message):
+        if self.closed:
+            return
+        self.close()
+        self.session.toast("Login saved; its website icon could not be downloaded")
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        if self.timer:
+            GLib.source_remove(self.timer)
+            self.timer = 0
+        self.worker.close()
+        if self in self.session.icons.downloads:
+            self.session.icons.downloads.remove(self)
+        _release(self.session, self.token)
+        self.token = ""

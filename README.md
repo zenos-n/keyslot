@@ -83,6 +83,16 @@ Downloaded SVGs use the existing byte-only SVG conversion path; ICOs select the
 largest supported frame. The stock favicon timeout and service defaults are read
 from explicit profiles. These new workflows await manual desktop/network acceptance.
 
+Browser requests for a favicon on a new login now appear as an optional switch
+in the save-consent dialog. The credential save and browser response finish
+first; queued icon work then uses the same separate network helper. It targets
+the exact new entry returned by native code, defers assignment around open
+editors, and cancels on lock, helper replacement or integration disable. Other
+saves may continue, while website/icon changes or deletion protect the affected
+entry from replacement. Icon failure keeps the saved login. Existing-entry
+updates preserve their icons, matching the upstream browser behavior. This
+addition awaits user browser/desktop acceptance; no automated runs were performed.
+
 Import source includes KeePass 1 (`.kdb`), KeePass XML, Bitwarden JSON (including
 password-protected exports), 1Password 1PUX/OPVault, and Proton Pass JSON through
 the pinned upstream readers. The GTK workflow collects source credentials
