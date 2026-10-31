@@ -311,16 +311,21 @@ class BrowserDialogs:
         session.window.show_vault(session.vault.snapshot)
         session.toast("Login saved")
 
-    def favicon_saved(self, session, entry, options):
+    def favicon_saved(self, session, entry, options, reservation):
         epoch, identity = session.epoch, session.vault.identity
         def start():
             if (not session.jobs.closed and session.vault.unlocked and session.epoch == epoch
                     and session.vault.identity is identity and self.app.startup.browser):
                 from .icon_views import BrowserFavicon
                 try:
-                    BrowserFavicon(session, entry, dict(options))
+                    BrowserFavicon(session, entry, dict(options), reservation)
                 except Exception:
+                    from .icon_views import _release
+                    _release(session, reservation)
                     session.toast("Login saved; its website icon could not be started")
+            else:
+                from .icon_views import _release
+                _release(session, reservation)
             return False
         GLib.idle_add(start)
 
@@ -375,7 +380,7 @@ class BrowserDialogs:
         favicon = None
         icon_options = None
         if data.get("favicon_requested") and not updating:
-            available = {"browser-save-result", "favicon-entry"} <= session.vault.capabilities
+            available = {"browser-save-result", "favicon-entry", "browser-icon-reservation"} <= session.vault.capabilities
             reason = "Update the native helper to enable website icons."
             if available:
                 try:

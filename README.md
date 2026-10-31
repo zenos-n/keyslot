@@ -86,7 +86,7 @@ from explicit profiles. These new workflows await manual desktop/network accepta
 Browser requests for a favicon on a new login now appear as an optional switch
 in the save-consent dialog. The credential save and browser response finish
 first; queued icon work then uses the same separate network helper. It targets
-the exact new entry returned by native code, defers assignment around open
+the exact new entry through a native save-time website/icon reservation, defers assignment around open
 editors, and cancels on lock, helper replacement or integration disable. Other
 saves may continue, while website/icon changes or deletion protect the affected
 entry from replacement. Icon failure keeps the saved login. Existing-entry

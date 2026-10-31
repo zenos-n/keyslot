@@ -8,8 +8,16 @@ from .database_views import _dialog
 
 
 def _release(session, token):
-    if token and session.vault.unlocked and not session.jobs.closed:
-        session.jobs.run(lambda: session.vault.cancel_icon_operation(token), failed=lambda _message: None, interactive=False)
+    if not token:
+        return
+    epoch, identity = session.epoch, session.vault.identity
+    def release():
+        if (session.jobs.closed or not session.vault.unlocked or session.epoch != epoch
+                or session.vault.identity is not identity):
+            return False
+        return not session.jobs.run(lambda: session.vault.cancel_icon_operation(token), failed=lambda _message: None, interactive=False)
+    if release():
+        GLib.timeout_add(100, release)
 
 
 def cleanup(session, keep, done):
@@ -293,8 +301,9 @@ class Favicon:
 
 class BrowserFavicon:
     """Optional post-save work; never delays or rolls back the browser's credential reply."""
-    def __init__(self, session, entry, options):
+    def __init__(self, session, entry, options, reservation):
         self.session, self.entry, self.options = session, entry, options
+        self.reservation = reservation
         self.epoch, self.identity = session.epoch, session.vault.identity
         self.closed, self.phase, self.token = False, "queued", ""
         self.worker = IconWorker(session)
@@ -321,8 +330,9 @@ class BrowserFavicon:
                 if not self.valid():
                     _release(self.session, data["token"])
                     return
+                self.reservation = ""
                 self.token, self.phase = data["token"], "next"
-            if not self.session.jobs.run(lambda: self.session.vault.prepare_favicon("", entry=self.entry, **self.options),
+            if not self.session.jobs.run(lambda: self.session.vault.prepare_favicon("", entry=self.entry, reservation=self.reservation, **self.options),
                                          ready, self.failed, interactive=False):
                 self.phase = "queued"
         elif self.phase == "next":
@@ -366,4 +376,6 @@ class BrowserFavicon:
         if self in self.session.icons.downloads:
             self.session.icons.downloads.remove(self)
         _release(self.session, self.token)
+        _release(self.session, self.reservation)
+        self.reservation = ""
         self.token = ""

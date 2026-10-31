@@ -386,11 +386,15 @@ class BrowserRequests:
                     self.ui.saved(request.session)
                 self._finish(request, {"hash": info["hash"], "count": None, "entries": None,
                                        "error": "success" if changed else "error"})
-                if changed and outcome.get("entry") and icon_options is not None:
+                if changed and outcome.get("entry") and outcome.get("icon_request") and icon_options is not None:
                     try:
-                        self.ui.favicon_saved(request.session, outcome["entry"], icon_options)
+                        self.ui.favicon_saved(request.session, outcome["entry"], icon_options, outcome["icon_request"])
                     except Exception:
+                        from .icon_views import _release
+                        _release(request.session, outcome["icon_request"])
                         request.session.toast("Login saved; its website icon could not be started")
+                elif changed and icon_options is not None:
+                    request.session.toast("Login saved; its website icon could not be queued")
 
             def legacy_save(approved=False, group=""):
                 return {"changed": vault.browser_save(review["token"], approved=approved, group=group), "entry": ""}

@@ -76,7 +76,8 @@ requests through an explicit switch in the existing GTK consent dialog. The
 legacy save RPC still returns a boolean; an additive result RPC identifies the
 exact new native entry for optional queued icon work. Browser response and
 credentials complete before network activity, with nonfatal icon failure. The
-target remains bound to database identity, UUID, website and original icon;
+target is reserved at credential-save completion and remains bound to database
+identity, UUID, website and original icon, including while waiting in the queue;
 unrelated in-vault saves may continue, while target changes/deletion/reload
 prevent attachment. Assignment waits for modal editors, manual downloads take
 priority, and lock/close/integration disable cancels queued/active work without

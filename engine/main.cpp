@@ -783,7 +783,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1413,7 +1413,11 @@ public:
                     QString entry;
                     const bool changed = browser.save(db, args, hash,
                         [this](const std::function<void()>& change) { transaction(change); }, &entry);
-                    return QJsonObject{{"changed", changed}, {"entry", entry}};
+                    QString reservation;
+                    if (changed) {
+                        try { reservation = iconTools.reserve(db, entry); } catch (const KeyslotIcons::Failure&) {}
+                    }
+                    return QJsonObject{{"changed", changed}, {"entry", entry}, {"icon_request", reservation}};
                 }
             } catch (const BrowserFailure& error) { throw Failure{error.code, error.message}; }
             auto* data = db->metadata()->customData();

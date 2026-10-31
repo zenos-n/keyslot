@@ -1035,7 +1035,7 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("icons.unused.remove", token=token)
 
-    def prepare_favicon(self, url, fallback=False, path=False, timeout=10, entry=""):
+    def prepare_favicon(self, url, fallback=False, path=False, timeout=10, entry="", reservation=""):
         with self._mutex:
             if "favicon" not in self.capabilities:
                 raise VaultError("Update the native engine before downloading website icons.")
@@ -1044,6 +1044,8 @@ class Vault:
             parameters = dict(url=url, fallback=fallback, path=path, timeout=timeout)
             if entry:
                 parameters["entry"] = entry
+            if reservation:
+                parameters["reservation"] = reservation
             return self._rpc("icons.favicon.prepare", **parameters)
 
     def step_favicon(self, token, network):

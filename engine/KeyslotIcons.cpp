@@ -51,6 +51,16 @@ void KeyslotIcons::requireDownload(const QSharedPointer<Database>& db, const QJs
             fail("conflict", "The entry website or icon changed. Its current icon was kept.");
     }
 }
+QString KeyslotIcons::reserve(const QSharedPointer<Database>& db, const QString& identifier) {
+    for (auto it = m_reservations.begin(); it != m_reservations.end();) {
+        if (it->database.isNull()) it = m_reservations.erase(it); else ++it;
+    }
+    if (m_reservations.size() >= 128) return {};
+    const auto* entry = target(db.data(), QUuid(identifier));
+    const auto token = uid(QUuid::createUuid());
+    m_reservations.insert(token, {db, entry->uuid(), entry->iconUuid(), entry->url(), entry->iconNumber()});
+    return token;
+}
 QJsonObject KeyslotIcons::reviewUnused(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
     m_unused = {}; m_remove.clear(); m_keep.clear();
     if (!args.value("keep").isArray()) fail("invalid_request", "Specify draft icons to retain.");
@@ -79,6 +89,15 @@ void KeyslotIcons::removeUnused(const QSharedPointer<Database>& db, const QJsonO
 }
 QJsonObject KeyslotIcons::prepare(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
     cancel(m_download.token);
+    const auto reservation = args.contains("reservation") ? text(args, "reservation") : QString();
+    if (!reservation.isEmpty()) {
+        const auto found = m_reservations.constFind(reservation);
+        if (found == m_reservations.cend() || found->database.toStrongRef() != db || found->entry != QUuid(text(args, "entry")))
+            fail("conflict", "The saved entry's website icon request ended. Its current icon was kept.");
+        const auto* entry = target(db.data(), found->entry);
+        if (entry->url() != found->url || entry->iconUuid() != found->icon || entry->iconNumber() != found->standardIcon)
+            fail("conflict", "The saved entry website or icon changed before download. Its current icon was kept.");
+    }
     if (args.contains("entry")) {
         m_entry = QUuid(text(args, "entry"));
         if (m_entry.isNull()) fail("invalid_request", "Choose a valid website icon entry.");
@@ -118,6 +137,7 @@ QJsonObject KeyslotIcons::prepare(const QSharedPointer<Database>& db, const QJso
     QJsonArray contacts;
     for (const auto& candidate : m_candidates) contacts.append(candidate.url.toString(QUrl::FullyEncoded));
     m_name = url.host(); m_download = {db, revision, uid(QUuid::createUuid())};
+    if (!reservation.isEmpty()) m_reservations.remove(reservation);
     return {{"token", m_download.token}, {"urls", contacts}, {"timeout", int(timeout)}, {"insecure", url.scheme() == "http"}};
 }
 QJsonObject KeyslotIcons::progress() const {
@@ -189,6 +209,7 @@ QString KeyslotIcons::finish(const QSharedPointer<Database>& db, const QJsonObje
     return uid(id);
 }
 void KeyslotIcons::cancel(const QString& token) {
+    m_reservations.remove(token);
     if (token == m_unused.token) { m_unused = {}; m_remove.clear(); m_keep.clear(); }
     if (token == m_download.token) {
         m_download = {}; m_candidates.clear(); m_visited.clear(); m_png.clear(); m_name.clear();
@@ -196,4 +217,4 @@ void KeyslotIcons::cancel(const QString& token) {
         m_entryUrl.clear(); m_entryIcon = {}; m_entryStandardIcon = 0;
     }
 }
-void KeyslotIcons::clear() { cancel(m_unused.token); cancel(m_download.token); }
+void KeyslotIcons::clear() { cancel(m_unused.token); cancel(m_download.token); m_reservations.clear(); }
