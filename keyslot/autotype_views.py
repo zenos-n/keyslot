@@ -238,7 +238,7 @@ def add_preferences(session, page):
             options = {key: row.get_active() if isinstance(row, Adw.SwitchRow) else int(row.get_value())
                        for key, row in widgets.items()}
             config.save(config.remember, config.login, config.vault, autotype=options)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
     for row in widgets.values():
         row.connect("notify::active" if isinstance(row, Adw.SwitchRow) else "notify::value", changed)

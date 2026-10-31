@@ -9,6 +9,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from .startup import _write
 from .core_backend import EngineError
+from .backend import VaultError
 
 
 DEFAULTS = dict(length=24, word_count=6, passphrase=False, lowercase=True, uppercase=True,
@@ -21,21 +22,22 @@ CASES = [("lowercase", "lower case"), ("uppercase", "UPPER CASE"),
 QUALITIES = ["Poor", "Poor", "Weak", "Good", "Excellent"]
 
 
+def _validate(data):
+    if not isinstance(data, dict) or set(data) != set(DEFAULTS):
+        return False
+    for key, default in DEFAULTS.items():
+        if type(data[key]) is not type(default):
+            return False
+        if isinstance(default, str) and (len(data[key]) > 32767 or "\0" in data[key]):
+            return False
+    return (1 <= data["length"] <= 999 and 1 <= data["word_count"] <= 100
+            and data["word_case"] in {code for code, _ in CASES})
+
+
 def _load(path):
     try:
         data = json.loads(path.read_text())
-        if not isinstance(data, dict) or set(data) != set(DEFAULTS):
-            return dict(DEFAULTS)
-        for key, default in DEFAULTS.items():
-            if type(data[key]) is not type(default):
-                return dict(DEFAULTS)
-            if isinstance(default, str) and (len(data[key]) > 32767 or "\0" in data[key]):
-                return dict(DEFAULTS)
-        if not 1 <= data["length"] <= 999 or not 1 <= data["word_count"] <= 100:
-            return dict(DEFAULTS)
-        if data["word_case"] not in {code for code, _ in CASES}:
-            return dict(DEFAULTS)
-        return data
+        return data if _validate(data) else dict(DEFAULTS)
     except (OSError, ValueError):
         return dict(DEFAULTS)
 
@@ -46,7 +48,12 @@ def show(session, on_apply=None):
     if session.busy:
         return
     path = session.application.startup.directory / "keyslot" / "generator.json"
-    saved = _load(path)
+    storage = getattr(session.application.startup, "storage", None)
+    try:
+        saved = storage.read_generator() if storage else _load(path)
+    except (OSError, ValueError, VaultError) as exc:
+        session.error(str(exc))
+        return
     state = {"revision": 0, "closed": False, "applied": False, "setting_output": False,
              "health_revision": 0, "health_timer": 0, "mode": saved["passphrase"], "saved": saved,
              "length": saved["length"], "word_count": saved["word_count"], "lists": [],
@@ -255,10 +262,15 @@ def show(session, on_apply=None):
             display_health(data)
             if chosen != state["saved"]:
                 try:
-                    _write(path, json.dumps(chosen) + "\n")
+                    if storage:
+                        storage.write_generator(chosen)
+                    else:
+                        _write(path, json.dumps(chosen) + "\n")
                     state["saved"] = chosen
-                except OSError:
+                except (OSError, ValueError, VaultError) as exc:
                     session.toast("Generated password; settings could not be saved")
+                    error_label.set_label(str(exc))
+                    error_label.set_visible(True)
         def perform():
             try:
                 return session.vault.generate(**params, details=True)

@@ -165,13 +165,16 @@ class VaultSession:
 
     def remember_unlocked(self, credentials):
         settings = self.application.startup
-        if not settings.remember:
+        storage = getattr(settings, "storage", None)
+        if not settings.remember and not storage:
             return
         path = self.vault.path
         def remember(request):
             if settings.login:
                 self.application.login_keyring().store(path, credentials, request)
             request.set_error_if_cancelled()
+            if storage:
+                storage.remember_components(path, credentials["keyfile"], credentials["yubikey"])
             settings.opened(path)
         self.run_keyring_job(remember)
 
@@ -206,7 +209,7 @@ class VaultSession:
         if self.pending_unlock:
             path, create, options, *key = self.pending_unlock
             self.pending_unlock = None
-            self._unlock_dialog(path, create, options, keyfile=key[0] if key else "")
+            self._unlock_dialog(path, create, options, keyfile=key[0] if key else None)
         elif self.pending_errors:
             self.error(self.pending_errors.pop(0))
 
@@ -309,9 +312,17 @@ class VaultSession:
     def unlock_dialog(self, path, create=False, import_options=None):
         self.application.open_database(path, create, import_options, preferred=self)
 
-    def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=""):
+    def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None):
         if use_quick and not keyfile and not create and not import_options and self.quick_blob and Path(path).resolve() == self.quick_path:
             return self._quick_unlock_dialog(path)
+        components = {"keyfile": "", "yubikey": ""}
+        storage = getattr(self.application.startup, "storage", None)
+        if storage and not create and not import_options:
+            try:
+                components = storage.key_components(path)
+            except (OSError, ValueError, VaultError) as exc:
+                self.toast(str(exc))
+        keyfile = components["keyfile"] if keyfile is None else keyfile
         self.lock()
         dialog = Adw.Dialog(title="Import Database" if import_options else "New Database" if create else "Unlock Database", content_width=440)
         toolbar = Adw.ToolbarView()
@@ -326,12 +337,12 @@ class VaultSession:
         if repeat:
             group.add(repeat)
         box.append(group)
-        advanced = Adw.ExpanderRow(title="Additional Unlock Options", expanded=bool(keyfile))
+        advanced = Adw.ExpanderRow(title="Additional Unlock Options", expanded=bool(keyfile or components["yubikey"]))
         selected_key = [keyfile]
         keyfile = Adw.ActionRow(title="Key File", subtitle=Path(keyfile).name if keyfile else "None selected")
         def set_key(p):
             selected_key[0] = p
-            keyfile.set_subtitle(Path(p).name)
+            keyfile.set_subtitle(Path(p).name if p else "None selected")
         keyfile.add_suffix(button("document-open-symbolic", "Choose Key File", lambda: self.choose_file(set_key)))
         if create:
             def generate_keyfile():
@@ -340,7 +351,7 @@ class VaultSession:
             keyfile.add_suffix(button("list-add-symbolic", "Generate Key File", generate_keyfile))
         keyfile.add_suffix(button("edit-clear-symbolic", "Clear Key File", lambda: set_key("")))
         advanced.add_row(keyfile)
-        slot = Adw.EntryRow(title="Hardware Key Slot (1 or 2, optional :serial)")
+        slot = Adw.EntryRow(title="Hardware Key Slot (1 or 2, optional :serial)", text=components["yubikey"])
         no_password = Adw.SwitchRow(title="Key File / Hardware Key Only")
         advanced.add_row(slot)
         advanced.add_row(no_password)

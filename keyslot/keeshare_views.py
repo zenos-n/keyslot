@@ -1,6 +1,7 @@
 """KeeShare group references and explicit synchronization controls."""
 from .database_views import Adw, Gtk, _dialog, _save
 from .passkey_views import _lifetime
+from .backend import VaultError
 
 
 def configure(session):
@@ -99,7 +100,7 @@ def add_preferences(session, page):
             settings.save(settings.remember, settings.login, settings.vault,
                           keeshare={"import": incoming.get_active(), "export": outgoing.get_active()})
             session.application.keeshare.state_changed()
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             changing[0] = True
             incoming.set_active(settings.keeshare["import"])
             outgoing.set_active(settings.keeshare["export"])

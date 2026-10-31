@@ -6,6 +6,8 @@ pkgs.keepassxc.overrideAttrs (old: {
   # Keep exactly the distro-pinned upstream source and build dependencies.
   postPatch = (old.postPatch or "") + ''
     cp ${./main.cpp} src/keyslot-engine.cpp
+    cp ${./KeyslotConfig.h} src/KeyslotConfig.h
+    cp ${./KeyslotConfig.cpp} src/KeyslotConfig.cpp
     cp ${./CsvImport.h} src/CsvImport.h
     cp ${./CsvImport.cpp} src/CsvImport.cpp
     cp ${./BrowserTransport.cpp} src/keyslot-browser.cpp
@@ -69,7 +71,7 @@ pkgs.keepassxc.overrideAttrs (old: {
       --replace-fail '    connect(m_browserHost, &BrowserHost::clientMessageReceived' '    if (headless) return;
     connect(m_browserHost, &BrowserHost::clientMessageReceived'
     cat >> src/CMakeLists.txt <<'CMAKE'
-    add_executable(keyslot-engine core/Alloc.cpp keyslot-engine.cpp CsvImport.cpp BrowserDatabase.cpp KeyslotPasskeys.cpp KeyslotSSH.cpp KeyslotAutoType.cpp KeyslotKeeShare.cpp KeyslotSecrets.cpp KeyslotTransfer.cpp KeyslotLaunch.cpp KeyslotHistory.cpp KeyslotTotp.cpp autotype/xcb/AutoTypeXCB.cpp)
+    add_executable(keyslot-engine core/Alloc.cpp keyslot-engine.cpp KeyslotConfig.cpp CsvImport.cpp BrowserDatabase.cpp KeyslotPasskeys.cpp KeyslotSSH.cpp KeyslotAutoType.cpp KeyslotKeeShare.cpp KeyslotSecrets.cpp KeyslotTransfer.cpp KeyslotLaunch.cpp KeyslotHistory.cpp KeyslotTotp.cpp autotype/xcb/AutoTypeXCB.cpp)
     target_link_libraries(keyslot-engine keepassx_core Qt5::X11Extras X11 Xi Xtst)
     add_executable(keyslot-browser core/Alloc.cpp keyslot-browser.cpp browser/BrowserMessageBuilder.cpp)
     target_link_libraries(keyslot-browser keepassx_core Qt5::Network)

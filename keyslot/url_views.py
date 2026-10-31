@@ -256,7 +256,7 @@ class UrlController:
                     target.window.show_vault(snapshot)
                     try:
                         app.startup.opened(path)
-                    except (OSError, ValueError) as exc:
+                    except (OSError, ValueError, VaultError) as exc:
                         target.error(str(exc))
                     app.select_session(target)
                 if not target.run_job(accept, accepted):

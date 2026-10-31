@@ -23,6 +23,9 @@ def configure(app):
         app.add_main_option(name, short, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, description, None)
     app.add_main_option("keyfile", 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING,
                         "Key file for the databases being opened", "PATH")
+    for name, description in (("config", "KeePassXC global settings INI file"),
+                              ("localconfig", "KeePassXC local settings INI file")):
+        app.add_main_option(name, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING, description, "PATH")
     app.add_main_option(GLib.OPTION_REMAINING, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING_ARRAY,
                         "Databases to open", "FILE…")
     app.connect("handle-local-options", local_options)
@@ -95,9 +98,13 @@ def local_options(app, options):
         print("Choose either login-keyring unlock or --pw-stdin.", file=sys.stderr)
         return 1
     keyfile = options.lookup_value("keyfile", None)
-    files = arguments(options) + ([keyfile.unpack()] if keyfile else [])
+    profiles = {name: options.lookup_value(name, None) for name in ("config", "localconfig")}
+    if any(value is not None and not value.unpack() for value in profiles.values()):
+        print("Configuration arguments require a nonempty file path.", file=sys.stderr)
+        return 1
+    files = arguments(options) + ([keyfile.unpack()] if keyfile else []) + [value.unpack() for value in profiles.values() if value is not None]
     if any(Gio.File.new_for_commandline_arg(path).get_path() is None for path in files):
-        print("Database and key-file arguments must refer to local files.", file=sys.stderr)
+        print("Database, key-file and configuration arguments must refer to local files.", file=sys.stderr)
         return 1
     if Gdk.Display.get_default() is None:
         print("Keyslot requires a graphical session with GTK4 display access.", file=sys.stderr)
@@ -107,6 +114,18 @@ def local_options(app, options):
     except GLib.Error:
         print("Keyslot requires access to the session D-Bus.", file=sys.stderr)
         return 1
+    if any(value is not None for value in profiles.values()) or os.environ.get("KPXC_CONFIG") or os.environ.get("KPXC_CONFIG_LOCAL"):
+        from .configuration import IniProfile, default_paths
+        from .startup import Startup
+        try:
+            defaults = default_paths()
+            paths = [Gio.File.new_for_commandline_arg(profiles[name].unpack()).get_path()
+                     if profiles[name] is not None else defaults[index] for index, name in enumerate(profiles)]
+            app.startup = Startup(launcher=app.startup.launcher, storage=IniProfile(*paths))
+            options.insert_value("keyslot-config-paths", GLib.Variant("as", list(app.startup.storage.paths.values())))
+        except (OSError, ValueError, VaultError) as exc:
+            print(f"Keyslot could not load the configuration: {exc}", file=sys.stderr)
+            return 1
     if options.contains("pw-stdin"):
         try:
             fd = 0
@@ -261,12 +280,25 @@ class PasswordInput:
             self.status = 1
             GLib.idle_add(self.next)
             return
+        components = {"keyfile": "", "yubikey": ""}
+        storage = getattr(self.app.startup, "storage", None)
+        try:
+            if storage:
+                components = storage.key_components(self.path)
+        except (OSError, ValueError, VaultError) as exc:
+            self.command.printerr_literal(f"Could not read remembered key components: {exc}\n")
+            self.status = 1
+            GLib.idle_add(self.next)
+            return
+        keyfile = components["keyfile"] if self.keyfile is None else self.keyfile
+        hardware = components["yubikey"]
+        key_only = not password and bool(keyfile or hardware)
         session.lock()
         self.epoch = session.epoch
         def perform():
             try:
-                return session.vault.unlock(self.path, password, self.keyfile,
-                                             no_password=not password and bool(self.keyfile)), None
+                return session.vault.unlock(self.path, password, keyfile, hardware,
+                                             no_password=key_only), None
             except (VaultError, OSError, ValueError) as exc:
                 return None, str(exc)
         def completed(result):
@@ -278,13 +310,13 @@ class PasswordInput:
                 self.status = 1
                 self.command.printerr_literal(f"Could not unlock database: {error}\n")
                 session.lock()
-                session.pending_unlock = (str(self.path), False, None, self.keyfile)
+                session.pending_unlock = (str(self.path), False, None, keyfile)
                 session.activate()
                 self.epoch = session.epoch
             else:
                 session.window.show_vault(snapshot)
-                session.remember_unlocked({"password": password, "keyfile": self.keyfile,
-                                           "yubikey": "", "no_password": not password and bool(self.keyfile)})
+                session.remember_unlocked({"password": password, "keyfile": keyfile,
+                                           "yubikey": hardware, "no_password": key_only})
             GLib.idle_add(self.next)
         if not session.run_job(perform, completed):
             self.command.printerr_literal("This database is busy.\n")

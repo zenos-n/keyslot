@@ -9,6 +9,7 @@
 #include "KeyslotSecrets.h"
 #include "KeyslotTransfer.h"
 #include "KeyslotLaunch.h"
+#include "KeyslotConfig.h"
 #include "KeyslotHistory.h"
 #include "KeyslotTotp.h"
 #include "fdosecrets/FdoSecretsSettings.h"
@@ -557,7 +558,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration"}}};
         if (method == "lock") { launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
@@ -695,6 +696,14 @@ public:
                 try { persist(true); } catch (...) { db.reset(); throw; }
             }
             return snapshot();
+        }
+        if (method == "configuration.read" || method == "configuration.write") {
+            if (db) throw Failure{"invalid_request", "Use a separate helper for application configuration."};
+            try {
+                return method == "configuration.read" ? KeyslotConfig::read(args) : KeyslotConfig::write(args);
+            } catch (const KeyslotConfig::Failure& error) {
+                throw Failure{error.code, error.message, error.details};
+            }
         }
         if (method == "generator.info") {
             QJsonArray lists;

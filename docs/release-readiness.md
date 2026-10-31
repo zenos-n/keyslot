@@ -78,9 +78,43 @@ unchanged engine: `/nix/store/f64jvxamcjqcmfvg67chk5pzcypypj2i-keyslot-engine-2.
 Logs: `/tmp/keyslot-gui-command-line-secured-final.log` and
 `/tmp/keyslot-cli-manual-acceptance.log`. The packaged alias also ran headlessly.
 Only the trial app was updated; the companion and user instance were preserved.
-Custom configuration migration, broader key-component/terminal and actual
-GNOME lifecycle acceptance remain open. Documentation was updated after runtime
-validation.
+Broader key-component/terminal and actual GNOME lifecycle acceptance remain
+open. Documentation was updated after runtime validation.
+
+Explicit `--config`/`--localconfig` profiles now use the pinned Qt INI codec and
+support `KPXC_CONFIG`/`KPXC_CONFIG_LOCAL`. Supported startup, timeout, integration
+and generator settings are shared with KeePassXC; other keys remain in the INI.
+Private manual use verified exact-second timeout import and reopening, generator
+round trips, typed Qt values, nested option changes, stale-writer rejection,
+read-only two-file preservation, repeated unknown QVariant rejection, same-file
+roles, symlink guards and profile-bearing login launchers. A disposable desktop
+verified primary/remote same-profile commands, changed-profile rejection,
+environment defaults and graceful quit. The new engine passes the existing 332
+native checks. The existing 323 backend checks and all 19 application gates pass
+(backend 320.47 seconds); no tests or harnesses were added. All 37 packaged
+Python files match the current source. App:
+`/nix/store/pwh7h4fr60k93f5ag3y1jrnv494i8avp-keyslot-0.2.0`;
+engine: `/nix/store/rdxhpdrdijldl6pmv8hvpy17bydv28im-keyslot-engine-2.7.12`.
+Logs: `/tmp/keyslot-ini-profile-build.log`,
+`/tmp/keyslot-ini-profile-final.log` and
+`/tmp/keyslot-ini-manual-observations.txt`. This batch has not been installed or
+published. A subsequent batch implements remembered key-file/hardware selections
+and multiple-vault startup restoration in separate windows, with independent
+recent-file/session/key-component settings, hidden background restore, keyring
+unlock only for the enrolled vault and open-session persistence on quit. Private
+GTK use verified prefilled key files and a real password-plus-key-file unlock;
+remote stdin unlock used the remembered file, while an explicit missing file
+overrode it and failed without overwriting the remembered choice. Two-window
+startup/background restore, active-window persistence, missing-file filtering,
+last-window close, independent remember flags and hardware-slot string conversion
+also passed. A disposable GNOME login keyring unlocked only the enrolled vault
+and kept both windows hidden; its enrollment path stays independent of the
+focused window. Physical hardware-key use remains unverified. Existing package
+checks passed for the restoration work; the enrollment-path correction was also
+verified against the disposable keyring. No tests/harnesses were added. Evidence:
+`/tmp/keyslot-session-manual-observations.txt` and
+`/tmp/keyslot-remembered-session-final.log`. Remaining config migration includes
+other unsupported preferences.
 
 ## Release blockers
 

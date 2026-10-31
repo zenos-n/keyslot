@@ -501,6 +501,15 @@ def change_key(app, data=None):
             dialog.close()
             app.window.show_vault(snapshot)
             app.toast("Database unlock key changed")
+            storage = getattr(app.application.startup, "storage", None)
+            if storage and any(key in changes for key in ("keyfile", "remove_keyfile", "yubikey", "remove_hardware")):
+                path = app.vault.path
+                def remember_components():
+                    previous = storage.key_components(path)
+                    storage.remember_components(path,
+                        "" if changes.get("remove_keyfile") else changes.get("keyfile", previous["keyfile"]),
+                        "" if changes.get("remove_hardware") else changes.get("yubikey", previous["yubikey"]))
+                app.run_job(remember_components)
         app.run_job(lambda: app.vault.change_key(**changes), changed)
     _save(header, submit, "Change Key")
     dialog.connect("closed", lambda *_: (password.set_text(""), repeat.set_text("")))

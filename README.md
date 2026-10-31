@@ -245,8 +245,24 @@ already-open or invalid database, with a 1 MiB limit per line. Terminal echo is
 disabled while reading; lock or shutdown cancels pending input.
 An empty password needs an explicit blank line; EOF without a line is an error.
 Relative database and key-file paths use the invoking process’s directory. Generated passwords and
-stdin credentials are never saved in application settings. `--config` and
-`--localconfig` migration are still unimplemented.
+stdin credentials are never saved in application settings.
+`--config PATH` and `--localconfig PATH` select KeePassXC global and local INI
+files; `KPXC_CONFIG` and `KPXC_CONFIG_LOCAL` supply their defaults. Unspecified
+paths use KeePassXC's XDG config/cache locations. Normal launches continue to use
+Keyslot's existing private settings. Selected INI profiles share supported
+remembered-vault, browser, idle/clipboard, auto-type, SSH, Secret Service and
+generator options with KeePassXC. Keyslot-specific options use a separate INI
+namespace. Unknown options are preserved by Qt; conflicting concurrent edits,
+Qt decoding warnings and unsupported timeout ranges stop the operation without
+replacing the original files. Profile arguments are included in login launchers.
+INI profiles also restore `LastOpenedDatabases` as separate windows, with the
+previously active vault selected and missing files skipped. Background startup
+restores hidden windows; login-keyring unlock applies only to the enrolled vault.
+The open-window list is saved on quit. `RememberLastKeyFiles` independently
+controls key-file and hardware-slot choices in Qt's native dictionaries, including
+stdin unlock and key changes. Explicit `--keyfile` arguments override remembered
+files. Passwords and hardware secrets are never written to these dictionaries.
+Other KeePassXC preferences and broader desktop/hardware acceptance remain open.
 
 The desktop, window and welcome screen temporarily use the themed `keepassxc` icon.
 

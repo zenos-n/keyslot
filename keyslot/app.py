@@ -1,6 +1,7 @@
 """Application-wide state and one native window per database."""
 from pathlib import Path
 import resource
+import shutil
 import sys
 import time
 
@@ -24,7 +25,8 @@ class Keyslot(Adw.Application):
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         executable = Path(sys.argv[0]).resolve().parent / "keyslot"
-        self.startup = Startup(launcher=str(executable) if executable.is_file() else None)
+        launcher = shutil.which("keyslot") or (str(executable) if executable.is_file() else None)
+        self.startup = Startup(launcher=launcher)
         self.keyring = None
         self.browser = None
         from .ssh_integration import SSHIntegration
@@ -111,7 +113,7 @@ class Keyslot(Adw.Application):
             # Refresh the launcher path after a package upgrade.
             try:
                 self.startup.save(True, True, self.startup.vault)
-            except OSError:
+            except (OSError, ValueError, VaultError):
                 self.startup_error = "The login launcher could not be updated. Check your configuration folder’s permissions."
         for name, callback, keys in [("new-window", self.new_window, []),
                                      ("lock-all", self.lock, ["<Primary><Shift>l"]),
@@ -218,6 +220,8 @@ class Keyslot(Adw.Application):
 
     def _activate(self, *_):
         if not self.sessions:
+            if self.restore_databases():
+                return
             if self.startup.remember and self.startup.vault:
                 self.open_database(self.startup.vault)
             else:
@@ -225,8 +229,36 @@ class Keyslot(Adw.Application):
         else:
             self.select_session(self.active_session or self.sessions[0])
 
+    def restore_databases(self, present=True):
+        storage = self.startup.storage
+        if not storage:
+            return False
+        restored = [self.open_database(path, present=False) for path in storage.restore_paths()]
+        if not restored:
+            return False
+        self.active_session, self.window = restored[-1], restored[-1].host_window
+        if present:
+            for session in restored:
+                session.host_window.set_visible(True)
+            self.select_session(restored[-1])
+        return True
+
+    def save_session_state(self):
+        storage = self.startup.storage
+        if storage:
+            try:
+                storage.write_session([session.path for session in self.sessions if session.path],
+                                      self.active_session.path if self.active_session else None)
+            except (OSError, ValueError, VaultError) as exc:
+                print(f"Keyslot could not save the open-vault list: {exc}", file=sys.stderr)
+
     def _command_line(self, _application, command_line):
         options = command_line.get_options_dict()
+        profile = options.lookup_value("keyslot-config-paths", None)
+        storage = getattr(self.startup, "storage", None)
+        if profile and (storage is None or profile.unpack() != list(storage.paths.values())):
+            command_line.printerr_literal("Keyslot is already running with a different configuration. Quit it before switching profiles.\n")
+            return 1
         arguments = gui_cli.arguments(options)
         background_requested = options.contains("background") or options.contains("minimized")
         if background_requested:
@@ -235,26 +267,29 @@ class Keyslot(Adw.Application):
             if self.startup.login and self.startup.vault and not self.login_attempted:
                 self.login_attempted = True
                 path = self.startup.vault
+                if not self.sessions:
+                    self.restore_databases(present=False)
                 existing = next((item for item in self.sessions if item.path == path), None)
-                if existing:
-                    self.select_session(existing)
-                else:
-                    session = self.new_window(present=not self.background_enabled)
-                    if not self.active_session:
-                        self.active_session = session
-                        self.window = session.host_window
-                    session.requested_path = path
+                session = existing or self.new_window(present=False)
+                if not self.active_session:
+                    self.active_session, self.window = session, session.host_window
+                session.requested_path = path
+                if not self.background_enabled:
+                    self.select_session(session, activate=False)
+                if not session.vault.unlocked and not session.busy:
+                    session.pending_unlock = None
                     session.unlock_at_login(path)
             return 0
         if background_requested and not arguments:
             if not self.sessions:
-                session = self.new_window(present=False)
-                self.active_session, self.window = session, session.host_window
-                session.requested_path = self.startup.vault
+                if not self.restore_databases(present=False):
+                    session = self.new_window(present=False)
+                    self.active_session, self.window = session, session.host_window
+                    session.requested_path = self.startup.vault
             self.emit_state()
             return 0
         key_option = options.lookup_value("keyfile", None)
-        keyfile = command_line.create_file_for_arg(key_option.unpack()).get_path() if key_option else ""
+        keyfile = command_line.create_file_for_arg(key_option.unpack()).get_path() if key_option else None
         if key_option and not keyfile:
             command_line.printerr_literal("The key file must be a local file.\n")
             return 1
@@ -302,7 +337,7 @@ class Keyslot(Adw.Application):
             session.activate()
         self.update_session(session)
 
-    def open_database(self, path, create=False, import_options=None, preferred=None, *, keyfile="", present=True, defer_unlock=False):
+    def open_database(self, path, create=False, import_options=None, preferred=None, *, keyfile=None, present=True, defer_unlock=False):
         if not self.sessions:
             preferred = self.new_window(present=False)
             self.active_session, self.window = preferred, preferred.host_window
@@ -347,6 +382,8 @@ class Keyslot(Adw.Application):
     def close_session(self, session):
         if session not in self.sessions:
             return
+        if len(self.sessions) == 1:
+            self.save_session_state()
         session.shutdown()
         self.sessions.remove(session)
         if self.active_session is session:
@@ -371,6 +408,8 @@ class Keyslot(Adw.Application):
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        if self.sessions:
+            self.save_session_state()
         for request in list(self.command_requests):
             request.cancel()
         gui_cli.restore_echo(self)
@@ -511,8 +550,11 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _focused(self, *_):
         if self.session and self.is_active():
+            changed = self.app.active_session is not self.session
             self.app.active_session = self.session
             self.app.window = self
+            if changed:
+                self.session.activate()
 
     def _close(self, *_):
         if self.app.background_enabled:

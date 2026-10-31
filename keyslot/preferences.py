@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from .application import Adw, Gio, Gtk, button, margins, scroll
+from .backend import VaultError
 
 
 def show(session):
@@ -30,7 +31,7 @@ def show(session):
     def changed_background(*_):
         try:
             session.application.set_background(background.get_active(), persist=True)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
             background.set_active(settings.background)
     background.connect("notify::active", changed_background)
@@ -55,7 +56,7 @@ def show(session):
         try:
             settings.save(settings.remember, settings.login, settings.vault, lock_seconds=seconds)
             session.application.touch()
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
     timeout.connect("notify::selected", changed_timeout)
     custom.connect("notify::value", changed_timeout)
@@ -76,7 +77,7 @@ def show(session):
         seconds = clipboard_times[selected] if selected < len(clipboard_times) else int(clipboard_custom.get_value())
         try:
             settings.save(settings.remember, settings.login, settings.vault, clipboard_seconds=seconds)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
     clipboard.connect("notify::selected", changed_clipboard)
     clipboard_custom.connect("notify::value", changed_clipboard)
@@ -98,7 +99,7 @@ def show(session):
     def changed_minimize(*_):
         try:
             settings.save(settings.remember, settings.login, settings.vault, minimize_on_url=minimize.get_active())
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
             minimize.set_active(settings.minimize_on_url)
     minimize.connect("notify::active", changed_minimize)
@@ -125,7 +126,7 @@ def show(session):
         try:
             settings.save(settings.remember, False, settings.vault)
             clear_saved()
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
         refresh()
     forget.add_suffix(button("edit-delete-symbolic", "Forget Saved Login Credentials", forget_saved))
@@ -140,7 +141,7 @@ def show(session):
             settings.save(remember.get_active(), settings.login, session.path or settings.vault)
             if previous_login and not settings.login:
                 clear_saved()
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, VaultError) as exc:
             session.error(str(exc))
         refresh()
     def changed_login(*_):
@@ -161,7 +162,7 @@ def show(session):
                 # Disable autostart even if removing the keyring item subsequently fails.
                 settings.save(settings.remember, False, settings.vault)
                 clear_saved()
-            except (OSError, ValueError) as exc:
+            except (OSError, ValueError, VaultError) as exc:
                 session.error(str(exc))
             refresh()
     remember.connect("notify::active", changed_remember)
@@ -185,14 +186,21 @@ def enroll(session, quick=False):
     box.append(Gtk.Label(label=explanation, wrap=True))
     group = Adw.PreferencesGroup()
     password = Adw.PasswordEntryRow(title="Master Password")
-    keyfile = Adw.ActionRow(title="Key File", subtitle="None selected")
-    selected_key = [""]
+    components = {"keyfile": "", "yubikey": ""}
+    storage = getattr(session.application.startup, "storage", None)
+    if storage:
+        try:
+            components = storage.key_components(path)
+        except (OSError, ValueError, VaultError) as exc:
+            session.toast(str(exc))
+    keyfile = Adw.ActionRow(title="Key File", subtitle=Path(components["keyfile"]).name if components["keyfile"] else "None selected")
+    selected_key = [components["keyfile"]]
     def set_key(value):
         selected_key[0] = value
         keyfile.set_subtitle(Path(value).name if value else "None selected")
     keyfile.add_suffix(button("document-open-symbolic", "Choose Key File", lambda: session.choose_file(set_key)))
     keyfile.add_suffix(button("edit-clear-symbolic", "Clear Key File", lambda: set_key("")))
-    hardware = Adw.EntryRow(title="Hardware Key Slot (optional)")
+    hardware = Adw.EntryRow(title="Hardware Key Slot (optional)", text=components["yubikey"])
     key_only = Adw.SwitchRow(title="Key File / Hardware Key Only")
     key_only.connect("notify::active", lambda *_: password.set_sensitive(not key_only.get_active()))
     for row in (password, keyfile, hardware, key_only):
