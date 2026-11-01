@@ -2,10 +2,21 @@
 import os
 import re
 import weakref
+from gi.repository import Gio, GLib
 from .database_views import Adw, Gtk, _dialog, _save, _spin
 from .passkey_views import _lifetime
 from .backend import VaultError
 from . import autotype
+from .autotype_flow import Flow
+
+
+def shortcut_sender(connection, sender):
+    try:
+        return connection.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+            "GetNameOwner", GLib.Variant("(s)", ("org.gnome.Shell",)), GLib.VariantType.new("(s)"),
+            Gio.DBusCallFlags.NO_AUTO_START, 1000, None).unpack()[0] == sender
+    except GLib.Error:
+        return False
 
 
 def _guarded_lifetime(session, dialog, clearer=None):
@@ -91,32 +102,56 @@ def settings(session, entry=None, group=None, data=None):
     session.present_dialog(dialog)
 
 
-def choose(session, entry=None, target=None, windows=None):
+def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_automatic=True, global_shortcut=False):
     if not session.vault.unlocked or session.busy:
+        return
+    if flow is None:
+        if global_shortcut and any(item.host_window.is_active() for item in session.application.sessions):
+            return
+        previous = session.application.autotype_flow
+        if previous:
+            if previous.valid():
+                session.toast("Auto-Type is already in progress")
+                return
+            previous.cancel(lock=True)
+        if session.dialogs or session.file_requests:
+            session.toast("Close the current dialog before using Auto-Type")
+            return
+        flow = Flow(session, allow_automatic)
+        session.application.autotype_flow = flow
+    if not flow.valid():
+        flow.cancel()
         return
     if target is None:
         if os.environ.get("XDG_SESSION_TYPE") == "wayland":
-            session.run_job(autotype.capture_target, lambda value: choose(session, entry, value))
+            flow.run(session, autotype.capture_target, lambda value: choose(session, entry, value, flow=flow))
             return
         if windows is None:
-            session.run_job(session.vault.autotype_targets, lambda value: choose(session, entry, windows=value))
+            flow.run(session, session.vault.autotype_targets, lambda value: choose(session, entry, windows=value, flow=flow))
             return
         dialog, header, box = _dialog("Auto-Type Destination", height=420)
-        current = _lifetime(session, dialog)
+        current = _guarded_lifetime(session, dialog)
+        def chosen(window):
+            if current() and flow.valid():
+                flow.release(dialog)
+                dialog.close()
+                choose(session, entry, dict(backend="x11", **window), flow=flow)
         rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"], valign=Gtk.Align.START)
         box.append(rows)
         for window in windows:
             row = Adw.ActionRow(title=window["title"], use_markup=False, title_lines=2, activatable=True)
-            row.connect("activated", lambda _row, window=window: (dialog.close(), choose(session, entry,
-                dict(backend="x11", **window))) if current() else None)
+            row.connect("activated", lambda _row, window=window: chosen(window))
             rows.append(row)
         if not windows:
             box.append(Adw.StatusPage(title="No Destination Windows", description="Open the application you want to type into."))
-        session.application.select_session(session)
-        session.present_dialog(dialog)
+        flow.present(session, dialog)
         return
     options = session.application.startup.autotype
-    candidates = [session] if entry else list(session.application.sessions)
+    if entry:
+        confirm = options["always_ask"] and not options["skip_main_confirmation"]
+        _prepare(session, entry, target, "", flow, confirm=confirm)
+        return
+    candidates = list(session.application.sessions)
     captured = [(owner, owner.epoch, owner.vault.identity, owner.vault.generation, owner.vault.snapshot)
                 for owner in candidates if owner.vault.unlocked and not owner.jobs.closed]
     recent = session.application.autotype_recent
@@ -154,13 +189,33 @@ def choose(session, entry=None, target=None, windows=None):
             matches.extend((owner, entries[item["entry"]], item["sequence"]) for item in values if item["entry"] in entries)
             if default_digest is not None:
                 defaults[owner, previous_uuid] = default_digest
-        _choose_match(session, entry, target, matches, available, defaults)
-    session.run_job(collect, matched)
+        if len(matches) == 1 and target.get("title") and not options["always_ask"] and flow.allow_automatic:
+            owner, candidate, sequence = matches[0]
+            _prepare(owner, candidate, target, sequence, flow, confirm=False)
+        else:
+            _choose_match(session, target, matches, available, defaults, flow=flow)
+    flow.run(session, collect, matched)
 
 
-def _choose_match(session, selected, target, matches, available, defaults=None):
-    if selected:
-        matches = [(session, selected, "")]
+def _prepare(session, entry, target, sequence, flow, *, confirm):
+    if not flow.valid() or session.jobs.closed or not session.vault.unlocked:
+        flow.cancel()
+        return
+    flow.owner = flow.capture(session)
+    flow.watch(session)
+    options = session.application.startup.autotype
+    snapshot = weakref.ref(session.vault.snapshot)
+    def prepared(data):
+        choice = (entry.uuid, snapshot)
+        if confirm or data["pick"]:
+            review(session, target, data, choice, flow=flow)
+        else:
+            _execute(session, target, data, [], choice, flow)
+    flow.run(session, lambda: session.vault.autotype_prepare(entry, target, sequence,
+        options["delay"], options["start_delay"]), prepared)
+
+
+def _choose_match(session, target, matches, available, defaults=None, *, flow):
     dialog, header, box = _dialog("Auto-Type", height=520)
     current = _guarded_lifetime(session, dialog)
     state = {"query": None}
@@ -173,31 +228,23 @@ def _choose_match(session, selected, target, matches, available, defaults=None):
     box.append(rows)
     status = Gtk.Label(label="No matching entries. Search to choose another entry.", wrap=True)
     box.append(status)
+    box.append(Gtk.Label(label="Choose an entry to start Auto-Type in the selected window.",
+                         wrap=True, xalign=0, css_classes=["dim-label"]))
     def prepare(owner, entry, sequence):
-        if not current():
+        if not current() or not flow.valid():
             return
-        epoch, identity, snapshot = owner.epoch, owner.vault.identity, owner.vault.snapshot
+        flow.release(dialog)
         dialog.close()
-        if owner.jobs.closed or not owner.vault.unlocked:
-            session.error("This vault was locked. Choose an unlocked entry again.")
-            return
-        session.application.select_session(owner)
-        options = session.application.startup.autotype
-        def prepared(value):
-            if (owner.epoch == epoch and owner.vault.identity is identity and owner.vault.snapshot is snapshot
-                    and owner.vault.unlocked and not owner.jobs.closed and owner.active):
-                review(owner, target, value, choice=(entry.uuid, weakref.ref(snapshot)))
-        owner.run_job(lambda: owner.vault.autotype_prepare(entry, target, sequence,
-            options["delay"], options["start_delay"]), prepared)
+        _prepare(owner, entry, target, sequence, flow, confirm=False)
     def continue_selected(*_):
         row = rows.get_selected_row()
         if current() and row:
             row.emit("activated")
-    proceed = _save(header, continue_selected, "Continue")
+    proceed = _save(header, continue_selected, "Type")
     proceed.set_sensitive(False)
     rows.connect("row-selected", lambda _rows, row: proceed.set_sensitive(row is not None))
     def render(*_):
-        if not current():
+        if not current() or not flow.valid():
             return
         while rows.get_first_child():
             rows.remove(rows.get_first_child())
@@ -230,13 +277,16 @@ def _choose_match(session, selected, target, matches, available, defaults=None):
             render()
         continue_selected()
     search.connect("activate", entered)
-    session.application.select_session(session)
-    if session.present_dialog(dialog):
+    if flow.present(session, dialog):
         render()
         search.grab_focus()
 
 
-def review(session, target, data, choice=None):
+def review(session, target, data, choice=None, *, flow):
+    if not flow.valid():
+        data.clear()
+        flow.cancel()
+        return
     dialog, header, box = _dialog("Confirm Auto-Type", height=460 if not data["pick"] else 600)
     current = _guarded_lifetime(session, dialog, data.clear)
     destination = Adw.PreferencesGroup(title="Destination")
@@ -256,40 +306,63 @@ def review(session, target, data, choice=None):
     box.append(Gtk.Label(label="The selected entry will be typed into this window. Switching windows stops auto-type. "
         + ("GNOME will ask for keyboard access." if target["backend"] == "portal" else "Release modifier keys before continuing."),
         wrap=True, xalign=0))
+    error = Gtk.Label(wrap=True, xalign=0, css_classes=["error"], visible=False)
+    box.append(error)
     def type_now(*_):
-        if not current() or session.busy:
+        if not current() or not flow.valid() or session.busy:
             return
         picks = []
         for row, tab, length in pick_rows:
             values = re.split(r"[\s,;]+", row.get_text().strip())
             if not values or len(values) > 1024 or any(not re.fullmatch(r"[0-9]{1,6}", value)
                 or not 1 <= int(value) <= length for value in values):
-                session.error("Enter valid character positions for each PICKCHARS request.")
+                error.set_label("Enter valid character positions for each PICKCHARS request.")
+                error.set_visible(True)
                 return
             picks.append(dict(positions=[int(value) for value in values], tab=tab.get_active()))
-        epoch = session.epoch
-        token = data["token"]
-        sequence_digest = session.application.autotype_recent.digest(data["sequence"]) if choice else None
+        request = dict(data)
+        flow.release(dialog)
         dialog.close()
-        def execute():
-            if target["backend"] == "portal":
-                return autotype.execute_portal(session, target, token, picks, epoch)
-            return session.vault.autotype_finish(token, picks, approved=True)
-        def done(_result):
-            if session.application.startup.autotype["relock"]:
-                session.lock()
-            else:
-                if choice:
-                    session.application.autotype_recent.remember(session, choice[0], sequence_digest, choice[1]())
-                session.toast("Auto-type completed")
-        def failed(message):
-            session.application.autotype_recent.clear(session)
-            if session.application.startup.autotype["relock"]:
-                session.lock()
-            session.error(message)
-        session.run_job(execute, done, failed)
+        _execute(session, target, request, picks, choice, flow)
     _save(header, type_now, "Type")
-    session.present_dialog(dialog)
+    flow.present(session, dialog)
+
+
+def _execute(session, target, data, picks, choice, flow):
+    epoch, token = session.epoch, data["token"]
+    sequence_digest = session.application.autotype_recent.digest(data["sequence"]) if choice else None
+    data.clear()
+    flow.typing = True
+    def execute():
+        if not flow.valid():
+            raise VaultError("Auto-Type was cancelled.")
+        if target["backend"] == "portal":
+            return autotype.execute_portal(session, target, token, picks, epoch, flow.valid)
+        return session.vault.autotype_finish(token, picks, approved=True)
+    def done(_result):
+        valid = flow.valid()
+        flow.typing = False
+        flow.cancel()
+        if session.application.startup.autotype["relock"]:
+            session.lock()
+        elif valid:
+            if choice:
+                session.application.autotype_recent.remember(session, choice[0], sequence_digest, choice[1]())
+            session.toast("Auto-type completed")
+        else:
+            session.application.autotype_recent.clear(session)
+    def failed(message):
+        flow.typing = False
+        flow.cancel()
+        session.application.autotype_recent.clear(session)
+        if session.application.startup.autotype["relock"]:
+            session.lock()
+        session.error(message)
+    if not flow.valid():
+        flow.cancel()
+        return
+    if not session.run_job(execute, done, failed):
+        flow.cancel()
 
 
 def add_preferences(session, page):
@@ -299,8 +372,13 @@ def add_preferences(session, page):
     values = config.autotype
     widgets = {}
     for key, title in (("match_title", "Match Entry Titles"), ("match_url", "Match Websites"),
-                       ("hide_expired", "Hide Expired Entries"), ("relock", "Lock Vault After Auto-Type")):
+                       ("hide_expired", "Hide Expired Entries"), ("relock", "Lock Vault After Auto-Type"),
+                       ("always_ask", "Always Show the Entry Selector"),
+                       ("skip_main_confirmation", "Skip Confirmation for the Selected Entry")):
         widgets[key] = Adw.SwitchRow(title=title, active=values[key])
+    widgets["always_ask"].set_subtitle("When off, a single matching entry can be typed automatically")
+    widgets["skip_main_confirmation"].set_subtitle("Applies to Type Entry from the vault window")
+    widgets["skip_main_confirmation"].set_sensitive(values["always_ask"])
     widgets["delay"] = _spin("Delay Between Keys (Milliseconds)", values["delay"], 0, 500)
     widgets["start_delay"] = _spin("Delay Before Typing (Milliseconds)", values["start_delay"], 100, 10000)
     widgets["retype_seconds"] = _spin("Remember Last Typed Entry (Seconds)", values["retype_seconds"], 0, 60)
@@ -315,6 +393,7 @@ def add_preferences(session, page):
                        for key, row in widgets.items()}
             config.save(config.remember, config.login, config.vault, autotype=options)
             session.application.autotype_recent.clear()
+            widgets["skip_main_confirmation"].set_sensitive(config.autotype["always_ask"])
         except (OSError, ValueError, VaultError) as exc:
             updating = True
             for key, row in widgets.items():
@@ -323,6 +402,7 @@ def add_preferences(session, page):
                 else:
                     row.set_value(config.autotype[key])
             updating = False
+            widgets["skip_main_confirmation"].set_sensitive(config.autotype["always_ask"])
             session.error(str(exc))
     for row in widgets.values():
         row.connect("notify::active" if isinstance(row, Adw.SwitchRow) else "notify::value", changed)

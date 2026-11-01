@@ -7,9 +7,10 @@ with their existing Auto-Type preferences. Older six-field private settings gain
 the new default without losing their matching, locking or delay choices.
 
 After a successful Auto-Type action, a subsequent selector can preselect the
-same entry and sequence if they are among its fresh choices. Continue or Enter
-chooses the selected row, and the usual confirmation/PICKCHARS and destination
-checks still follow. A nonempty search with no remembered match selects its
+same entry and sequence if they are among its fresh choices. Type or Enter
+approves the selected row; PICKCHARS and destination checks still follow where
+needed. See [Confirmation Preferences](autotype-confirmation.md) for automatic
+single-match and selected-entry behavior. A nonempty search with no remembered match selects its
 first result. Enter refreshes an outstanding delayed search before activating
 anything. Standard list selection supports keyboard navigation.
 
@@ -31,10 +32,10 @@ the captured owner/session/snapshot before opening confirmation. Native tokens
 and focus leases retain their existing expiry and validation.
 
 This adds the selection-memory workflow, not a complete Auto-Type parity claim.
-Always-ask/skip-confirmation preferences, association variants in general search,
-temporary unlock/relock timing, portal persistence/clipboard typing and broader
-platform behavior remain separate gaps. Existing confirmation and immediate
-relocking behavior are preserved by this update.
+Association variants in general search, temporary unlock/relock timing, portal
+persistence/clipboard typing and broader platform behavior remain separate gaps.
+Confirmation preferences now follow the linked policy; immediate relocking is
+unchanged.
 
 References: KeePassXC Team/Felix Geyer GPL2-or-3 source; this independent adapter
 is GPL3-only.

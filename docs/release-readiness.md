@@ -6,6 +6,17 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Auto-Type confirmation policy now maps stock always-show and selected-entry
+skip-confirmation keys, preserves older private options and removes redundant
+confirmation after selector approval. Single fresh-match execution can run
+without a selector when configured; non-Shell public D-Bus callers still choose
+explicitly. A single cancellable flow guards capture/owner handoff/preparation/
+execution, and PICKCHARS errors stay inline. Native eligibility/tokens/focus and
+portal permission checks remain. See [Confirmation Preferences](autotype-confirmation.md)
+for the policy table, cancellation locks and remaining Auto-Type gaps.
+Runtime/Python compilation only; no tests/harnesses or automated input/GUI/
+portal/settings/vault acceptance. User manual policy and lifecycle checks remain.
+
 Auto-Type now supports a0–60-second remembered selection using the stock
 GlobalAutoTypeRetypeTime preference and a legacy-private-settings default.
 Only UUID/sequence-digest/session metadata is retained; matching/default

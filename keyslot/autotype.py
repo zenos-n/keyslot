@@ -157,8 +157,9 @@ class PortalKeyboard:
             self.pressed.clear()
 
 
-def execute_portal(session, target, token, pick, epoch):
-    valid = lambda: session.epoch == epoch and session.vault.unlocked and not session.jobs.closed
+def execute_portal(session, target, token, pick, epoch, flow_valid=None):
+    valid = lambda: (session.epoch == epoch and session.vault.unlocked and not session.jobs.closed
+                     and (flow_valid is None or flow_valid()))
     keyboard = PortalKeyboard(valid)
     plan = collections.deque()
     focus_token = GLib.Variant("(s)", (target["target"],))

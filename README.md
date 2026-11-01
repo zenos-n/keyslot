@@ -357,6 +357,13 @@ settings; its dropdown opens the full options without discarding the draft.
 See [New-entry Defaults](docs/new-entry-defaults.md). These workflows await
 manual acceptance; no new automated runs were performed.
 
+Auto-Type supports stock always-show and selected-entry confirmation preferences,
+including configured single-match execution, with one cancellable flow across
+vaults. Selector approval no longer requires a redundant confirmation;
+PICKCHARS, native focus/token checks and portal permissions remain.
+See [Confirmation Preferences](docs/autotype-confirmation.md) for policy and
+manual acceptance requirements.
+
 Auto-Type can remember its last successful entry/sequence selection for0–60
 seconds, with keyboard selection and Continue/Enter support. The setting uses
 the stock INI key, and existing private Auto-Type settings retain their values.

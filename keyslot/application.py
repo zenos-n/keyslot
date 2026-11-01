@@ -149,6 +149,8 @@ class VaultSession:
         self.emit_state()
 
     def _clear(self):
+        if self.application.autotype_flow:
+            self.application.autotype_flow.cancel_for(self, locking=True)
         self.application.autotype_recent.clear(self)
         self.windows.cancel()
         self.pending_unlock = None
@@ -257,6 +259,8 @@ class VaultSession:
         self.icons.close()
 
     def deactivate(self):
+        if self.application.autotype_flow:
+            self.application.autotype_flow.cancel_for(self)
         self.windows.cancel()
         self.totp.clear()
         self.view_epoch += 1
@@ -303,6 +307,8 @@ class VaultSession:
             self.unlock_prompt = None
 
     def present_dialog(self, dialog):
+        if self.application.autotype_flow and self.application.autotype_flow.dialog is not dialog:
+            self.application.autotype_flow.cancel(lock=True)
         if not self.active or self.jobs.closed:
             clear_dialog_fields(dialog)
             return False
@@ -608,6 +614,10 @@ class VaultSession:
             self.files.reload()
 
     def apply_refreshed(self, snapshot):
+        if self.application.autotype_flow:
+            self.application.autotype_flow.cancel_for(self)
+            if not self.vault.unlocked:
+                return
         self.application.autotype_recent.clear(self)
         self.view_epoch += 1
         self.totp.clear()
