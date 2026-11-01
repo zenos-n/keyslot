@@ -28,6 +28,7 @@ public:
     KeyslotAutoType();
     ~KeyslotAutoType();
     void clear();
+    QJsonObject fields(const Entry* entry) const;
     QJsonObject settings(const Entry* entry) const;
     QJsonObject settings(const Group* group) const;
     void saveSettings(Entry* entry, const QJsonObject& args);

@@ -7,8 +7,9 @@ with their existing Auto-Type preferences. Older six-field private settings gain
 the new default without losing their matching, locking or delay choices.
 
 After a successful Auto-Type action, a subsequent selector can preselect the
-same entry and sequence if they are among its fresh choices. Type or Enter
-approves the selected row; PICKCHARS and destination checks still follow where
+same entry and sequence if they are among its fresh choices. A click selects a
+row; double-click, Type or Enter approves it. The Type dropdown also offers
+[Field Actions](autotype-fields.md) and explicit Copy Field actions. PICKCHARS and destination checks still follow where
 needed. See [Confirmation Preferences](autotype-confirmation.md) for automatic
 single-match and selected-entry behavior. A nonempty search with no remembered match selects its
 first result. Enter refreshes an outstanding delayed search before activating

@@ -357,6 +357,13 @@ settings; its dropdown opens the full options without discarding the draft.
 See [New-entry Defaults](docs/new-entry-defaults.md). These workflows await
 manual acceptance; no new automated runs were performed.
 
+Auto-Type includes username/password/TOTP/URL field actions, supported Enter
+variants and selector Copy Field actions. Ctrl+Shift+V now types the selected
+entry's sequence; global matching remains in the menu/companion shortcut.
+Native flags drive field availability, including protected fields, without
+fetching typing values into GTK. See [Field Actions](docs/autotype-fields.md)
+for shortcuts, clipboard ownership and manual acceptance requirements.
+
 Auto-Type supports stock always-show and selected-entry confirmation preferences,
 including configured single-match execution, with one cancellable flow across
 vaults. Selector approval no longer requires a redundant confirmation;

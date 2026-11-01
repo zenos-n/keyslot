@@ -9,6 +9,7 @@
 #include "core/Group.h"
 #include "core/Tools.h"
 #include <QJsonArray>
+#include <QMap>
 #include <QRegularExpression>
 #include <QThread>
 #include <unistd.h>
@@ -81,6 +82,11 @@ AutoTypePlatformX11* KeyslotAutoType::x11() {
         XSetErrorHandler(AutoTypePlatformX11::MyErrorHandler);
     }
     return platform.get();
+}
+QJsonObject KeyslotAutoType::fields(const Entry* entry) const {
+    return {{"eligible", !entry->isRecycled() && entry->autoTypeEnabled() && entry->group()->resolveAutoTypeEnabled()},
+            {"username", !entry->username().isEmpty()}, {"password", !entry->password().isEmpty()},
+            {"totp", entry->hasValidTotp()}, {"url", !entry->url().isEmpty()}};
 }
 QJsonObject KeyslotAutoType::settings(const Entry* entry) const {
     QJsonArray associations;
@@ -176,6 +182,17 @@ QJsonObject KeyslotAutoType::prepare(const QSharedPointer<Database>& db, Entry* 
     candidate.target = text(args, "target", 256);
     candidate.title = text(args, "title", 4096);
     candidate.sequence = text(args, "sequence");
+    if (args.contains("field")) {
+        const QMap<QString, QString> sequences{
+            {"username", "{USERNAME}"}, {"username-enter", "{USERNAME}{ENTER}"},
+            {"password", "{PASSWORD}"}, {"password-enter", "{PASSWORD}{ENTER}"},
+            {"totp", "{TOTP}"}, {"url", "{URL}"}, {"url-enter", "{URL}{ENTER}"}};
+        const auto field = text(args, "field", 32);
+        if (!sequences.contains(field) || candidate.sequence != sequences.value(field))
+            reject("invalid_request", "Choose a supported Auto-Type field action.");
+        if (!fields(entry).value(field.section('-', 0, 0)).toBool())
+            reject("disabled", "This entry does not contain the requested Auto-Type field.");
+    }
     candidate.delay = number(args.value("delay"), 0, 500);
     candidate.startDelay = number(args.value("start_delay"), 100, 10000);
     if (candidate.sequence.isEmpty()) candidate.sequence = entry->effectiveAutoTypeSequence();

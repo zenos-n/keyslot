@@ -6,6 +6,16 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Auto-Type now includes field-only username/password/TOTP/URL and supported Enter
+variants, entry and selector menus, selector Copy Field actions and local
+Ctrl+1–4/Ctrl+Shift+1–4 bindings. Native presence/eligibility booleans avoid
+reading typing values into GTK, and prepare rechecks the fixed field/template.
+Ctrl+Shift+V targets the selected entry's sequence; global matching is separate.
+Metadata callbacks, action sensitivity and cross-vault clipboard ownership are
+guarded. See [Field Actions](autotype-fields.md) for migration and remaining
+manual requirements. Native/runtime/Python compilation only; no tests/harnesses
+or automated input/GUI/clipboard/portal/config/vault acceptance.
+
 Auto-Type confirmation policy now maps stock always-show and selected-entry
 skip-confirmation keys, preserves older private options and removes redundant
 confirmation after selector approval. Single fresh-match execution can run

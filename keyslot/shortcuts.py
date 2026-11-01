@@ -7,6 +7,7 @@ from .application import Gdk, Gtk
 from .backend import VaultError
 from .core_backend import Vault
 from .startup import _write
+from .autotype_fields import TYPES
 
 
 MISSING = "__keyslot_default_shortcut__"
@@ -68,7 +69,10 @@ SPECS = [
     Shortcut("win.copy-notes", "Copy Notes", "", "actionEntryCopyNotes", "entry"),
     Shortcut("win.copy-totp", "Copy One-Time Password", "<Control>t", "actionEntryCopyTotp", "totp"),
     Shortcut("win.copy-password-totp", "Copy Password and One-Time Password", "<Control>y", "actionEntryCopyPasswordTotp", "totp"),
-    Shortcut("win.autotype", "Auto-Type", "<Control><Shift>v", "actionEntryAutoTypeSequence", "vault"),
+    Shortcut("win.type-entry", "Type Selected Entry", "<Control><Shift>v", "actionEntryAutoTypeSequence", "autotype-entry"),
+    *[Shortcut("win.type-" + name, "Type " + title, "", qt, "autotype-" + name)
+      for name, (title, _sequence, qt) in TYPES.items()],
+    Shortcut("win.autotype", "Choose Auto-Type Entry", "", needs="vault"),
     Shortcut("win.preferences", "Preferences", "<Control>comma", "actionSettings"),
     Shortcut("win.shortcuts", "Keyboard Shortcuts", "<Control>question", "actionKeyboardShortcuts"),
     Shortcut("win.shortcut-settings", "Customize Keyboard Shortcuts", ""),
@@ -76,6 +80,7 @@ SPECS = [
 ]
 BY_ACTION = {spec.action: spec for spec in SPECS}
 ENTRY_ACTIONS = {"edit-entry": "edit", "duplicate": "duplicate", "delete": "delete", "permanent-delete": "permanent-delete",
+                 "type-entry": "type:entry", **{"type-" + name: "type:" + name for name in TYPES},
                  **{"copy-" + name: name for name in ("title", "username", "password", "url", "notes", "totp", "password-totp")}}
 
 
@@ -288,10 +293,12 @@ class Manager:
                     enabled = session.vault.unlocked or session.busy
                 elif spec.needs != "always":
                     enabled = enabled and unlocked
-                if spec.needs in ("entry", "totp"):
+                if spec.needs in ("entry", "totp") or spec.needs.startswith("autotype-"):
                     enabled = enabled and not typing and entry is not None and entry.addressable and not entry.recycled
                     if spec.needs == "totp":
                         enabled = enabled and entry.totp
+                    elif spec.needs.startswith("autotype-"):
+                        enabled = enabled and session.type_fields.available(spec.needs.removeprefix("autotype-"), entry=entry)
                 elif spec.needs == "selection":
                     selected = session.window.selected_entries()
                     enabled = enabled and not typing and bool(selected) and all(item.addressable for item in selected)
@@ -308,7 +315,12 @@ def invoke_entry(session, operation):
     entry = session.window.selected_entry
     if not entry or not entry.addressable or entry.recycled:
         return
-    if operation == "edit":
+    if operation.startswith("type:"):
+        name = operation.removeprefix("type:")
+        if session.type_fields.available(name, entry=entry):
+            from .autotype_views import choose
+            choose(session, entry, field=None if name == "entry" else name)
+    elif operation == "edit":
         session.edit_entry(entry)
     elif operation == "duplicate":
         from .entry_actions import choose

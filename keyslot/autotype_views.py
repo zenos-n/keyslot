@@ -8,6 +8,7 @@ from .passkey_views import _lifetime
 from .backend import VaultError
 from . import autotype
 from .autotype_flow import Flow
+from .autotype_fields import TYPES, COPY_FIELDS, SELECTOR_KEYS, FieldInfo
 
 
 def shortcut_sender(connection, sender):
@@ -102,8 +103,11 @@ def settings(session, entry=None, group=None, data=None):
     session.present_dialog(dialog)
 
 
-def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_automatic=True, global_shortcut=False):
+def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_automatic=True, global_shortcut=False, field=None):
     if not session.vault.unlocked or session.busy:
+        return
+    if field is not None and (entry is None or field not in TYPES):
+        session.error("Choose an entry and a supported Auto-Type field.")
         return
     if flow is None:
         if global_shortcut and any(item.host_window.is_active() for item in session.application.sessions):
@@ -124,10 +128,10 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
         return
     if target is None:
         if os.environ.get("XDG_SESSION_TYPE") == "wayland":
-            flow.run(session, autotype.capture_target, lambda value: choose(session, entry, value, flow=flow))
+            flow.run(session, autotype.capture_target, lambda value: choose(session, entry, value, flow=flow, field=field))
             return
         if windows is None:
-            flow.run(session, session.vault.autotype_targets, lambda value: choose(session, entry, windows=value, flow=flow))
+            flow.run(session, session.vault.autotype_targets, lambda value: choose(session, entry, windows=value, flow=flow, field=field))
             return
         dialog, header, box = _dialog("Auto-Type Destination", height=420)
         current = _guarded_lifetime(session, dialog)
@@ -135,7 +139,7 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
             if current() and flow.valid():
                 flow.release(dialog)
                 dialog.close()
-                choose(session, entry, dict(backend="x11", **window), flow=flow)
+                choose(session, entry, dict(backend="x11", **window), flow=flow, field=field)
         rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"], valign=Gtk.Align.START)
         box.append(rows)
         for window in windows:
@@ -149,7 +153,7 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
     options = session.application.startup.autotype
     if entry:
         confirm = options["always_ask"] and not options["skip_main_confirmation"]
-        _prepare(session, entry, target, "", flow, confirm=confirm)
+        _prepare(session, entry, target, TYPES[field][1] if field else "", flow, confirm=confirm, field=field)
         return
     candidates = list(session.application.sessions)
     captured = [(owner, owner.epoch, owner.vault.identity, owner.vault.generation, owner.vault.snapshot)
@@ -197,7 +201,7 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
     flow.run(session, collect, matched)
 
 
-def _prepare(session, entry, target, sequence, flow, *, confirm):
+def _prepare(session, entry, target, sequence, flow, *, confirm, field=None):
     if not flow.valid() or session.jobs.closed or not session.vault.unlocked:
         flow.cancel()
         return
@@ -212,7 +216,7 @@ def _prepare(session, entry, target, sequence, flow, *, confirm):
         else:
             _execute(session, target, data, [], choice, flow)
     flow.run(session, lambda: session.vault.autotype_prepare(entry, target, sequence,
-        options["delay"], options["start_delay"]), prepared)
+        options["delay"], options["start_delay"], field=field), prepared)
 
 
 def _choose_match(session, target, matches, available, defaults=None, *, flow):
@@ -224,25 +228,106 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
     box.append(destination)
     search = Gtk.SearchEntry(placeholder_text="Search entries")
     box.append(search)
-    rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["boxed-list"], valign=Gtk.Align.START)
+    rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, activate_on_single_click=False,
+                      css_classes=["boxed-list"], valign=Gtk.Align.START)
     box.append(rows)
     status = Gtk.Label(label="No matching entries. Search to choose another entry.", wrap=True)
     box.append(status)
-    box.append(Gtk.Label(label="Choose an entry to start Auto-Type in the selected window.",
+    box.append(Gtk.Label(label="Select an entry, then type it or copy a field. Double-click to type its sequence.",
                          wrap=True, xalign=0, css_classes=["dim-label"]))
-    def prepare(owner, entry, sequence):
+    def prepare(owner, entry, sequence, field=None):
         if not current() or not flow.valid():
             return
         flow.release(dialog)
         dialog.close()
-        _prepare(owner, entry, target, sequence, flow, confirm=False)
+        _prepare(owner, entry, target, sequence, flow, confirm=False, field=field)
     def continue_selected(*_):
         row = rows.get_selected_row()
         if current() and row:
             row.emit("activated")
-    proceed = _save(header, continue_selected, "Type")
+    actions = Gio.SimpleActionGroup()
+    field_actions = {}
+    menu = Gio.Menu()
+    typing_menu, copy_menu = Gio.Menu(), Gio.Menu()
+    def update_fields():
+        live = current() and flow.valid()
+        for name, action in field_actions.items():
+            copy = name.startswith("copy-")
+            action.set_enabled(live and info.available(name.split("-", 1)[1], typing=not copy))
+        error.set_label(info.error if live else "")
+        error.set_visible(live and bool(info.error))
+    info = FieldInfo(update_fields)
+    dialog.connect("closed", lambda *_: info.close())
+    error = Gtk.Label(xalign=0, wrap=True, css_classes=["error"], visible=False)
+    box.append(error)
+    def copy_field(owner, entry, name):
+        flow.release(dialog)
+        dialog.close()
+        flow.owner = flow.capture(owner)
+        flow.watch(owner)
+        def read():
+            if not owner.vault.autotype_fields(entry)[name]:
+                raise VaultError("This entry does not contain the requested field.")
+            return owner.vault.copy_totp(entry) if name == "totp" else owner.vault.attribute(entry, COPY_FIELDS[name])
+        def copied(value):
+            flow.cancel()
+            if not session.active:
+                return
+            if session.application.clipboards.copy(owner, value):
+                seconds = session.application.startup.clipboard_seconds
+                session.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
+                session.windows.copied()
+            else:
+                session.toast("Could not copy to the clipboard")
+        flow.run(owner, read, copied)
+    def field_action(name, copy=False):
+        if not current() or not flow.valid() or not info.available(name, typing=not copy):
+            return
+        if state["query"] != search.get_text().casefold():
+            render()
+            return
+        row = rows.get_selected_row()
+        if row and info.available(name, typing=not copy, entry=row.choice[1]):
+            owner, entry, _sequence = row.choice
+            if copy:
+                copy_field(owner, entry, name)
+            else:
+                prepare(owner, entry, TYPES[name][1], name)
+    for name, (title, _sequence, _qt) in TYPES.items():
+        action = Gio.SimpleAction.new("type-" + name, None)
+        action.connect("activate", lambda *_args, name=name: field_action(name))
+        actions.add_action(action)
+        field_actions["type-" + name] = action
+        typing_menu.append("Type " + title, "autotype-fields.type-" + name)
+    for name in COPY_FIELDS:
+        action = Gio.SimpleAction.new("copy-" + name, None)
+        action.connect("activate", lambda *_args, name=name: field_action(name, True))
+        actions.add_action(action)
+        field_actions["copy-" + name] = action
+        copy_menu.append("Copy " + TYPES[name][0], "autotype-fields.copy-" + name)
+    menu.append_section(None, typing_menu)
+    menu.append_section(None, copy_menu)
+    dialog.insert_action_group("autotype-fields", actions)
+    keys = Gtk.ShortcutController(scope=Gtk.ShortcutScope.MANAGED)
+    for name, accelerator in SELECTOR_KEYS.items():
+        for prefix, key in (("type-", accelerator), ("copy-", accelerator.replace("<Control>", "<Control><Shift>"))):
+            keys.add_shortcut(Gtk.Shortcut.new(Gtk.ShortcutTrigger.parse_string(key),
+                Gtk.NamedAction.new("autotype-fields." + prefix + name)))
+    dialog.add_controller(keys)
+    proceed = Adw.SplitButton(label="Type", menu_model=menu, valign=Gtk.Align.CENTER,
+                             dropdown_tooltip="Type or Copy a Field", css_classes=["suggested-action"])
+    proceed.connect("clicked", continue_selected)
+    header.pack_end(proceed)
     proceed.set_sensitive(False)
-    rows.connect("row-selected", lambda _rows, row: proceed.set_sensitive(row is not None))
+    def selected(_rows, row):
+        proceed.set_sensitive(row is not None)
+        if row:
+            owner, entry, _sequence = row.choice
+            info.select(owner, entry)
+        else:
+            info.clear()
+    rows.connect("row-selected", selected)
+    update_fields()
     def render(*_):
         if not current() or not flow.valid():
             return
@@ -262,6 +347,7 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
                 (entry.username, owner.vault.snapshot.name, entry.group_path, sequence))), use_markup=False, title_lines=2,
                 subtitle_lines=2, activatable=True)
             row.connect("activated", lambda _row, owner=owner, entry=entry, sequence=sequence: prepare(owner, entry, sequence))
+            row.choice = (owner, entry, sequence)
             rows.append(row)
             if session.application.autotype_recent.matches(owner, entry, sequence, (defaults or {}).get((owner, entry.uuid))):
                 remembered_row = row

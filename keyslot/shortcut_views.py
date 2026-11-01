@@ -16,6 +16,13 @@ def help_dialog(session):
     for key, title in RESERVED.items():
         selection.add(Adw.ShortcutsItem(title=title, accelerator=key))
     dialog.add(selection)
+    from .autotype_fields import TYPES, SELECTOR_KEYS
+    autotype = Adw.ShortcutsSection(title="Auto-Type Selector")
+    for name, key in SELECTOR_KEYS.items():
+        autotype.add(Adw.ShortcutsItem(title="Type " + TYPES[name][0], accelerator=key))
+        autotype.add(Adw.ShortcutsItem(title="Copy " + TYPES[name][0],
+                                     accelerator=key.replace("<Control>", "<Control><Shift>")))
+    dialog.add(autotype)
     session.present_dialog(dialog)
 
 

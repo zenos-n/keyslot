@@ -644,6 +644,17 @@ class Vault:
                 return self._rpc("autotype.settings", entry=entry.uuid)
             return self._rpc("autotype.group.settings", group=group)
 
+    def autotype_fields(self, entry):
+        with self._mutex:
+            self._entry(entry)
+            if "autotype-fields" not in self.capabilities:
+                raise VaultError("Update the native engine before using field-only Auto-Type actions.")
+            data = self._rpc("autotype.fields", entry=entry.uuid)
+            if (not isinstance(data, dict) or set(data) != {"eligible", "username", "password", "totp", "url"}
+                    or any(type(value) is not bool for value in data.values())):
+                raise VaultError("The engine returned invalid Auto-Type field information.")
+            return data
+
     def save_autotype_settings(self, entry=None, group=None, **options):
         with self._mutex:
             if entry is not None:
@@ -660,11 +671,13 @@ class Vault:
             return self._rpc("autotype.matches", title=title, match_title=match_title,
                              match_url=match_url, hide_expired=hide_expired)["matches"]
 
-    def autotype_prepare(self, entry, target, sequence="", delay=25, start_delay=500):
+    def autotype_prepare(self, entry, target, sequence="", delay=25, start_delay=500, *, field=None):
         with self._mutex:
             self._entry(entry)
+            if field is not None and "autotype-fields" not in self.capabilities:
+                raise VaultError("Update the native engine before using field-only Auto-Type actions.")
             return self._rpc("autotype.prepare", entry=entry.uuid, sequence=sequence, delay=delay,
-                             start_delay=start_delay, **target)
+                             start_delay=start_delay, **({"field": field} if field is not None else {}), **target)
 
     def autotype_finish(self, token, pick=(), approved=False):
         with self._mutex:

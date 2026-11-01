@@ -114,6 +114,14 @@ class VaultSession:
         self.totp = totp_views.TotpController(self)
         from .privacy_views import Previews
         self.previews = Previews(self)
+        from .autotype_fields import FieldInfo
+        def fields_changed():
+            if self.window:
+                application.shortcuts.refresh_state()
+                if status := getattr(self.window, "type_status", None):
+                    status.set_label(self.type_fields.error)
+                    status.set_visible(bool(self.type_fields.error))
+        self.type_fields = FieldInfo(fields_changed)
         self.window = DatabaseView(self)
 
     @property
@@ -152,6 +160,7 @@ class VaultSession:
         if self.application.autotype_flow:
             self.application.autotype_flow.cancel_for(self, locking=True)
         self.application.autotype_recent.clear(self)
+        self.type_fields.clear()
         self.windows.cancel()
         self.pending_unlock = None
         if self.window:
@@ -248,6 +257,7 @@ class VaultSession:
         save_as(self)
 
     def shutdown(self):
+        self.type_fields.close()
         self.windows.close()
         self.previews.close()
         self.files.stop()
@@ -261,6 +271,7 @@ class VaultSession:
     def deactivate(self):
         if self.application.autotype_flow:
             self.application.autotype_flow.cancel_for(self)
+        self.type_fields.clear()
         self.windows.cancel()
         self.totp.clear()
         self.view_epoch += 1
@@ -1399,6 +1410,7 @@ class DatabaseView(Gtk.Box):
     def _selection_changed(self, *_):
         if not self.selection_mode or self.rendering_entries:
             return
+        self.app.type_fields.clear()
         self.app.previews.clear()
         entries = self.selected_entries()
         count = len(entries)
@@ -1455,6 +1467,8 @@ class DatabaseView(Gtk.Box):
             self.app.application.shortcuts.refresh_state()
 
     def _empty_detail(self):
+        self.app.type_fields.clear()
+        self.type_status = None
         self.app.previews.clear()
         self.app.totp.clear()
         clear(self.detail)
@@ -1463,6 +1477,8 @@ class DatabaseView(Gtk.Box):
         self.app.application.shortcuts.refresh_state()
 
     def render_detail(self, entry):
+        self.type_status = None
+        self.app.type_fields.select(self.app, entry)
         self.app.previews.clear()
         self.app.totp.clear()
         clear(self.detail)
@@ -1508,9 +1524,17 @@ class DatabaseView(Gtk.Box):
         settings = Adw.ActionRow(title="Auto-Type Settings…", subtitle="Sequences and window associations", activatable=True)
         settings.connect("activated", lambda *_: autotype_views.settings(self.app, entry=entry))
         auto_type.add(settings)
-        type_entry = Adw.ActionRow(title="Type Entry…", activatable=True, sensitive=not entry.recycled)
-        type_entry.connect("activated", lambda *_: autotype_views.choose(self.app, entry))
+        type_entry = Adw.ActionRow(title="Type Entry…", activatable=True, action_name="win.type-entry")
+        menu = Gio.Menu()
+        from .autotype_fields import TYPES
+        for name, (title, _sequence, _qt) in TYPES.items():
+            menu.append("Type " + title, "win.type-" + name)
+        type_entry.add_suffix(Gtk.MenuButton(icon_name="view-more-symbolic", menu_model=menu,
+                                            tooltip_text="Type Individual Fields", valign=Gtk.Align.CENTER))
         auto_type.add(type_entry)
+        self.type_status = Gtk.Label(label=self.app.type_fields.error, visible=bool(self.app.type_fields.error),
+                                    xalign=0, wrap=True, css_classes=["error"])
+        auto_type.add(self.type_status)
         self.detail.append(auto_type)
         from . import browser_options
         browser = Adw.PreferencesGroup(title="Browser Integration")
