@@ -16,6 +16,7 @@ def show(session):
         return
     settings = session.application.startup
     dialog = Adw.PreferencesDialog(title="Preferences")
+    updating = [False]
     page = Adw.PreferencesPage()
     group = Adw.PreferencesGroup(title="Startup")
     remember = Adw.SwitchRow(title="Remember Last Opened Vault",
@@ -104,8 +105,8 @@ def show(session):
     automatic.connect("notify::active", changed_saving)
     on_exit.connect("notify::active", changed_saving)
     page.add(saving)
-    security = Adw.PreferencesGroup(title="Security",
-        description="Screen lock and suspend still lock your vaults.")
+    locking = Adw.PreferencesGroup(title="Automatic Locking",
+        description="Applies to all vaults. Screen and user-switch detection requires GNOME and systemd-logind.")
     timeouts = [0, 60, 300, 600, 900, 1800, 3600]
     timeout = Adw.ComboRow(title="Lock When Inactive", model=Gtk.StringList.new([
         "Never", "1 Minute", "5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "Custom…"]))
@@ -125,8 +126,30 @@ def show(session):
             session.error(str(exc))
     timeout.connect("notify::selected", changed_timeout)
     custom.connect("notify::value", changed_timeout)
-    security.add(timeout)
-    security.add(custom)
+    locking.add(timeout)
+    locking.add(custom)
+    for field, title, subtitle in (
+        ("lock_on_screen", "Lock on Screen Lock or Suspend", "Lock immediately when the screen locks or the computer sleeps"),
+        ("lock_on_user_switch", "Lock When Switching Users", "Lock when this login session becomes inactive"),
+        ("lock_on_minimize", "Lock When Minimized or Hidden", "Lock after a clipboard grace period of 1–20 seconds, including close-to-background")):
+        row = Adw.SwitchRow(title=title, subtitle=subtitle, active=getattr(settings, field))
+        def changed_lock(_row, _property, field=field):
+            if updating[0]:
+                return
+            previous = getattr(settings, field)
+            try:
+                settings.save(settings.remember, settings.login, settings.vault, **{field: _row.get_active()})
+                if session.application.desktop_lock:
+                    session.application.desktop_lock.refresh_policy()
+            except (OSError, ValueError, VaultError) as exc:
+                updating[0] = True
+                _row.set_active(previous)
+                updating[0] = False
+                session.error(str(exc))
+        row.connect("notify::active", changed_lock)
+        locking.add(row)
+    page.add(locking)
+    security = Adw.PreferencesGroup(title="Security")
     clipboard_times = [0, 10, 20, 30, 60]
     clipboard = Adw.ComboRow(title="Clear Clipboard After", model=Gtk.StringList.new([
         "Never", "10 Seconds", "20 Seconds", "30 Seconds", "1 Minute", "Custom…"]))
@@ -196,7 +219,6 @@ def show(session):
     keeshare_preferences(session, page)
     secret_preferences(session, page)
     dialog.add(page)
-    updating = [False]
     def refresh():
         updating[0] = True
         remember.set_active(settings.remember)

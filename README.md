@@ -869,3 +869,12 @@ Moving within the same vault preserves the designated bin. Copies into another
 vault are ordinary groups unless placed in its bin, and do not replace its
 bin metadata. Cross-vault moves review source-bin removal and create a fresh
 source bin when next needed if recycling remains enabled.
+
+## Automatic desktop locking
+
+Preferences → Automatic Locking now includes screen lock/suspend, switching
+users and minimizing/hiding a window, alongside inactivity/Never. Settings map
+to KeePassXC INI profiles and private preferences. Minimize/hide locking uses
+the remaining owned clipboard lifetime with a 1–20 second grace, then locks all
+vaults. Screen/suspend and user-switch default on; minimize/hide defaults off.
+[Monitoring and manual-acceptance limits](docs/desktop-locking.md).

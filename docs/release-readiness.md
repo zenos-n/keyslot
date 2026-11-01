@@ -442,3 +442,11 @@ dirty checkpoint instead of forcing an on-disk save. Cross-vault destination
 receive and source cleanup still force durable saves for their receipt contract.
 The review text distinguishes these policies. This correction needs user manual
 save/recovery acceptance; compilation is the only evidence for this revision.
+
+Automatic-lock policy now maps stock screen/suspend, user-switch and minimize
+settings. GNOME/logind initial state, service owner changes, session identity,
+sleep/active signals, stale query guards, job/render gating and bounded clipboard
+grace are implemented. [Desktop-lock policy](desktop-locking.md) documents
+requirements and incomplete evidence. Package/Python compilation is the only
+validation for this revision; actual session/login/clipboard/lock/save lifecycle
+and preferences migration remain for user manual acceptance.

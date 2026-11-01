@@ -4,6 +4,7 @@ from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+import time
 
 import gi
 gi.require_version("Gtk", "4.0")
@@ -96,6 +97,7 @@ class VaultSession:
         self.pending_errors = []
         self.view_epoch = 0
         self.clipboard_provider = None
+        self.clipboard_deadline = 0
         self.clipboard_timer = 0
         self.dialogs = []
         self.file_requests = set()
@@ -135,6 +137,10 @@ class VaultSession:
         self.application.update_session(self)
 
     def _changed(self):
+        monitor = getattr(self.application, "desktop_lock", None)
+        if monitor and monitor.blocked and (self.vault.unlocked or self.busy):
+            self.jobs.lock()
+            return
         self.files.sync()
         if self.window:
             self.window.set_busy(self.busy)
@@ -318,11 +324,13 @@ class VaultSession:
         self.clipboard_provider = Gdk.ContentProvider.new_for_value(value)
         clipboard.set_content(self.clipboard_provider)
         seconds = self.application.startup.clipboard_seconds
+        self.clipboard_deadline = time.monotonic() + seconds if seconds else 0
         if seconds:
             self.clipboard_timer = GLib.timeout_add_seconds(seconds, self.clear_clipboard)
         self.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
 
     def clear_clipboard(self):
+        self.clipboard_deadline = 0
         if self.clipboard_timer:
             GLib.source_remove(self.clipboard_timer)
             self.clipboard_timer = 0
@@ -1127,6 +1135,10 @@ class DatabaseView(Gtk.Box):
             self.show_locked()
             return
         if snapshot is not self.app.vault.snapshot:
+            return
+        monitor = getattr(self.app.application, "desktop_lock", None)
+        if monitor and monitor.blocked:
+            self.app.lock()
             return
         self.app.pending_unlock = None
         self.app.dismiss_unlock_prompt()

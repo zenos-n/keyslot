@@ -42,7 +42,7 @@ class Keyslot(Adw.Application):
         self.sessions = []
         self.active_session = None
         self.last_activity = time.monotonic()
-        self.screen_subscription = self.sleep_subscription = 0
+        self.desktop_lock = None
         self.connect("startup", self._startup)
         self.connect("activate", self._activate)
         self.connect("open", self._open_files)
@@ -125,10 +125,9 @@ class Keyslot(Adw.Application):
             raise RuntimeError("A session D-Bus connection is required.")
         info = Gio.DBusNodeInfo.new_for_xml(DBUS_XML).interfaces[0]
         self.dbus_registration = self.connection.register_object(OBJECT_PATH, info, self._dbus_call, self._dbus_property, None)
-        self.screen_subscription = self.connection.signal_subscribe("org.gnome.ScreenSaver", "org.gnome.ScreenSaver",
-            "ActiveChanged", "/org/gnome/ScreenSaver", None, Gio.DBusSignalFlags.NONE,
-            lambda _c, _s, _p, _i, _n, params: self.lock() if params.unpack()[0] else None)
-        Gio.bus_get(Gio.BusType.SYSTEM, None, self._system_bus_ready)
+        from .desktop_lock import DesktopLock
+        self.desktop_lock = DesktopLock(self)
+        self.desktop_lock.start()
         GLib.timeout_add_seconds(5, self._idle_check)
         GLib.timeout_add_seconds(1, self._ssh_check)
         GLib.timeout_add_seconds(5, self._keeshare_check)
@@ -150,15 +149,6 @@ class Keyslot(Adw.Application):
             except (OSError, ValueError, VaultError):
                 self.startup_error = "Browser integration could not start. Review Browser Setup in Preferences."
         self.emit_state()
-
-    def _system_bus_ready(self, _source, result):
-        try:
-            self.system_bus = Gio.bus_get_finish(result)
-            self.sleep_subscription = self.system_bus.signal_subscribe("org.freedesktop.login1",
-                "org.freedesktop.login1.Manager", "PrepareForSleep", "/org/freedesktop/login1", None,
-                Gio.DBusSignalFlags.NONE, lambda _c, _s, _p, _i, _n, params: self.lock() if params.unpack()[0] else None)
-        except GLib.Error:
-            pass
 
     def _dbus_property(self, _connection, _sender, _path, _interface, prop):
         return GLib.Variant("b", self.busy if prop == "Busy" else self.background if prop == "Background" else self.locked)
@@ -434,6 +424,8 @@ class Keyslot(Adw.Application):
         advance()
 
     def lock(self):
+        if self.desktop_lock:
+            self.desktop_lock.cancel_delayed()
         for request in list(self.command_requests):
             request.cancel()
         for session in list(self.sessions):
@@ -450,6 +442,8 @@ class Keyslot(Adw.Application):
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        if self.desktop_lock:
+            self.desktop_lock.close()
         if self.sessions:
             self.save_session_state()
         for request in list(self.command_requests):
@@ -474,10 +468,6 @@ class Keyslot(Adw.Application):
         for session in list(self.sessions):
             session.shutdown()
         self.sessions.clear()
-        if self.screen_subscription:
-            self.connection.signal_unsubscribe(self.screen_subscription)
-        if self.sleep_subscription:
-            self.system_bus.signal_unsubscribe(self.sleep_subscription)
         if getattr(self, "dbus_registration", 0):
             self.connection.unregister_object(self.dbus_registration)
 
@@ -529,6 +519,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.app = application
         self.session = None
         self.set_size_request(360, 400)
+        if application.desktop_lock:
+            application.desktop_lock.watch_window(self)
         self.connect("close-request", self._close)
         self.connect("notify::is-active", self._focused)
         self.connect("notify::visible", lambda *_: application.emit_state())
