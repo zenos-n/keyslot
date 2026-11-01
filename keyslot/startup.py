@@ -8,7 +8,8 @@ import threading
 from . import APP_ID
 
 AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False,
-                          delay=25, start_delay=500, retype_seconds=15, always_ask=True, skip_main_confirmation=False)
+                          delay=25, start_delay=500, retype_seconds=15, always_ask=True, skip_main_confirmation=False,
+                          sort_column=0, sort_order=0)
 SECRET_SERVICE_DEFAULTS = dict(enabled=False, confirm_access=True, confirm_delete=True, notify=True, unlock_before_search=True)
 LOCK_DEFAULTS = dict(lock_on_screen=True, lock_on_user_switch=True, lock_on_minimize=False)
 PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_preview=True,
@@ -24,8 +25,9 @@ def _xdg_directory(name, fallback):
 
 
 def _autotype_options(value):
-    legacy = set(AUTO_TYPE_DEFAULTS) - {"always_ask", "skip_main_confirmation"}
-    if isinstance(value, dict) and set(value) in (legacy, legacy - {"retype_seconds"}):
+    previous = set(AUTO_TYPE_DEFAULTS) - {"sort_column", "sort_order"}
+    legacy = previous - {"always_ask", "skip_main_confirmation"}
+    if isinstance(value, dict) and set(value) in (previous, legacy, legacy - {"retype_seconds"}):
         value = {**AUTO_TYPE_DEFAULTS, **value}
     if not isinstance(value, dict) or set(value) != set(AUTO_TYPE_DEFAULTS):
         raise ValueError("The auto-type settings are invalid.")
@@ -35,6 +37,9 @@ def _autotype_options(value):
     for key, low, high in (("delay", 0, 500), ("start_delay", 100, 10000), ("retype_seconds", 0, 60)):
         if type(value[key]) is not int or not low <= value[key] <= high:
             raise ValueError("Choose supported auto-type delays.")
+    for key, high in (("sort_column", 3), ("sort_order", 1)):
+        if type(value[key]) is not int or not 0 <= value[key] <= high:
+            raise ValueError("Choose a supported Auto-Type sort field and direction.")
     return dict(value)
 
 

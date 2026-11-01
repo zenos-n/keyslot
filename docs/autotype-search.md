@@ -41,12 +41,34 @@ approval, PICKCHARS, portal or focus checks. Resolved search-field values stay
 native; replies contain entry UUIDs and unexpanded sequence templates only.
 Queries are not written to preferences.
 
+The selector's **Sort Entries** header button offers Group, Title, Username or
+Sequence, in ascending or descending order. The profile uses stock
+`AutoTypeDialogSortColumn` (0–3) and `AutoTypeDialogSortOrder` (0–1), with Group /
+Ascending as the native defaults. Existing private options gain only those
+defaults; malformed sort settings are rejected. Other Auto-Type preferences
+preserve these keys when saved.
+
+Sorting uses case-insensitive GLib locale collation over the row's existing
+metadata and unexpanded sequence. Group sorting uses the group's name rather
+than its full path. Protected usernames stay absent from the metadata; resolved
+reference values remain native and are not fetched just for sorting. Thus
+reference-bearing or protected display fields may order differently from the
+stock Qt selector, and exact locale ordering can differ between GLib and Qt.
+These display/ordering differences remain a parity gap, not a claim of identical
+native collation. Changing order retains the selected row and its field actions,
+cancels any pending Enter intent and does not initiate typing. Sort controls are
+disabled during Copy. Save failures restore the prior choice and use the existing
+error/cancellation policy. Search refreshes continue to check query, scope,
+serial and vault contexts; ordering never changes the entry/sequence identity.
+
 This is an independent GPL3-only integration of behavior documented by
 KeePassXC Team/Felix Geyer GPL2-or-3 sources:
 
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoTypeSelectDialog.cpp
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoTypeMatchView.cpp
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoTypeMatchModel.cpp
+- https://docs.gtk.org/gtk4/method.ListBox.set_sort_func.html
+- https://docs.gtk.org/gtk4/method.ListBox.invalidate_sort.html
 - https://github.com/keepassxreboot/keepassxc/blob/2.7.12/src/core/EntrySearcher.cpp
 
 Native/runtime/Python compilation only. No tests/harnesses added or run; no
@@ -56,7 +78,7 @@ search-excluded groups, wildcard/reference matching, default/custom/duplicate
 associations, expired/disabled/recycled/ambiguous entries, multiple vaults,
 selection memory, Enter/edit/scope/lock/reload/close/error/queue races and real
 X11/Wayland focus/keyboard behavior. [Locked-vault resumption](autotype-unlock.md) now uses existing providers and
-immediate temporary-vault relocking and a chooser for other locked vaults. Sort
-preferences, portal persistence/clipboard typing and wider
+immediate temporary-vault relocking and a chooser for other locked vaults. Saved
+sort controls are implemented; protected/reference display collation, portal persistence/clipboard typing and wider
 platform/accessibility acceptance remain separate work. The core now uses [2.8/Qt6](../engine/Native28.md); GTK behavior and production
 readiness remain unproven.

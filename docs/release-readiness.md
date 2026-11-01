@@ -570,3 +570,14 @@ Native/package/Python compilation is the only validation for this revision;
 actual privacy, reference, focus/selection/lock, config and clipboard behavior
 remains user-manual. Copy/minimize/background preferences are now implemented in
 [Window Behavior](window-behavior.md), with manual desktop acceptance open.
+
+Auto-Type selector sorting now exposes Group/Title/Username/Sequence and both
+directions, mapped to stock AutoTypeDialogSortColumn/Order. Legacy private
+options retain values while gaining native sort defaults; ordinary preferences
+preserve sort keys. GTK reorders existing rows, preserving selection and current
+field context, cancels pending Enter intent and disables ordering during Copy.
+Compilation only: protected/reference display ordering, GLib versus Qt locale
+differences, saved profiles, failed writes, keyboard/pointer/accessibility,
+multi-vault duplicates, async search and lock/cancel races require user manual
+acceptance. See [Chooser search](autotype-search.md); no exact-order/full-parity
+or production claim is made.

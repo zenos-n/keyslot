@@ -221,10 +221,28 @@ def _choose_match(session, target, matches, contexts, *, flow):
     box.append(search)
     scope = Gtk.CheckButton(label="Search All Unlocked Databases", active=not matches, sensitive=bool(matches))
     box.append(scope)
+    config = session.application.startup
+    sort_column = Adw.ComboRow(title="Sort By", model=Gtk.StringList.new(["Group", "Title", "Username", "Sequence"]),
+                               selected=config.autotype["sort_column"])
+    sort_order = Adw.ComboRow(title="Order", model=Gtk.StringList.new(["Ascending", "Descending"]),
+                              selected=config.autotype["sort_order"])
+    sort_group = Adw.PreferencesGroup()
+    sort_group.add(sort_column)
+    sort_group.add(sort_order)
+    sort_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, width_request=320,
+                       margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
+    sort_box.append(sort_group)
+    sort_button = Gtk.MenuButton(icon_name="view-sort-ascending-symbolic", tooltip_text="Sort Entries",
+                                 popover=Gtk.Popover(child=sort_box), valign=Gtk.Align.CENTER)
+    header.pack_start(sort_button)
     box.append(Gtk.Label(label="All databases: use KeePassXC search syntax, for example tag:work or title:mail. "
         "Window matches: filter group, title or username with wildcards.", wrap=True, xalign=0, css_classes=["dim-label"]))
     rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, activate_on_single_click=False,
                       css_classes=["boxed-list"], valign=Gtk.Align.START)
+    def compare(left, right, *_):
+        result = GLib.utf8_collate(left.sort_values[sort_column.get_selected()], right.sort_values[sort_column.get_selected()])
+        return (-result if sort_order.get_selected() else result) if result else left.sort_index - right.sort_index
+    rows.set_sort_func(compare)
     box.append(rows)
     status = Gtk.Label(label="No matching entries. Search to choose another entry.", wrap=True)
     box.append(status)
@@ -271,7 +289,7 @@ def _choose_match(session, target, matches, contexts, *, flow):
         state["copying"] = True
         update_fields()
         proceed.set_sensitive(False)
-        for control in (rows, search, scope):
+        for control in (rows, search, scope, sort_button):
             control.set_sensitive(False)
         flow.owner = flow.capture(owner)
         flow.watch(owner)
@@ -286,6 +304,7 @@ def _choose_match(session, target, matches, contexts, *, flow):
             rows.set_sensitive(True)
             search.set_sensitive(True)
             scope.set_sensitive(bool(matches))
+            sort_button.set_sensitive(True)
             proceed.set_sensitive(rows.get_selected_row() is not None)
             update_fields()
             if session.application.clipboards.copy(owner, value):
@@ -359,6 +378,7 @@ def _choose_match(session, target, matches, contexts, *, flow):
         recent = session.application.autotype_recent
         remembered = recent.current()
         count = 0
+        groups = {}
         for owner, entry, sequence in choices:
             if not owner_current(owner):
                 continue
@@ -367,6 +387,11 @@ def _choose_match(session, target, matches, contexts, *, flow):
                 subtitle_lines=2, activatable=True)
             row.connect("activated", lambda _row, owner=owner, entry=entry, sequence=sequence: prepare(owner, entry, sequence))
             row.choice = (owner, entry, sequence)
+            if owner not in groups:
+                groups[owner] = {item.identity: item.name for item in owner.vault.snapshot.groups}
+            row.sort_values = tuple(value.replace("\0", "").casefold() for value in
+                (groups[owner].get(entry.group, entry.group_path), entry.title, entry.username, sequence))
+            row.sort_index = count
             rows.append(row)
             if remembered and remembered["owner"]() is owner and remembered["uuid"] == entry.uuid:
                 if fallback_row is None:
@@ -447,6 +472,30 @@ def _choose_match(session, target, matches, contexts, *, flow):
         state["timer"] = GLib.timeout_add(150 if scope.get_active() else 1, request)
     search.connect("notify::text", changed)
     scope.connect("toggled", changed)
+    updating_sort = False
+    def sorting_changed(*_):
+        nonlocal updating_sort
+        if updating_sort:
+            return
+        old = config.autotype["sort_column"], config.autotype["sort_order"]
+        selected_sort = sort_column.get_selected(), sort_order.get_selected()
+        if not current() or not flow.valid() or state["copying"] or selected_sort == old:
+            return
+        state["activate"] = None
+        try:
+            config.save(config.remember, config.login, config.vault,
+                        autotype=dict(config.autotype, sort_column=selected_sort[0], sort_order=selected_sort[1]))
+            sort_button.set_icon_name("view-sort-descending-symbolic" if selected_sort[1] else "view-sort-ascending-symbolic")
+            rows.invalidate_sort()
+        except (OSError, ValueError, VaultError) as exc:
+            updating_sort = True
+            sort_column.set_selected(old[0])
+            sort_order.set_selected(old[1])
+            updating_sort = False
+            session.error(str(exc))
+    sort_button.set_icon_name("view-sort-descending-symbolic" if config.autotype["sort_order"] else "view-sort-ascending-symbolic")
+    sort_column.connect("notify::selected", sorting_changed)
+    sort_order.connect("notify::selected", sorting_changed)
     def entered(*_):
         if ready():
             continue_selected()
@@ -575,8 +624,8 @@ def add_preferences(session, page):
         if updating:
             return
         try:
-            options = {key: row.get_active() if isinstance(row, Adw.SwitchRow) else int(row.get_value())
-                       for key, row in widgets.items()}
+            options = dict(config.autotype, **{key: row.get_active() if isinstance(row, Adw.SwitchRow) else int(row.get_value())
+                                               for key, row in widgets.items()})
             config.save(config.remember, config.login, config.vault, autotype=options)
             session.application.autotype_recent.clear()
             widgets["skip_main_confirmation"].set_sensitive(config.autotype["always_ask"])

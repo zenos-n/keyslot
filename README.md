@@ -376,6 +376,12 @@ PICKCHARS, native focus/token checks and portal permissions remain.
 See [Confirmation Preferences](docs/autotype-confirmation.md) for policy and
 manual acceptance requirements.
 
+The Auto-Type selector can sort by Group, Title, Username or Sequence in either
+direction. Its header menu remembers the stock KeePassXC sort keys, preserves
+selection while reordering, and leaves protected fields masked. See
+[Chooser Search](docs/autotype-search.md) for locale/reference differences and
+manual acceptance limits.
+
 Auto-Type can remember its last successful entry/sequence selection for0–60
 seconds, with keyboard selection and Continue/Enter support. The setting uses
 the stock INI key, and existing private Auto-Type settings retain their values.
