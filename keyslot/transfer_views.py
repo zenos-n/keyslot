@@ -51,9 +51,10 @@ def choose(session, entries=(), source_group=""):
         nonlocal groups
         target = sessions[vault.get_selected()]
         excluded = descendants(target.vault.snapshot, source_group) if target is session and source_group else set()
-        groups = [item for item in target.vault.snapshot.groups if not item.recycled and item.addressable
+        groups = [item for item in target.vault.snapshot.groups if item.addressable
+                  and (not item.recycled or "transfer-recycled" in target.vault.capabilities)
                   and item.identity not in excluded] if target.vault.unlocked else []
-        group.set_model(Gtk.StringList.new([item.path or item.name for item in groups]))
+        group.set_model(Gtk.StringList.new([(item.path or item.name) + (" (Recycle Bin)" if item.recycled else "") for item in groups]))
         group.set_selected(next((index for index, item in enumerate(groups) if item.identity == target.window.selected_group), 0))
     vault.connect("notify::selected", changed)
     changed()
@@ -65,8 +66,7 @@ def choose(session, entries=(), source_group=""):
         if state["phase"] in ("choose", "preparing"):
             state["phase"] = "cancelled"
             if transfer := state["transfer"]:
-                transfer.cancelled = True
-                session.jobs.executor.submit(transfer.cancel)
+                cancel_transfer(transfer, session)
     dialog.connect("closed", closed)
 
     def continue_(*_):
@@ -86,7 +86,7 @@ def choose(session, entries=(), source_group=""):
         def ready(source):
             if state["phase"] == "cancelled" or not session.active:
                 state["phase"] = "cancelled"
-                session.jobs.executor.submit(transfer.cancel)
+                cancel_transfer(transfer, session, target)
                 return
             state["phase"] = "review"
             dialog.close()
@@ -107,6 +107,8 @@ def _review(source, destination, transfer, state, presenter=None):
     target_name = (target["name"] or Path(target["path"]).name) if target else source.vault.snapshot.name
     target_path = target["path"] if target else transfer.source_ticket["path"]
     group_name = target["group_name"] if target else next(g.path for g in source.vault.snapshot.groups if g.identity == transfer.group)
+    recycled_target = target.get("recycled", False) if target else any(
+        g.identity == transfer.group and g.recycled for g in source.vault.snapshot.groups)
     noun = "Group" if grouped else "Entry" if count == 1 else f"{count} Entries"
     heading = ("Move " if move else "Copy ") + noun + "?"
     body = "\n".join(names) + (f"\n…and {count - len(names)} more" if count > len(names) else "")
@@ -126,15 +128,32 @@ def _review(source, destination, transfer, state, presenter=None):
         body += f"\nInsert at position {position + 1} among the destination group's subgroups."
     if move and source is not destination:
         body += "\n\nThe destination will be saved before the originals are removed."
+    recycled_entries = transfer.source_ticket.get("recycled_entries", 0)
+    recycled_group = transfer.source_ticket.get("recycled_group", False)
+    if recycled_entries or recycled_group:
+        body += "\n\nThe source includes a recycled group." if recycled_group else f"\n\nThe source includes {recycled_entries} recycled entries."
+        if move and source is not destination:
+            body += " Their originals will be permanently removed from the source recycle bin after the destination is saved."
+    contains_bin = transfer.source_ticket.get("contains_recycle_bin", False)
+    if contains_bin:
+        if move and source is destination:
+            body += "\n\nThis group contains the designated recycle bin. Moving it within this vault keeps that bin's role and recycled contents."
+        else:
+            body += "\n\nThis group contains the designated recycle bin. Its copy is an ordinary group unless placed inside the destination recycle bin; it does not replace that vault's designated bin."
+            if move:
+                body += " The source bin will be removed after the destination is saved. If recycling is enabled, a fresh bin is created when next needed."
+    if recycled_target:
+        body += "\n\nThe destination is in the recycle bin. Transferred items will remain recycled and hidden from ordinary entry lists."
     if not source.application.startup.auto_save:
-        body += "\n\nThis transfer saves the destination vault and any source changes it makes, including existing unsaved changes."
+        body += ("\n\nThese changes remain unsaved until you save this vault." if source is destination else
+                 "\n\nThis transfer saves the destination vault and any source changes it makes, including existing unsaved changes.")
     if transfer.source_ticket["references"]:
         body += "\n\nField references are kept as written; check them in the destination."
     alert = Adw.AlertDialog(heading=heading, body=body, body_use_markup=False)
     alert.add_response("cancel", "Cancel")
     alert.add_response("apply", "Move" if move else "Copy")
     alert.set_close_response("cancel")
-    alert.set_response_appearance("apply", Adw.ResponseAppearance.SUGGESTED)
+    alert.set_response_appearance("apply", Adw.ResponseAppearance.DESTRUCTIVE if move and (recycled_target or contains_bin and source is not destination) else Adw.ResponseAppearance.SUGGESTED)
     def response(_alert, choice):
         if state["phase"] != "review":
             return

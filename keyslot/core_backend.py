@@ -1350,6 +1350,8 @@ class Vault:
             entries = list(entries)
             for entry in entries:
                 self._entry(entry)
+            if any(entry.recycled for entry in entries) and "transfer-recycled" not in self.capabilities:
+                raise VaultError("Update the native engine before copying or moving recycled items.")
             return self._rpc("transfer.prepare", entries=[entry.uuid for entry in entries], move=move)
 
     def url_prepare(self, entry, override=False):
@@ -1403,8 +1405,11 @@ class Vault:
         with self._mutex:
             if not self.unlocked:
                 raise VaultError("Unlock a database first.")
-            if not any(item.identity == group and not item.recycled for item in self.snapshot.groups):
+            matches = [item for item in self.snapshot.groups if item.identity == group]
+            if len(matches) != 1:
                 raise VaultError("The selected group is unavailable.")
+            if matches[0].recycled and "transfer-recycled" not in self.capabilities:
+                raise VaultError("Update the native engine before copying or moving recycled groups.")
             return self._rpc("transfer.prepare", source_group=group, move=move)
 
     def recycle_entries(self, entries):
@@ -1416,6 +1421,8 @@ class Vault:
 
     def listen_transfer(self, source, group, position=-1):
         with self._mutex:
+            if any(item.identity == group and item.recycled for item in self.snapshot.groups) and "transfer-recycled" not in self.capabilities:
+                raise VaultError("Update the native engine before transferring into the recycle bin.")
             if position >= 0 and "transfer-position" not in self.capabilities:
                 raise VaultError("Update the native engine before choosing a group insertion position.")
             return self._rpc("transfer.listen", source_pid=source["pid"], source_token=source["token"],

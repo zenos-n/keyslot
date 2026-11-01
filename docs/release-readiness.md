@@ -425,5 +425,20 @@ scoped rather than counted as implemented on GNOME.
 Drag-and-drop now has app-local entry/group payloads, Ctrl-copy, sibling group
 positions, reviewed recycle/restore, KDBX file opening and revision/source-bound
 attachment batches. [Limits and manual acceptance](../engine/DragAndDrop.md)
-remain open, including cross-vault recycled-item/copy behavior and actual GTK
+remain open, including actual recycled-item transfers and GTK
 drag negotiation, cancellation, modifiers, save/recovery and accessibility.
+
+Recycled entries/groups now support reviewed same/cross-vault copy/move and
+recycle-bin destinations, with native source-state metadata and save receipts
+before permanently removing recycled originals. Original-location Restore
+remains separate. Native group/entry UUID ambiguity is rejected. Whole recycle-bin
+groups and containing ancestors support reviewed copy/move: local moves retain
+the designated role, copied groups do not replace destination bin metadata,
+and cross-vault cleanup clears source bin metadata after the saved receipt. Actual file/history/receipt/lock/GUI behavior of the
+new paths remains manual and is not proven by package compilation.
+
+Local entry/group transfers now honor Manual Save and use the existing encrypted
+dirty checkpoint instead of forcing an on-disk save. Cross-vault destination
+receive and source cleanup still force durable saves for their receipt contract.
+The review text distinguishes these policies. This correction needs user manual
+save/recovery acceptance; compilation is the only evidence for this revision.

@@ -725,10 +725,7 @@ class VaultSession:
 
     def move_entries(self, entries):
         entries = list(entries)
-        if entries and all(entry.recycled for entry in entries):
-            from .trash_views import choose
-            choose(self, "restore", entries=entries, bulk=True)
-        elif entries and not any(entry.recycled for entry in entries):
+        if entries:
             from .transfer_views import choose
             choose(self, entries)
 
@@ -737,12 +734,8 @@ class VaultSession:
         choose(self, source_group=group.identity)
 
     def move_entry(self, entry):
-        if entry.recycled:
-            from .trash_views import choose
-            choose(self, "restore", entries=[entry])
-        else:
-            from .transfer_views import choose
-            choose(self, [entry])
+        from .transfer_views import choose
+        choose(self, [entry])
 
     def open_entry_url(self, entry=None, override=False):
         entry = entry or self.window.selected_entry
@@ -810,7 +803,7 @@ class VaultSession:
         sharing = Gtk.Button(label="KeeShare Settings…", sensitive=not current.recycled)
         sharing.connect("clicked", lambda *_: keeshare_views.settings(self, current.identity))
         box.append(sharing)
-        if current.parent and not current.recycled:
+        if current.parent:
             transfer = Gtk.Button(label="Copy or Move Group…")
             transfer.connect("clicked", lambda *_: (dialog.close(), self.move_group(current)))
             box.append(transfer)
@@ -1046,6 +1039,11 @@ class DatabaseView(Gtk.Box):
         self.bulk_transfer = Gtk.Button(label="Copy or Move…", valign=Gtk.Align.CENTER)
         self.bulk_transfer.connect("clicked", lambda *_: self.app.move_entries(self.selected_entries()))
         self.selection_bar.set_center_widget(self.bulk_transfer)
+        from . import trash_views
+        self.bulk_restore = Gtk.Button(label="Restore…", valign=Gtk.Align.CENTER, visible=False)
+        self.bulk_restore.connect("clicked", lambda *_: trash_views.choose(
+            self.app, "restore", entries=self.selected_entries(), bulk=True))
+        self.selection_bar.pack_end(self.bulk_restore)
         self.bulk_recycle = button("user-trash-symbolic", "Delete Selected Entries",
                                    lambda: self.app.delete_entries(self.selected_entries()))
         self.selection_bar.pack_end(self.bulk_recycle)
@@ -1358,8 +1356,9 @@ class DatabaseView(Gtk.Box):
         self.select_all.set_sensitive(self.entry_count > 0)
         eligible = bool(entries) and all(not entry.recycled for entry in entries)
         restorable = bool(entries) and all(entry.recycled for entry in entries)
-        self.bulk_transfer.set_label("Restore…" if restorable else "Copy or Move…")
-        self.bulk_transfer.set_sensitive(eligible or restorable)
+        self.bulk_transfer.set_sensitive(bool(entries) and all(entry.addressable for entry in entries))
+        self.bulk_restore.set_visible(restorable)
+        self.bulk_restore.set_sensitive(restorable and all(entry.addressable for entry in entries))
         self.bulk_recycle.set_sensitive(bool(entries) and all(entry.addressable for entry in entries))
         self.bulk_more.set_sensitive(eligible and all(entry.addressable for entry in entries))
         row = self.entries.get_first_child()
@@ -1531,14 +1530,20 @@ class DatabaseView(Gtk.Box):
         duplicate = Gtk.Button(label="Duplicate Entry…", sensitive=entry.addressable and not entry.recycled)
         duplicate.connect("clicked", lambda *_: entry_actions.choose(self.app, [entry], "duplicate"))
         self.detail.append(duplicate)
-        edit = Gtk.Button(label="Edit Entry", css_classes=["suggested-action"])
-        edit.connect("clicked", lambda *_: self.app.edit_entry(entry))
-        move = Gtk.Button(label="Restore…" if entry.recycled else "Copy or Move…")
+        edit = Gtk.Button(label="Restore…" if entry.recycled else "Edit Entry", css_classes=["suggested-action"])
+        def edit_or_restore(*_):
+            if entry.recycled:
+                from .trash_views import choose
+                choose(self.app, "restore", entries=[entry])
+            else:
+                self.app.edit_entry(entry)
+        edit.connect("clicked", edit_or_restore)
+        move = Gtk.Button(label="Copy or Move…")
         move.connect("clicked", lambda *_: self.app.move_entry(entry))
         permanent = entry.recycled or not self.snapshot.recycle_bin_enabled
         delete = button("user-trash-symbolic", "Delete Permanently…" if permanent else "Move to Recycle Bin…",
                         lambda: self.app.delete_entry(entry))
-        edit.set_sensitive(entry.addressable and not entry.recycled)
+        edit.set_sensitive(entry.addressable)
         move.set_sensitive(entry.addressable)
         delete.set_sensitive(entry.addressable)
         for widget in (edit, move, delete):

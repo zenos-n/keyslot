@@ -69,12 +69,19 @@ QStringList identifiers(const QJsonObject& args, const char* field = "entries", 
     }
     return result;
 }
+Group* findGroup(Database* db, const QString& id) {
+    const QUuid uuid(id);
+    Group* found = nullptr;
+    for (auto* group : db->rootGroup()->groupsRecursive(true)) if (!uuid.isNull() && group->uuid() == uuid) {
+        if (found) reject("invalid_request", "The transfer group identifier is ambiguous.");
+        found = group;
+    }
+    if (!found) reject("not_found", "The transfer group is no longer available.");
+    return found;
+}
 Group* transferGroup(Database* db, const QString& id) {
-    auto* group = db->rootGroup()->findGroupByUuid(QUuid(id));
-    if (!group || group == db->rootGroup() || group->isRecycled())
-        reject("invalid_request", "Choose a group outside the root and recycle bin.");
-    for (const auto* child : group->groupsRecursive(true)) if (child->isRecycled())
-        reject("invalid_request", "Move the recycle bin outside this group before transferring it.");
+    auto* group = findGroup(db, id);
+    if (group == db->rootGroup()) reject("invalid_request", "The database root cannot be transferred as a group.");
     return group;
 }
 void remapIcons(Group* tree, const QHash<QUuid, QUuid>& icons) {
@@ -102,10 +109,14 @@ void freshIds(Group* tree, const Database* db) {
 QList<Entry*> entries(const Database* db, const QStringList& ids) {
     QList<Entry*> result;
     QHash<QUuid, Entry*> available;
-    for (auto* item : db->rootGroup()->entriesRecursive()) available.insert(item->uuid(), item);
+    QSet<QUuid> ambiguous;
+    for (auto* item : db->rootGroup()->entriesRecursive()) {
+        if (available.contains(item->uuid())) ambiguous.insert(item->uuid());
+        available.insert(item->uuid(), item);
+    }
     for (const auto& id : ids) {
         auto* entry = available.value(QUuid(id));
-        if (!entry || entry->isRecycled()) reject("not_found", "A transfer entry was removed or recycled.");
+        if (!entry || ambiguous.contains(entry->uuid())) reject("not_found", "A transfer entry is unavailable or its identifier is ambiguous.");
         result.append(entry);
     }
     return result;
@@ -250,12 +261,14 @@ QJsonObject KeyslotTransfer::prepare(const QSharedPointer<Database>& db, const Q
     QSet<QUuid> icons;
     QJsonArray review;
     bool hasReferences = false;
+    int recycled = 0;
     if (sourceGroup) {
         auto* copy = sourceGroup->clone(Entry::CloneIncludeHistory, Group::CloneIncludeEntries);
         copy->setUpdateTimeinfo(false); copy->setParent(pending.capsule->rootGroup(), -1, false); copy->setUpdateTimeinfo(true);
         for (const auto* group : sourceGroup->groupsRecursive(true)) if (!group->iconUuid().isNull()) icons.insert(group->iconUuid());
     }
     for (auto* entry : entries(db.data(), pending.entries)) {
+        if (entry->isRecycled()) ++recycled;
         if (!sourceGroup) {
             auto* copy = entry->clone(Entry::CloneIncludeHistory);
             copy->setUpdateTimeinfo(false); copy->setGroup(pending.capsule->rootGroup(), false); copy->setUpdateTimeinfo(true);
@@ -272,6 +285,9 @@ QJsonObject KeyslotTransfer::prepare(const QSharedPointer<Database>& db, const Q
     return {{"token", id}, {"entries", review}, {"ids", QJsonArray::fromStringList(pending.entries)},
         {"groups", QJsonArray::fromStringList(pending.groups)}, {"source_group", pending.sourceGroup},
         {"group_name", sourceGroup ? sourceGroup->name() : QString()}, {"count", pending.entries.size()},
+        {"contains_recycle_bin", sourceGroup && db->metadata()->recycleBin()
+            && sourceGroup->groupsRecursive(true).contains(db->metadata()->recycleBin())},
+        {"recycled_entries", recycled}, {"recycled_group", sourceGroup && sourceGroup->isRecycled()},
         {"references", hasReferences}, {"move", pending.move}, {"pid", int(::getpid())}, {"path", db->filePath()}};
 }
 QJsonObject KeyslotTransfer::listen(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint) {
@@ -291,8 +307,7 @@ QJsonObject KeyslotTransfer::listen(const QSharedPointer<Database>& db, const QJ
         || (pending.sourceGroup.isEmpty() && !pending.groups.isEmpty()))
         reject("invalid_request", "The reviewed group manifest is invalid.");
     pending.group = text(args, "group", 64);
-    const auto* group = db->rootGroup()->findGroupByUuid(QUuid(pending.group));
-    if (!group || group->isRecycled()) reject("invalid_request", "Choose a destination group outside the recycle bin.");
+    const auto* group = findGroup(db.data(), pending.group);
     pending.position = position(args, group, !pending.sourceGroup.isEmpty());
     const auto runtime = qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY", QDir::tempPath());
     pending.directory = QSharedPointer<QTemporaryDir>::create(runtime + "/transfer-XXXXXX");
@@ -305,7 +320,8 @@ QJsonObject KeyslotTransfer::listen(const QSharedPointer<Database>& db, const QJ
     pending.expires = clock.elapsed() + 120000;
     const auto id = token(); destinations.insert(id, pending);
     return {{"token", id}, {"socket", socket}, {"pid", int(::getpid())}, {"path", db->filePath()},
-            {"group", uid(group->uuid())}, {"group_name", group->fullPath()}, {"name", db->metadata()->name()}, {"position", pending.position}};
+            {"group", uid(group->uuid())}, {"group_name", group->fullPath()}, {"name", db->metadata()->name()},
+            {"position", pending.position}, {"recycled", group->isRecycled()}};
 }
 QJsonObject KeyslotTransfer::send(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint) {
     const auto id = text(args, "token", 64);
@@ -394,8 +410,7 @@ QJsonObject KeyslotTransfer::receive(const QSharedPointer<Database>& db, const Q
         || (!pending.sourceGroup.isEmpty() && (children.size() != 1 || uid(children.first()->uuid()) != pending.sourceGroup
             || !capsule->rootGroup()->entries().isEmpty())))
         reject("invalid_request", "The transfer does not contain the reviewed entries and groups.");
-    auto* group = db->rootGroup()->findGroupByUuid(QUuid(pending.group));
-    if (!group || group->isRecycled()) reject("conflict", "The destination group changed before saving.");
+    auto* group = findGroup(db.data(), pending.group);
     if (pending.position > group->children().size()) reject("conflict", "The reviewed group position changed before saving.");
     QJsonArray imported, importedGroups;
     QString importedRoot;
@@ -448,7 +463,12 @@ QJsonObject KeyslotTransfer::finish(const QSharedPointer<Database>& db, const QJ
     if (digest(pending.destination) != pending.destinationHash)
         reject("conflict", "The saved destination changed. Source entries were kept.");
     if (pending.move) commit([&] {
-        if (!pending.sourceGroup.isEmpty()) delete transferGroup(db.data(), pending.sourceGroup);
+        if (!pending.sourceGroup.isEmpty()) {
+            auto* group = transferGroup(db.data(), pending.sourceGroup);
+            if (db->metadata()->recycleBin() && group->groupsRecursive(true).contains(db->metadata()->recycleBin()))
+                db->metadata()->setRecycleBin(nullptr);
+            delete group;
+        }
         else for (auto* entry : entries(db.data(), pending.entries)) delete entry;
     });
     return {{"moved", pending.move}, {"copied", true}, {"count", pending.entries.size()}};
@@ -459,8 +479,7 @@ QJsonObject KeyslotTransfer::local(const QSharedPointer<Database>& db, const QJs
     const auto pending = sources.take(id);
     if (pending.database.toStrongRef() != db || pending.fingerprint != fingerprint || pending.expires < clock.elapsed() || pending.started)
         reject("expired", "The entry transfer approval expired or the vault changed.");
-    auto* target = db->rootGroup()->findGroupByUuid(QUuid(text(args, "group", 64)));
-    if (!target || target->isRecycled()) reject("invalid_request", "Choose a destination group outside the recycle bin.");
+    auto* target = findGroup(db.data(), text(args, "group", 64));
     Group* sourceGroup = pending.sourceGroup.isEmpty() ? nullptr : transferGroup(db.data(), pending.sourceGroup);
     if (sourceGroup && sourceGroup->findGroupByUuid(target->uuid()))
         reject("invalid_request", "A group cannot be copied or moved inside itself.");

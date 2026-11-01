@@ -39,7 +39,7 @@ def _source(session, row, entries=None, group=None):
         snapshot = session.vault.snapshot
         if group is not None:
             matches = [item for item in snapshot.groups if item.identity == group]
-            if len(matches) != 1 or group in {snapshot.root, snapshot.recycle_bin}:
+            if len(matches) != 1 or group == snapshot.root:
                 return None
             payload = Items(session, group=group)
         else:
@@ -48,9 +48,6 @@ def _source(session, row, entries=None, group=None):
             ids = {item.uuid for item in chosen}
             if len(ids) != len(chosen) or any(sum(item.uuid == identifier for item in snapshot.entries) != 1 for identifier in ids):
                 session.toast("Ambiguous entry identifiers cannot be dragged")
-                return None
-            if any(item.recycled for item in chosen) and not all(item.recycled for item in chosen):
-                session.toast("Select recycled or ordinary entries separately")
                 return None
             payload = Items(session, chosen)
         return Gdk.ContentProvider.new_for_value(payload)
@@ -75,7 +72,7 @@ def entry_row(session, row, entry):
 
 
 def group_row(session, row, group):
-    if group.identity not in {session.vault.snapshot.root, session.vault.snapshot.recycle_bin}:
+    if group.identity != session.vault.snapshot.root:
         _source(session, row, group=group.identity)
     _target(session, row, group.identity)
 
@@ -104,10 +101,7 @@ def _target(session, widget, group):
             return None
         item = matches[0]
         position = -1
-        source = payload.source()
-        source_group = next((other for other in source.vault.snapshot.groups if other.identity == payload.group), None) if source else None
-        if (source_group and not source_group.recycled and group and item.parent
-            and (not item.recycled or item.identity == snapshot.recycle_bin)):
+        if payload.group and group and item.parent:
             height = max(1, widget.get_height())
             if y < height * .25 or y > height * .75:
                 siblings = [other for other in snapshot.groups if other.parent == item.parent]
@@ -147,19 +141,23 @@ def _target(session, widget, group):
         item = next((item for item in session.vault.snapshot.groups if item.identity == identifier), None)
         if not item:
             return False
-        recycled = bool(groups and groups[0].recycled) or bool(entries and all(entry.recycled for entry in entries))
-        if recycled or item.recycled:
-            if source is not session or not move or (recycled and item.recycled):
-                session.toast("Use Restore for recycled items; cross-vault transfers require ordinary groups")
-                return False
-            action = "restore" if recycled else "delete"
-            if not recycled and identifier != session.vault.snapshot.recycle_bin:
-                return False
-            trash_views.choose(session, action, entries=entries, groups=[payload.group] if payload.group else [],
-                               bulk=bool(entries), destination=identifier if recycled else "")
-            return True
         if payload.group and source is session and identifier in transfer_views.descendants(session.vault.snapshot, payload.group):
             return False
+        recycled = bool(groups and groups[0].recycled) or any(entry.recycled for entry in entries)
+        contains_bin = bool(payload.group and source.vault.snapshot.recycle_bin in transfer_views.descendants(
+            source.vault.snapshot, payload.group))
+        if (recycled or item.recycled or contains_bin) and ("transfer-recycled" not in source.vault.capabilities or "transfer-recycled" not in session.vault.capabilities):
+            session.toast("Update the native engine before transferring recycled items")
+            return False
+        # A local move into the bin root keeps upstream recycling and original-location bookkeeping.
+        if source is session and move and not recycled and not contains_bin and identifier == session.vault.snapshot.recycle_bin and position < 0:
+            trash_views.choose(session, "delete", entries=entries, groups=[payload.group] if payload.group else [], bulk=bool(entries))
+            return True
+        if source is session and move and recycled and not contains_bin and not item.recycled and position < 0 and (
+            bool(groups) or all(entry.recycled for entry in entries)):
+            trash_views.choose(session, "restore", entries=entries, groups=[payload.group] if payload.group else [],
+                               bulk=bool(entries), destination=identifier)
+            return True
         if move and source is session and entries and all(entry.group == identifier for entry in entries):
             session.toast("These entries are already in that group")
             return False

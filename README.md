@@ -273,10 +273,14 @@ in place. An existing attribute with the new name is never overwritten by a rena
 Group editors also offer **Copy or Move Group…**, including nested and empty
 groups, their entries, icons, history, notes, tags, expiry and group settings.
 The review shows the total group/entry counts and warns that Auto-Type/KeeShare
-settings are retained; review shared-file paths in the destination. Root and
-recycled groups cannot be transferred, and a group cannot be placed inside
-itself. Local moves retain group and entry UUIDs; copies and cross-vault moves
-assign new UUIDs, matching upstream behavior.
+settings are retained; review shared-file paths in the destination. The database
+root cannot be transferred, and a group cannot be placed inside itself. Recycled
+entries and groups support Copy or Move, Ctrl-copy and transfers between vaults;
+Restore remains a separate original-location action. Destination recycle-bin
+groups are labeled and warned about before approval. Local moves retain group
+and entry UUIDs; copies and cross-vault moves assign new UUIDs, matching upstream
+behavior. Local transfers honor Manual Save; transfers between vaults save the
+destination before source cleanup, including existing unsaved changes.
 
 Use the entry header's selection button, a hover checkbox, secondary click or
 touch long press to select several entries. Selection mode shows checkboxes, a
@@ -852,3 +856,16 @@ entry's Attachments section to review a batch. Matching attachment names require
 explicit replacement consent. Batches allow 32 files/256 MiB; larger individual
 files can use Add Attachment. [Implementation and limits](engine/DragAndDrop.md).
 This candidate has compilation evidence only; pointer/desktop acceptance is pending.
+
+Recycled items can use **Copy or Move…** directly, including transfers to another
+vault and groups inside a recycle bin. **Restore…** remains available for the
+original location or a chosen ordinary group. Reviews distinguish recycled
+sources and destinations, and explain permanent source cleanup for cross-vault
+moves. The native helper saves the destination before removing any source items.
+This extension has compilation evidence only; manual acceptance is pending.
+
+Whole recycle-bin groups and containing ancestors can also be copied/moved.
+Moving within the same vault preserves the designated bin. Copies into another
+vault are ordinary groups unless placed in its bin, and do not replace its
+bin metadata. Cross-vault moves review source-bin removal and create a fresh
+source bin when next needed if recycling remains enabled.
