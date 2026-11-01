@@ -55,7 +55,8 @@ checks. Manual acceptance remains for native query syntax/protected fields,
 search-excluded groups, wildcard/reference matching, default/custom/duplicate
 associations, expired/disabled/recycled/ambiguous entries, multiple vaults,
 selection memory, Enter/edit/scope/lock/reload/close/error/queue races and real
-X11/Wayland focus/keyboard behavior. Sort preferences, locked-vault resumption,
-temporary unlock/relock timing, portal persistence/clipboard typing and wider
+X11/Wayland focus/keyboard behavior. [Locked-vault resumption](autotype-unlock.md) now uses existing providers and
+immediate temporary-vault relocking. Sort preferences, choosing a different locked
+vault in the unlock form, portal persistence/clipboard typing and wider
 platform/accessibility acceptance remain separate work. The core remains
 2.7.12/Qt5; this does not establish full2.8 parity or production readiness.

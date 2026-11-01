@@ -5,8 +5,12 @@ from .database_views import _dialog
 from .backend import VaultError
 
 
-def unlock(session, path, allow_recovery=False):
-    session.lock()
+def unlock(session, path, allow_recovery=False, resume=None):
+    if resume:
+        if not resume.reset():
+            return
+    else:
+        session.lock()
     epoch = session.epoch
     dialog, _header, box = _dialog("Unlock with System Authentication", width=460, height=400)
     dialog.set_can_close(False)
@@ -27,7 +31,8 @@ def unlock(session, path, allow_recovery=False):
     for control in (system, master, short, cancel):
         box.append(control)
     def current():
-        return not state["closed"] and session.epoch == epoch and not session.jobs.closed and session.unlock_prompt is dialog
+        return (not state["closed"] and session.epoch == epoch and not session.jobs.closed
+                and session.unlock_prompt is dialog and (resume is None or resume.owns(dialog)))
     def clear(*_):
         state["closed"] = True
     def close(*_):
@@ -60,17 +65,23 @@ def unlock(session, path, allow_recovery=False):
                 system.set_sensitive(session.vault.has_system_auth(path)); master.set_sensitive(True); short.set_sensitive(True)
                 return
             clear()
+            if resume:
+                resume.release(dialog)
             dialog.force_close()
-            session.show_unlocked(snapshot)
-        session.run_job(operation, finished)
+            session.show_unlocked(snapshot, resume=resume)
+        if not session.run_job(operation, finished) and resume:
+            resume.cancel()
     def fallback(use_short=False):
         if not current() or state["working"]:
             return
-        clear(); dialog.force_close()
+        clear()
+        if resume:
+            resume.release(dialog)
+        dialog.force_close()
         if use_short:
-            session._quick_unlock_dialog(path, allow_recovery=allow_recovery)
+            session._quick_unlock_dialog(path, allow_recovery=allow_recovery, resume=resume)
         else:
-            session._unlock_dialog(path, use_quick=False, recovery_checked=allow_recovery)
+            session._unlock_dialog(path, use_quick=False, recovery_checked=allow_recovery, resume=resume)
     system.connect("clicked", submit)
     master.connect("clicked", lambda *_: fallback())
     short.connect("clicked", lambda *_: fallback(True))
@@ -78,4 +89,7 @@ def unlock(session, path, allow_recovery=False):
     dialog.connect("close-attempt", close)
     dialog.connect("closed", clear)
     dialog._clear_sensitive_fields = close
-    session.present_unlock_prompt(dialog)
+    if resume:
+        resume.present(dialog)
+    else:
+        session.present_unlock_prompt(dialog)

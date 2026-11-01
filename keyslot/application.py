@@ -157,6 +157,8 @@ class VaultSession:
         self.emit_state()
 
     def _clear(self):
+        if pending := self.application.autotype_unlock:
+            pending.cancel_for(self, locking=True)
         if self.application.autotype_flow:
             self.application.autotype_flow.cancel_for(self, locking=True)
         self.application.autotype_recent.clear(self)
@@ -213,6 +215,8 @@ class VaultSession:
         self.run_keyring_job(remember)
 
     def unlock_at_login(self, path):
+        if pending := self.application.autotype_unlock:
+            pending.cancel_for(self)
         if self.vault.unlocked or self.busy:
             return
         self.pending_unlock = None
@@ -224,10 +228,19 @@ class VaultSession:
             return self.vault.unlock(path, **credentials)
         self.run_keyring_job(unlock, self.show_unlocked)
 
-    def show_unlocked(self, snapshot):
+    def show_unlocked(self, snapshot, resume=None):
+        if resume and not resume.valid():
+            self.lock()
+            return
+        if resume is None and (pending := self.application.autotype_unlock):
+            if pending.owner() is self:
+                pending.cancel(lock=False)
         self.window.show_vault(snapshot)
         if self.vault.unlocked and snapshot is self.vault.snapshot and self.window.snapshot is snapshot:
-            self.windows.unlocked()
+            if resume:
+                resume.finished(snapshot)
+            else:
+                self.windows.unlocked()
 
     def lock(self):
         self.jobs.lock()
@@ -269,6 +282,8 @@ class VaultSession:
         self.icons.close()
 
     def deactivate(self):
+        if pending := self.application.autotype_unlock:
+            pending.cancel_for(self)
         if self.application.autotype_flow:
             self.application.autotype_flow.cancel_for(self)
         self.type_fields.clear()
@@ -318,9 +333,13 @@ class VaultSession:
             self.unlock_prompt = None
 
     def present_dialog(self, dialog):
+        epoch = self.epoch
+        if (pending := self.application.autotype_unlock) and pending.dialog is not dialog:
+            owner = pending.owner()
+            pending.cancel(lock=bool(owner and (owner.vault.unlocked or owner.busy)))
         if self.application.autotype_flow and self.application.autotype_flow.dialog is not dialog:
             self.application.autotype_flow.cancel(lock=True)
-        if not self.active or self.jobs.closed:
+        if not self.active or self.jobs.closed or self.epoch != epoch:
             clear_dialog_fields(dialog)
             return False
         self.windows.cancel()
@@ -334,6 +353,8 @@ class VaultSession:
         return True
 
     def error(self, message):
+        if pending := self.application.autotype_unlock:
+            pending.cancel()
         if not self.active:
             self.pending_errors.append(message)
             self.needs_attention = True
@@ -416,7 +437,9 @@ class VaultSession:
         self.application.open_database(path, create, import_options, preferred=self)
 
     def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None, reopen=False,
-                       merge=False, discard=False, recovery_checked=False, review=None):
+                       merge=False, discard=False, recovery_checked=False, review=None, resume=None):
+        if resume and not resume.valid():
+            return
         if self.busy:
             return
         if (not reopen and not create and not import_options and self.vault.unlocked
@@ -426,13 +449,14 @@ class VaultSession:
             return
         if not reopen and not create and not import_options and not recovery_checked:
             from .saving import offer_recovery
-            if offer_recovery(self, path, lambda: self._unlock_dialog(path, use_quick=use_quick, keyfile=keyfile, recovery_checked=True)):
+            if offer_recovery(self, path, lambda: self._unlock_dialog(path, use_quick=use_quick, keyfile=keyfile, recovery_checked=True,
+                resume=resume if resume and resume.valid() else None)):
                 return
         if not reopen and use_quick and not keyfile and not create and not import_options and self.vault.has_system_auth(path):
             from .auth_views import unlock
-            return unlock(self, path, allow_recovery=recovery_checked)
+            return unlock(self, path, allow_recovery=recovery_checked, resume=resume)
         if not reopen and use_quick and not keyfile and not create and not import_options and self.quick_blob and Path(path).resolve() == self.quick_path:
-            return self._quick_unlock_dialog(path, allow_recovery=recovery_checked)
+            return self._quick_unlock_dialog(path, allow_recovery=recovery_checked, resume=resume)
         components = {"keyfile": "", "yubikey": ""}
         storage = getattr(self.application.startup, "storage", None)
         if storage and not create and not import_options:
@@ -442,7 +466,11 @@ class VaultSession:
                 self.toast(str(exc))
         keyfile = components["keyfile"] if keyfile is None else keyfile
         if not reopen:
-            self.lock()
+            if resume:
+                if not resume.reset():
+                    return
+            else:
+                self.lock()
         dialog = Adw.Dialog(title="Unlock Changed Vault" if reopen else "Import Database" if import_options else "New Database" if create else "Unlock Database", content_width=440)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
@@ -504,7 +532,7 @@ class VaultSession:
         box.append(notice)
 
         def submit(*_):
-            if self.busy:
+            if self.busy or (resume and not resume.owns(dialog)):
                 return
             secret = password.get_text()
             if repeat and not no_password.get_active() and secret != repeat.get_text():
@@ -522,6 +550,8 @@ class VaultSession:
                 box.set_sensitive(False)
                 failure.set_visible(False)
             else:
+                if resume:
+                    resume.release(dialog)
                 dialog.close()
             operation = (lambda: self.vault.create(path, secret, key, hardware, key_only)) if create else (
                 lambda: self.vault.unlock(path, secret, key, hardware, key_only, allow_recovery=recovery_checked))
@@ -541,7 +571,9 @@ class VaultSession:
                 elif create or import_options:
                     self.window.show_vault(snapshot)
                 else:
-                    self.show_unlocked(snapshot)
+                    self.show_unlocked(snapshot, resume=resume)
+                if resume and not self.vault.unlocked:
+                    return
                 self.remember_unlocked({"password": secret, "keyfile": key,
                                         "yubikey": hardware, "no_password": key_only})
             def failed(message):
@@ -550,7 +582,8 @@ class VaultSession:
                 failure.set_label(message)
                 failure.set_visible(True)
                 password.grab_focus()
-            self.run_job(operation, unlocked, failed if reopen else None)
+            if not self.run_job(operation, unlocked, failed if reopen else None) and resume:
+                resume.cancel()
         action.connect("clicked", submit)
         password.connect("entry-activated", submit)
         if repeat:
@@ -560,12 +593,18 @@ class VaultSession:
         dialog.connect("closed", lambda *_: (password.set_text(""), repeat.set_text("") if repeat else None))
         if reopen:
             self.present_dialog(dialog)
+        elif resume:
+            resume.present(dialog)
         else:
             self.present_unlock_prompt(dialog)
         password.grab_focus()
 
-    def _quick_unlock_dialog(self, path, allow_recovery=False):
-        self.lock()
+    def _quick_unlock_dialog(self, path, allow_recovery=False, resume=None):
+        if resume:
+            if not resume.reset():
+                return
+        else:
+            self.lock()
         dialog = Adw.Dialog(title="Quick Unlock", content_width=440)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
@@ -580,11 +619,13 @@ class VaultSession:
         box.append(unlock)
         box.append(full)
         def submit(*_):
-            if self.busy:
+            if self.busy or (resume and not resume.owns(dialog)):
                 return
             short = password.get_text()
             password.set_text("")
             blob = self.quick_blob
+            if resume:
+                resume.release(dialog)
             dialog.close()
             def open_vault():
                 try:
@@ -602,18 +643,26 @@ class VaultSession:
                     raise
             def opened(snapshot):
                 self.quick_attempts = 0
-                self.show_unlocked(snapshot)
-            self.run_job(open_vault, opened)
+                self.show_unlocked(snapshot, resume=resume)
+            if not self.run_job(open_vault, opened) and resume:
+                resume.cancel()
         def use_full(*_):
+            if self.busy or (resume and not resume.owns(dialog)):
+                return
+            if resume:
+                resume.release(dialog)
             dialog.close()
-            self._unlock_dialog(path, use_quick=False, recovery_checked=allow_recovery)
+            self._unlock_dialog(path, use_quick=False, recovery_checked=allow_recovery, resume=resume)
         unlock.connect("clicked", submit)
         password.connect("entry-activated", submit)
         full.connect("clicked", use_full)
         dialog.connect("closed", lambda *_: password.set_text(""))
         toolbar.set_content(scroll(box, natural=True))
         dialog.set_child(toolbar)
-        self.present_unlock_prompt(dialog)
+        if resume:
+            resume.present(dialog)
+        else:
+            self.present_unlock_prompt(dialog)
         password.grab_focus()
 
     def focus_search(self):

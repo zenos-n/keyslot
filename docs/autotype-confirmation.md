@@ -36,7 +36,8 @@ public method accepts no entry identifier or sequence. A request can use an
 unlocked source when the remembered active vault is locked. The global shortcut
 is ignored while a Keyslot window itself has keyboard focus, as upstream does;
 app-menu actions can explicitly target the previously active external window.
-Resuming Auto-Type after unlocking a locked vault remains a separate gap.
+Locked vaults now use the request-bound [Unlock for Auto-Type](autotype-unlock.md)
+workflow with existing providers and destination checks.
 
 One application-wide flow serializes capture, matching, selection, preparation,
 PICKCHARS/confirmation and execution across vaults. Source and chosen-owner
@@ -49,13 +50,13 @@ is stored in the short-lived last-choice cache.
 
 Canceling while typing may lock the chosen vault to stop its native helper;
 portal execution also checks flow cancellation while waiting and sending keys.
-Keys already sent cannot be withdrawn. Existing encrypted recovery and immediate
-relock policy remain in place. No live settings, vaults, input or processes were
+Keys already sent cannot be withdrawn. Existing encrypted recovery remains in place. Relocking now applies only to the
+vault unlocked for this flow, including cancellation; see [Unlock for Auto-Type](autotype-unlock.md). No live settings, vaults, input or processes were
 used to validate this implementation.
 
 [Chooser Search](autotype-search.md) now includes native search scopes and association variants.
-Remaining Auto-Type work includes sort preferences, locked
-vault resumption/temporary-unlock timing, portal persistence/clipboard typing,
+Remaining Auto-Type work includes sort preferences, choosing another locked vault
+in the unlock form, portal persistence/clipboard typing,
 global shortcut preferences and broader backend/accessibility acceptance.
 Runtime/Python compilation only; no tests/harnesses or automated GTK, typing,
 keyboard, portal, settings or vault behavior runs were added or performed.

@@ -26,7 +26,9 @@ entry object alive. No secure-zero guarantee is made for transient Python/GTK st
 
 Expiry, owner lock/close/reload, a changed snapshot/generation, failed typing,
 Auto-Type preference changes and shutdown discard or invalidate the record.
-Relock-after-Auto-Type still locks immediately and does not retain a choice.
+Relock-after-Auto-Type locks only the vault opened for that invocation and does
+not retain its choice. Already-unlocked vaults may retain selection memory even
+when this preference is on; see [Unlock for Auto-Type](autotype-unlock.md).
 Canceling a selector or confirmation marks it closed before clearing/animation;
 late search callbacks cannot refill it. Prepared responses are checked against
 the captured owner/session/snapshot before opening confirmation. Native tokens
@@ -34,10 +36,11 @@ and focus leases retain their existing expiry and validation.
 
 This adds the selection-memory workflow, not a complete Auto-Type parity claim.
 [Chooser Search](autotype-search.md) now preserves native query syntax and association
-variants. Sort preferences, temporary unlock/relock timing, portal
+variants. [Locked-vault resumption](autotype-unlock.md) and immediate temporary-vault
+relocking are implemented. Sort preferences, choosing another locked vault in
+the unlock form, portal
 persistence/clipboard typing and broader platform behavior remain separate gaps.
-Confirmation preferences now follow the linked policy; immediate relocking is
-unchanged.
+Confirmation preferences follow the linked policy.
 
 References: KeePassXC Team/Felix Geyer GPL2-or-3 source; this independent adapter
 is GPL3-only.

@@ -10,6 +10,8 @@ verified behavior. The [release requirements](docs/release-readiness.md) track
 production blockers and the upstream 2.8 security review. Broader Secret Service acceptance, breach/browser reports, several advanced database
 workflows and broader platform acceptance remain open.
 
+Auto-Type can now resume after unlocking a locked vault with the existing authentication providers. Its relock preference applies to vaults opened for that request. See [Unlock for Auto-Type](docs/autotype-unlock.md) for cancellation, Copy behavior and remaining manual acceptance.
+
 Auto-Type chooser search now supports window-match filtering and native all-vault queries, including distinct custom association sequences. See [Chooser Search](docs/autotype-search.md) for scope, keyboard behavior and manual-acceptance limits.
 
 ## Native engine

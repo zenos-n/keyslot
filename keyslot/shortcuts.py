@@ -72,7 +72,7 @@ SPECS = [
     Shortcut("win.type-entry", "Type Selected Entry", "<Control><Shift>v", "actionEntryAutoTypeSequence", "autotype-entry"),
     *[Shortcut("win.type-" + name, "Type " + title, "", qt, "autotype-" + name)
       for name, (title, _sequence, qt) in TYPES.items()],
-    Shortcut("win.autotype", "Choose Auto-Type Entry", "", needs="vault"),
+    Shortcut("win.autotype", "Choose Auto-Type Entry", "", needs="autotype"),
     Shortcut("win.preferences", "Preferences", "<Control>comma", "actionSettings"),
     Shortcut("win.shortcuts", "Keyboard Shortcuts", "<Control>question", "actionKeyboardShortcuts"),
     Shortcut("win.shortcut-settings", "Customize Keyboard Shortcuts", ""),
@@ -291,6 +291,8 @@ class Manager:
                 enabled = not session.busy and not modal
                 if spec.needs == "lock":
                     enabled = session.vault.unlocked or session.busy
+                elif spec.needs == "autotype":
+                    enabled = enabled and (unlocked or session.path is not None)
                 elif spec.needs != "always":
                     enabled = enabled and unlocked
                 if spec.needs in ("entry", "totp") or spec.needs.startswith("autotype-"):

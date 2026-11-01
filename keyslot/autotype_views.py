@@ -103,8 +103,15 @@ def settings(session, entry=None, group=None, data=None):
     session.present_dialog(dialog)
 
 
-def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_automatic=True, global_shortcut=False, field=None):
-    if not session.vault.unlocked or session.busy:
+def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_automatic=True, global_shortcut=False, field=None, temporary=False):
+    if not session.vault.unlocked:
+        from .autotype_unlock import request
+        request(session, allow_automatic=allow_automatic, global_shortcut=global_shortcut)
+        return
+    if session.busy:
+        return
+    if session.application.autotype_unlock:
+        session.toast("Auto-Type is already in progress")
         return
     if field is not None and (entry is None or field not in TYPES):
         session.error("Choose an entry and a supported Auto-Type field.")
@@ -121,7 +128,7 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
         if session.dialogs or session.file_requests:
             session.toast("Close the current dialog before using Auto-Type")
             return
-        flow = Flow(session, allow_automatic)
+        flow = Flow(session, allow_automatic, temporary=temporary)
         session.application.autotype_flow = flow
     if not flow.valid():
         flow.cancel()
@@ -206,7 +213,7 @@ def _prepare(session, entry, target, sequence, flow, *, confirm, field=None):
 def _choose_match(session, target, matches, contexts, *, flow):
     dialog, header, box = _dialog("Auto-Type", height=520)
     current = _guarded_lifetime(session, dialog)
-    state = {"rendered": None, "pending": False, "serial": 0, "timer": 0, "activate": None}
+    state = {"rendered": None, "pending": False, "serial": 0, "timer": 0, "activate": None, "copying": False}
     destination = Adw.PreferencesGroup(title="Destination")
     destination.add(Adw.ActionRow(title=target["title"], use_markup=False, title_lines=3))
     box.append(destination)
@@ -234,7 +241,7 @@ def _choose_match(session, target, matches, contexts, *, flow):
     def query_key():
         return search.get_text(), scope.get_active()
     def ready():
-        return current() and flow.valid() and state["rendered"] == query_key()
+        return current() and flow.valid() and not state["copying"] and state["rendered"] == query_key()
     def prepare(owner, entry, sequence, field=None):
         if not ready() or not owner_current(owner):
             return
@@ -261,8 +268,11 @@ def _choose_match(session, target, matches, contexts, *, flow):
     error = Gtk.Label(xalign=0, wrap=True, css_classes=["error"], visible=False)
     box.append(error)
     def copy_field(owner, entry, name):
-        flow.release(dialog)
-        dialog.close()
+        state["copying"] = True
+        update_fields()
+        proceed.set_sensitive(False)
+        for control in (rows, search, scope):
+            control.set_sensitive(False)
         flow.owner = flow.capture(owner)
         flow.watch(owner)
         def read():
@@ -270,9 +280,14 @@ def _choose_match(session, target, matches, contexts, *, flow):
                 raise VaultError("This entry does not contain the requested field.")
             return owner.vault.copy_totp(entry) if name == "totp" else owner.vault.attribute(entry, COPY_FIELDS[name])
         def copied(value):
-            flow.cancel()
-            if not session.active:
+            if not current() or not flow.valid():
                 return
+            state["copying"] = False
+            rows.set_sensitive(True)
+            search.set_sensitive(True)
+            scope.set_sensitive(bool(matches))
+            proceed.set_sensitive(rows.get_selected_row() is not None)
+            update_fields()
             if session.application.clipboards.copy(owner, value):
                 seconds = session.application.startup.clipboard_seconds
                 session.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
@@ -517,9 +532,7 @@ def _execute(session, target, data, picks, choice, flow):
         valid = flow.valid()
         flow.typing = False
         flow.cancel()
-        if session.application.startup.autotype["relock"]:
-            session.lock()
-        elif valid:
+        if valid and session.vault.unlocked:
             if choice:
                 session.application.autotype_recent.remember(session, choice[0], sequence_digest, choice[1]())
             session.toast("Auto-type completed")
@@ -529,8 +542,6 @@ def _execute(session, target, data, picks, choice, flow):
         flow.typing = False
         flow.cancel()
         session.application.autotype_recent.clear(session)
-        if session.application.startup.autotype["relock"]:
-            session.lock()
         session.error(message)
     if not flow.valid():
         flow.cancel()
@@ -546,10 +557,11 @@ def add_preferences(session, page):
     values = config.autotype
     widgets = {}
     for key, title in (("match_title", "Match Entry Titles"), ("match_url", "Match Websites"),
-                       ("hide_expired", "Hide Expired Entries"), ("relock", "Lock Vault After Auto-Type"),
+                       ("hide_expired", "Hide Expired Entries"), ("relock", "Relock Vaults Opened for Auto-Type"),
                        ("always_ask", "Always Show the Entry Selector"),
                        ("skip_main_confirmation", "Skip Confirmation for the Selected Entry")):
         widgets[key] = Adw.SwitchRow(title=title, active=values[key])
+    widgets["relock"].set_subtitle("Applies only to vaults unlocked for an Auto-Type request")
     widgets["always_ask"].set_subtitle("When off, a single matching entry can be typed automatically")
     widgets["skip_main_confirmation"].set_subtitle("Applies to Type Entry from the vault window")
     widgets["skip_main_confirmation"].set_sensitive(values["always_ask"])

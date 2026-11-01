@@ -46,6 +46,7 @@ class Keyslot(Adw.Application):
         from .autotype_recent import RecentChoice
         self.autotype_recent = RecentChoice(self)
         self.autotype_flow = None
+        self.autotype_unlock = None
         self.last_activity = time.monotonic()
         self.desktop_lock = None
         self.connect("startup", self._startup)
@@ -172,8 +173,8 @@ class Keyslot(Adw.Application):
         elif method == "AutoType":
             session = self.active_session
             if not session or not session.vault.unlocked:
-                session = next((item for item in self.sessions if item.vault.unlocked), None)
-            if session and session.vault.unlocked:
+                session = next((item for item in self.sessions if item.vault.unlocked), session or next(iter(self.sessions), None))
+            if session:
                 shortcut = autotype_views.shortcut_sender(_connection, _sender)
                 autotype_views.choose(session, allow_automatic=shortcut, global_shortcut=shortcut)
             else:
@@ -349,6 +350,8 @@ class Keyslot(Adw.Application):
         return session
 
     def select_session(self, session, activate=True):
+        if self.autotype_unlock and self.active_session is not session and not self.autotype_unlock.switching:
+            self.autotype_unlock.cancel()
         if self.autotype_flow and self.active_session is not session and not self.autotype_flow.switching:
             self.autotype_flow.cancel(lock=True)
         self.active_session = session
@@ -452,6 +455,8 @@ class Keyslot(Adw.Application):
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        if self.autotype_unlock:
+            self.autotype_unlock.cancel()
         if self.autotype_flow:
             self.autotype_flow.cancel()
         self.autotype_recent.clear()
@@ -618,6 +623,8 @@ class MainWindow(Adw.ApplicationWindow):
     def _focused(self, *_):
         if self.session and self.is_active():
             changed = self.app.active_session is not self.session
+            if changed and self.app.autotype_unlock and not self.app.autotype_unlock.switching:
+                self.app.autotype_unlock.cancel()
             if changed and self.app.autotype_flow and not self.app.autotype_flow.switching:
                 self.app.autotype_flow.cancel(lock=True)
             self.app.active_session = self.session

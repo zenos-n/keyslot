@@ -28,8 +28,9 @@ Values are fetched only for that explicit Copy operation, using existing native
 reference/TOTP handling. Clipboard ownership belongs to the selected vault even
 when another vault hosts the selector. Existing timeout, Linux secret hint,
 primary-selection support and owner-lock clearing remain; the presenting window's
-copy/hide policy is applied. Copy ends the flow before applying that policy.
-Copy does not type or reuse a typing approval.
+copy/hide policy is applied. Copy keeps the selector open while the temporary
+unlock flow remains active, so it cannot place a secret after relocking. See
+[Unlock for Auto-Type](autotype-unlock.md). Copy does not type or reuse a typing approval.
 
 One click selects a selector row; double-click, Type or Enter types its normal
 sequence. The dropdown acts on the selected row. Ctrl+1/2/3/4 type username,

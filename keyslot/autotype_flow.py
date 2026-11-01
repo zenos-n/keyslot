@@ -6,10 +6,11 @@ from .backend import VaultError
 
 
 class Flow:
-    def __init__(self, source, allow_automatic):
+    def __init__(self, source, allow_automatic, *, temporary=False):
         self.app = source.application
         self.allow_automatic = allow_automatic
         self.source = self.capture(source)
+        self.temporary = self.source if temporary else None
         self.owner = self.source
         self.active = self.app.active_session
         self.cancelled = threading.Event()
@@ -47,6 +48,17 @@ class Flow:
                 return False
         return True
 
+    def relock_owner(self):
+        if not self.temporary or not self.app.startup.autotype["relock"]:
+            return None
+        reference, epoch, identity, generation, snapshot = self.temporary
+        session = reference()
+        if (session and not session.jobs.closed and session.vault.unlocked and session.epoch == epoch
+                and session.vault.identity is identity and session.vault.generation == generation
+                and session.vault.snapshot is snapshot()):
+            return session
+        return None
+
     def cancel(self, *, lock=False):
         if self.cancelled.is_set():
             return
@@ -62,8 +74,12 @@ class Flow:
             clear_dialog_fields(dialog)
             dialog.force_close()
         owner = self.owner[0]()
+        temporary = self.relock_owner()
         if lock and self.typing and owner and not owner.jobs.closed:
             owner.lock()
+        if temporary and (temporary is not owner or not (lock and self.typing)):
+            temporary.lock()
+        self.temporary = None
 
     def cancel_for(self, session, *, locking=False):
         if self.switching:
