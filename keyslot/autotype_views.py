@@ -158,10 +158,6 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
     candidates = list(session.application.sessions)
     captured = [(owner, owner.epoch, owner.vault.identity, owner.vault.generation, owner.vault.snapshot)
                 for owner in candidates if owner.vault.unlocked and not owner.jobs.closed]
-    recent = session.application.autotype_recent
-    previous = recent.current()
-    previous_owner = previous["owner"]() if previous else None
-    previous_uuid = previous["uuid"] if previous else None
     def collect():
         records = []
         for owner, epoch, identity, generation, snapshot in captured:
@@ -170,34 +166,22 @@ def choose(session, entry=None, target=None, windows=None, *, flow=None, allow_a
             with owner.vault.operation(generation):
                 values = owner.vault.autotype_matches(target["title"], options["match_title"],
                                                       options["match_url"], options["hide_expired"])
-                default_digest = None
-                if owner is previous_owner:
-                    remembered = next((item for item in snapshot.entries if item.uuid == previous_uuid and not item.recycled), None)
-                    if remembered:
-                        try:
-                            settings = owner.vault.autotype_settings(remembered)
-                            if settings["enabled"] and settings["group_enabled"]:
-                                default_digest = recent.digest(settings["effective_sequence"])
-                        except (VaultError, OSError, ValueError):
-                            pass
-            records.append((owner, epoch, identity, snapshot, values, default_digest))
+            records.append((owner, epoch, identity, generation, snapshot, values))
         return records
     def matched(records):
-        available, matches = [], []
-        defaults = {}
-        for owner, epoch, identity, snapshot, values, default_digest in records:
-            if owner.epoch != epoch or owner.vault.identity is not identity or owner.vault.snapshot is not snapshot:
+        contexts, matches = [], []
+        for owner, epoch, identity, generation, snapshot, values in records:
+            if (owner.epoch != epoch or owner.vault.identity is not identity or owner.vault.generation != generation
+                    or owner.vault.snapshot is not snapshot or not owner.vault.unlocked or owner.jobs.closed):
                 continue
-            entries = {item.uuid: item for item in snapshot.entries if not item.recycled}
-            available.extend((owner, item, "") for item in entries.values())
+            contexts.append(Flow.capture(owner))
+            entries = {item.uuid: item for item in snapshot.entries if not item.recycled and item.addressable}
             matches.extend((owner, entries[item["entry"]], item["sequence"]) for item in values if item["entry"] in entries)
-            if default_digest is not None:
-                defaults[owner, previous_uuid] = default_digest
         if len(matches) == 1 and target.get("title") and not options["always_ask"] and flow.allow_automatic:
             owner, candidate, sequence = matches[0]
             _prepare(owner, candidate, target, sequence, flow, confirm=False)
         else:
-            _choose_match(session, target, matches, available, defaults, flow=flow)
+            _choose_match(session, target, matches, contexts, flow=flow)
     flow.run(session, collect, matched)
 
 
@@ -219,15 +203,19 @@ def _prepare(session, entry, target, sequence, flow, *, confirm, field=None):
         options["delay"], options["start_delay"], field=field), prepared)
 
 
-def _choose_match(session, target, matches, available, defaults=None, *, flow):
+def _choose_match(session, target, matches, contexts, *, flow):
     dialog, header, box = _dialog("Auto-Type", height=520)
     current = _guarded_lifetime(session, dialog)
-    state = {"query": None}
+    state = {"rendered": None, "pending": False, "serial": 0, "timer": 0, "activate": None}
     destination = Adw.PreferencesGroup(title="Destination")
     destination.add(Adw.ActionRow(title=target["title"], use_markup=False, title_lines=3))
     box.append(destination)
     search = Gtk.SearchEntry(placeholder_text="Search entries")
     box.append(search)
+    scope = Gtk.CheckButton(label="Search All Unlocked Databases", active=not matches, sensitive=bool(matches))
+    box.append(scope)
+    box.append(Gtk.Label(label="All databases: use KeePassXC search syntax, for example tag:work or title:mail. "
+        "Window matches: filter group, title or username with wildcards.", wrap=True, xalign=0, css_classes=["dim-label"]))
     rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, activate_on_single_click=False,
                       css_classes=["boxed-list"], valign=Gtk.Align.START)
     box.append(rows)
@@ -235,22 +223,34 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
     box.append(status)
     box.append(Gtk.Label(label="Select an entry, then type it or copy a field. Double-click to type its sequence.",
                          wrap=True, xalign=0, css_classes=["dim-label"]))
+    def owner_current(owner):
+        for context in contexts:
+            reference, epoch, identity, generation, snapshot = context
+            if reference() is owner:
+                return bool(not owner.jobs.closed and owner.vault.unlocked and owner.epoch == epoch
+                    and owner.vault.identity is identity and owner.vault.generation == generation
+                    and owner.vault.snapshot is snapshot())
+        return False
+    def query_key():
+        return search.get_text(), scope.get_active()
+    def ready():
+        return current() and flow.valid() and state["rendered"] == query_key()
     def prepare(owner, entry, sequence, field=None):
-        if not current() or not flow.valid():
+        if not ready() or not owner_current(owner):
             return
         flow.release(dialog)
         dialog.close()
         _prepare(owner, entry, target, sequence, flow, confirm=False, field=field)
     def continue_selected(*_):
         row = rows.get_selected_row()
-        if current() and row:
+        if ready() and row:
             row.emit("activated")
     actions = Gio.SimpleActionGroup()
     field_actions = {}
     menu = Gio.Menu()
     typing_menu, copy_menu = Gio.Menu(), Gio.Menu()
     def update_fields():
-        live = current() and flow.valid()
+        live = ready()
         for name, action in field_actions.items():
             copy = name.startswith("copy-")
             action.set_enabled(live and info.available(name.split("-", 1)[1], typing=not copy))
@@ -281,13 +281,10 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
                 session.toast("Could not copy to the clipboard")
         flow.run(owner, read, copied)
     def field_action(name, copy=False):
-        if not current() or not flow.valid() or not info.available(name, typing=not copy):
-            return
-        if state["query"] != search.get_text().casefold():
-            render()
+        if not ready() or not info.available(name, typing=not copy):
             return
         row = rows.get_selected_row()
-        if row and info.available(name, typing=not copy, entry=row.choice[1]):
+        if row and owner_current(row.choice[0]) and info.available(name, typing=not copy, entry=row.choice[1]):
             owner, entry, _sequence = row.choice
             if copy:
                 copy_field(owner, entry, name)
@@ -313,6 +310,11 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
         for prefix, key in (("type-", accelerator), ("copy-", accelerator.replace("<Control>", "<Control><Shift>"))):
             keys.add_shortcut(Gtk.Shortcut.new(Gtk.ShortcutTrigger.parse_string(key),
                 Gtk.NamedAction.new("autotype-fields." + prefix + name)))
+    toggle = Gio.SimpleAction.new("scope", None)
+    toggle.connect("activate", lambda *_: scope.set_active(not scope.get_active()) if scope.get_sensitive() else None)
+    actions.add_action(toggle)
+    keys.add_shortcut(Gtk.Shortcut.new(Gtk.ShortcutTrigger.parse_string("<Control>f"),
+                                       Gtk.NamedAction.new("autotype-fields.scope")))
     dialog.add_controller(keys)
     proceed = Adw.SplitButton(label="Type", menu_model=menu, valign=Gtk.Align.CENTER,
                              dropdown_tooltip="Type or Copy a Field", css_classes=["suggested-action"])
@@ -320,7 +322,7 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
     header.pack_end(proceed)
     proceed.set_sensitive(False)
     def selected(_rows, row):
-        proceed.set_sensitive(row is not None)
+        proceed.set_sensitive(ready() and row is not None)
         if row:
             owner, entry, _sequence = row.choice
             info.select(owner, entry)
@@ -328,20 +330,22 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
             info.clear()
     rows.connect("row-selected", selected)
     update_fields()
-    def render(*_):
-        if not current() or not flow.valid():
-            return
+    def clear_rows():
         while rows.get_first_child():
             rows.remove(rows.get_first_child())
-        query = search.get_text().casefold()
-        state["query"] = query
-        choices = matches if not query else [(owner, entry, "") for owner, entry, _ in available
-            if query in " ".join((entry.title, entry.username, entry.group_path)).casefold()
-            and (not session.application.startup.autotype["hide_expired"] or not entry.expired)]
+        info.clear()
+        proceed.set_sensitive(False)
+    def display(choices, key):
+        if not current() or not flow.valid() or key != query_key():
+            return
+        clear_rows()
+        state["rendered"] = key
+        remembered_row = fallback_row = None
+        recent = session.application.autotype_recent
+        remembered = recent.current()
         count = 0
-        remembered_row = None
         for owner, entry, sequence in choices:
-            if not owner.vault.unlocked or owner.jobs.closed:
+            if not owner_current(owner):
                 continue
             row = Adw.ActionRow(title=entry.title or "Untitled Entry", subtitle=" · ".join(filter(None,
                 (entry.username, owner.vault.snapshot.name, entry.group_path, sequence))), use_markup=False, title_lines=2,
@@ -349,22 +353,106 @@ def _choose_match(session, target, matches, available, defaults=None, *, flow):
             row.connect("activated", lambda _row, owner=owner, entry=entry, sequence=sequence: prepare(owner, entry, sequence))
             row.choice = (owner, entry, sequence)
             rows.append(row)
-            if session.application.autotype_recent.matches(owner, entry, sequence, (defaults or {}).get((owner, entry.uuid))):
-                remembered_row = row
+            if remembered and remembered["owner"]() is owner and remembered["uuid"] == entry.uuid:
+                if fallback_row is None:
+                    fallback_row = row
+                if remembered["digest"] == recent.digest(sequence):
+                    remembered_row = row
             count += 1
-        if remembered_row:
-            rows.select_row(remembered_row)
-        elif query:
+        choice = (remembered_row or fallback_row) if remembered and recent.current() is remembered else None
+        if choice:
+            rows.select_row(choice)
+        elif key[0]:
             rows.select_row(rows.get_row_at_index(0))
+        status.set_label("No matching entries. Try searching all unlocked databases." if not key[1] else "No matching entries.")
         status.set_visible(not count)
-    search.connect("search-changed", render)
+        if state["activate"] == state["serial"]:
+            state["activate"] = None
+            continue_selected()
+    def stop_timer():
+        if state["timer"]:
+            GLib.source_remove(state["timer"])
+            state["timer"] = 0
+    def request():
+        state["timer"] = 0
+        if not current() or not flow.valid() or state["pending"]:
+            return GLib.SOURCE_REMOVE
+        key, serial = query_key(), state["serial"]
+        options = dict(session.application.startup.autotype)
+        def collect():
+            result = []
+            for context in contexts:
+                reference, _epoch, _identity, generation, snapshot_ref = context
+                owner = reference()
+                if owner is None or not owner_current(owner):
+                    continue
+                snapshot = snapshot_ref()
+                with owner.vault.operation(generation):
+                    values = owner.vault.autotype_search(key[0], target["title"], all_entries=key[1],
+                        match_title=options["match_title"], match_url=options["match_url"], hide_expired=options["hide_expired"])
+                if not owner_current(owner):
+                    continue
+                entries = {item.uuid: item for item in snapshot.entries if not item.recycled and item.addressable}
+                result.extend((owner, entries[item["entry"]], item["sequence"]) for item in values if item["entry"] in entries)
+            return result
+        def completed(choices):
+            state["pending"] = False
+            if not current() or not flow.valid():
+                return
+            if serial != state["serial"] or key != query_key():
+                stop_timer()
+                request()
+                return
+            display(choices, key)
+        def failed(_message):
+            state["pending"] = False
+            if not current() or not flow.valid():
+                return
+            if serial != state["serial"] or key != query_key():
+                stop_timer()
+                request()
+                return
+            state["activate"] = None
+            status.set_label("Could not search entries. Edit the query or change the search scope to retry.")
+            status.set_visible(True)
+        state["pending"] = True
+        if not session.jobs.run(collect, completed, failed, interactive=False):
+            state["pending"] = False
+            state["timer"] = GLib.timeout_add(200, request)
+        return GLib.SOURCE_REMOVE
+    def changed(*_):
+        state["serial"] += 1
+        state["rendered"] = state["activate"] = None
+        stop_timer()
+        clear_rows()
+        if not current() or not flow.valid():
+            return
+        status.set_label("Searching…")
+        status.set_visible(True)
+        state["timer"] = GLib.timeout_add(150 if scope.get_active() else 1, request)
+    search.connect("notify::text", changed)
+    scope.connect("toggled", changed)
     def entered(*_):
-        if state["query"] != search.get_text().casefold():
-            render()
-        continue_selected()
+        if ready():
+            continue_selected()
+        elif current() and flow.valid():
+            state["activate"] = state["serial"]
+            stop_timer()
+            request()
     search.connect("activate", entered)
+    def closed(*_):
+        state["serial"] += 1
+        state["rendered"] = state["activate"] = None
+        stop_timer()
+        clear_rows()
+        matches.clear()
+        contexts.clear()
+    dialog.connect("closed", closed)
     if flow.present(session, dialog):
-        render()
+        if matches:
+            display(matches, query_key())
+        else:
+            changed()
         search.grab_focus()
 
 

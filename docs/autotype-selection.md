@@ -7,7 +7,8 @@ with their existing Auto-Type preferences. Older six-field private settings gain
 the new default without losing their matching, locking or delay choices.
 
 After a successful Auto-Type action, a subsequent selector can preselect the
-same entry and sequence if they are among its fresh choices. A click selects a
+same entry and sequence if they are among its fresh choices. If its old sequence
+is absent, the entry’s first available sequence is selected, following upstream. A click selects a
 row; double-click, Type or Enter approves it. The Type dropdown also offers
 [Field Actions](autotype-fields.md) and explicit Copy Field actions. PICKCHARS and destination checks still follow where
 needed. See [Confirmation Preferences](autotype-confirmation.md) for automatic
@@ -18,11 +19,10 @@ anything. Standard list selection supports keyboard navigation.
 The application retains one short-lived record: entry UUID, sequence digest,
 weak session/snapshot references, epoch/identity/generation and monotonic time.
 It does not cache resolved passwords, TOTP values, character picks, key events,
-destination tokens or a typing approval. Fresh native metadata supplies the
-remembered entry's current default sequence for comparison with search/default
-choices; only its digest crosses back into that comparison. Direct matches use
-their fresh sequence. The cache does not keep a plaintext sequence or an entry
-object alive. No secure-zero guarantee is made for transient Python/GTK strings.
+destination tokens or a typing approval. Fresh native search results supply each
+actual default or association sequence for digest comparison; direct matches use
+their fresh sequence as well. The cache does not keep a plaintext sequence or an
+entry object alive. No secure-zero guarantee is made for transient Python/GTK strings.
 
 Expiry, owner lock/close/reload, a changed snapshot/generation, failed typing,
 Auto-Type preference changes and shutdown discard or invalidate the record.
@@ -33,7 +33,8 @@ the captured owner/session/snapshot before opening confirmation. Native tokens
 and focus leases retain their existing expiry and validation.
 
 This adds the selection-memory workflow, not a complete Auto-Type parity claim.
-Association variants in general search, temporary unlock/relock timing, portal
+[Chooser Search](autotype-search.md) now preserves native query syntax and association
+variants. Sort preferences, temporary unlock/relock timing, portal
 persistence/clipboard typing and broader platform behavior remain separate gaps.
 Confirmation preferences now follow the linked policy; immediate relocking is
 unchanged.

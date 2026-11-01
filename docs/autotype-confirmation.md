@@ -53,7 +53,8 @@ Keys already sent cannot be withdrawn. Existing encrypted recovery and immediate
 relock policy remain in place. No live settings, vaults, input or processes were
 used to validate this implementation.
 
-Remaining Auto-Type work includes general-search association variants, locked
+[Chooser Search](autotype-search.md) now includes native search scopes and association variants.
+Remaining Auto-Type work includes sort preferences, locked
 vault resumption/temporary-unlock timing, portal persistence/clipboard typing,
 global shortcut preferences and broader backend/accessibility acceptance.
 Runtime/Python compilation only; no tests/harnesses or automated GTK, typing,

@@ -35,6 +35,7 @@ public:
     void saveSettings(Group* group, const QJsonObject& args);
     QJsonObject targets();
     QJsonObject matches(const QSharedPointer<Database>& db, const QJsonObject& args);
+    QJsonObject search(const QSharedPointer<Database>& db, const QJsonObject& args);
     QJsonObject prepare(const QSharedPointer<Database>& db, Entry* entry, const QJsonObject& args,
                         const QByteArray& fingerprint);
     QJsonObject finish(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint);

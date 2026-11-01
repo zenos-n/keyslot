@@ -6,6 +6,8 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Auto-Type chooser search now uses native query syntax for all initially unlocked vaults and preserves distinct default/custom association sequences. Window matches retain a separate wildcard scope. Async query/scope/context guards clear stale actions; Enter waits for current results. See [Chooser Search](autotype-search.md). Native/runtime compilation only; user manual search/keyboard/race/platform acceptance remains, with no tests/harnesses or automated behavior runs.
+
 Auto-Type now includes field-only username/password/TOTP/URL and supported Enter
 variants, entry and selector menus, selector Copy Field actions and local
 Ctrl+1–4/Ctrl+Shift+1–4 bindings. Native presence/eligibility booleans avoid
@@ -305,6 +307,8 @@ opening Preferences refreshes its switch without writing the configuration.
 No vault mutation, idle touch or browser-protocol version spoofing is added.
 User browser/permission/reference/traversal/large-list acceptance remains pending;
 this batch has runtime compilation only and no new tests or automated runs.
+
+
 
 ## Verified checkpoint
 

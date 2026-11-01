@@ -6,11 +6,13 @@
 #include "core/Config.h"
 #include "core/Database.h"
 #include "core/Entry.h"
+#include "core/EntrySearcher.h"
 #include "core/Group.h"
 #include "core/Tools.h"
 #include <QJsonArray>
 #include <QMap>
 #include <QRegularExpression>
+#include <QRegExp>
 #include <QThread>
 #include <unistd.h>
 #include "autotype/xcb/AutoTypeXCB.h"
@@ -165,6 +167,38 @@ QJsonObject KeyslotAutoType::matches(const QSharedPointer<Database>& db, const Q
         QStringList sequences;
         for (const auto& sequence : entry->autoTypeSequences(title))
             if (!sequences.contains(sequence)) sequences.append(sequence);
+        for (const auto& sequence : sequences) result.append(QJsonObject{
+            {"entry", entry->uuid().toString(QUuid::WithoutBraces)}, {"sequence", sequence}});
+    }
+    return {{"matches", result}};
+}
+QJsonObject KeyslotAutoType::search(const QSharedPointer<Database>& db, const QJsonObject& args) {
+    options(args);
+    const auto query = text(args, "query");
+    const auto title = text(args, "title", 4096);
+    const bool all = flag(args, "all"), hideExpired = flag(args, "hide_expired");
+    EntrySearcher searcher;
+    const auto entries = all ? searcher.search(query.isEmpty() ? "*" : query, db->rootGroup())
+                             : db->rootGroup()->entriesRecursive();
+    const QRegExp filter(query, Qt::CaseInsensitive, QRegExp::Wildcard);
+    QJsonArray result;
+    for (auto* entry : entries) {
+        if (entry->isRecycled() || !entry->autoTypeEnabled() || !entry->group()->resolveAutoTypeEnabled()
+            || (hideExpired && entry->isExpired())) continue;
+        if (!all && !query.isEmpty() && filter.indexIn(entry->group()->name()) < 0
+            && filter.indexIn(entry->resolveMultiplePlaceholders(entry->title())) < 0
+            && filter.indexIn(entry->resolveMultiplePlaceholders(entry->username())) < 0) continue;
+        QStringList sequences;
+        if (all) {
+            const auto sequence = entry->effectiveAutoTypeSequence();
+            if (!sequence.isEmpty()) sequences.append(sequence);
+            for (const auto& association : entry->autoTypeAssociations()->getAll())
+                if (!association.sequence.isEmpty() && !sequences.contains(association.sequence))
+                    sequences.append(association.sequence);
+        } else {
+            for (const auto& sequence : entry->autoTypeSequences(title))
+                if (!sequences.contains(sequence)) sequences.append(sequence);
+        }
         for (const auto& sequence : sequences) result.append(QJsonObject{
             {"entry", entry->uuid().toString(QUuid::WithoutBraces)}, {"sequence", sequence}});
     }

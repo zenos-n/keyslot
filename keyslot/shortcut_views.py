@@ -18,6 +18,7 @@ def help_dialog(session):
     dialog.add(selection)
     from .autotype_fields import TYPES, SELECTOR_KEYS
     autotype = Adw.ShortcutsSection(title="Auto-Type Selector")
+    autotype.add(Adw.ShortcutsItem(title="Toggle Search All Unlocked Databases", accelerator="<Control>f"))
     for name, key in SELECTOR_KEYS.items():
         autotype.add(Adw.ShortcutsItem(title="Type " + TYPES[name][0], accelerator=key))
         autotype.add(Adw.ShortcutsItem(title="Copy " + TYPES[name][0],

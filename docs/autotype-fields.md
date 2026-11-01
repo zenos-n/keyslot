@@ -34,9 +34,9 @@ Copy does not type or reuse a typing approval.
 One click selects a selector row; double-click, Type or Enter types its normal
 sequence. The dropdown acts on the selected row. Ctrl+1/2/3/4 type username,
 password, TOTP or URL; Ctrl+Shift+1/2/3/4 copy them. These shortcuts are scoped
-to the selector and listed in Keyboard Shortcuts. A pending search is refreshed
-before Enter; a field action with a changed query refreshes selection and waits
-for fresh availability instead of acting on an old row.
+to the selector and listed in Keyboard Shortcuts. A pending [search](autotype-search.md) clears old rows/actions immediately.
+Enter waits for its current results; field actions wait for fresh selection and
+availability instead of acting on an old row.
 
 Ctrl+Shift+V now types the selected entry's sequence, matching KeePassXC's
 `actionEntryAutoTypeSequence`. Global matching remains available from Auto-Type

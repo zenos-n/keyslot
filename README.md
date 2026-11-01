@@ -10,6 +10,8 @@ verified behavior. The [release requirements](docs/release-readiness.md) track
 production blockers and the upstream 2.8 security review. Broader Secret Service acceptance, breach/browser reports, several advanced database
 workflows and broader platform acceptance remain open.
 
+Auto-Type chooser search now supports window-match filtering and native all-vault queries, including distinct custom association sequences. See [Chooser Search](docs/autotype-search.md) for scope, keyboard behavior and manual-acceptance limits.
+
 ## Native engine
 
 Version 0.2 replaces the CLI boundary in the app with a private helper linked
