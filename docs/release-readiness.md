@@ -6,6 +6,16 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+CLI compatibility now includes the upstream2.8 `db-info` passkey/TOTP-entry
+statistics, stdio-open guards and failed clipboard-tool diagnostics on the
+pinned2.7.12 engine. GUI empty CLI config values now use configured defaults;
+single-file mode uses an empty local environment override or the same explicit
+path for both roles. The previous CLI empty-value documentation was incorrect.
+See [CLI Compatibility](../engine/CliCompatibility.md) and
+[Configuration Layouts](configuration-layouts.md). Native/runtime/Python
+compilation only; no tests/harnesses or automated CLI/clipboard/profile/vault
+runs. Terminal, stats, profile/launcher and error acceptance remains manual.
+
 New-entry defaults now expose group-icon inheritance and optional automatic
 password generation through stock INI keys or private flags. The entry Generate
 button uses the saved generator settings and offers the full options dialog.

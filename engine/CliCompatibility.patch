@@ -1,0 +1,90 @@
+--- a/src/core/DatabaseStats.cpp
++++ b/src/core/DatabaseStats.cpp
+@@ -114,6 +114,14 @@
+                 totalPasswordLength += pwd.size();
+                 m_passwords[pwd]++;
+             }
++
++            if (entry->hasPasskey()) {
++                numberOfPasskeys++;
++            }
++
++            if (entry->hasTotp()) {
++                numberOfTotpEntries++;
++            }
+         }
+     }
+ }
+--- a/src/core/DatabaseStats.h
++++ b/src/core/DatabaseStats.h
+@@ -35,6 +35,8 @@
+     int uniquePasswords = 0; // Number of unique passwords
+     int reusedPasswords = 0; // Number of non-unique passwords
+     int totalPasswordLength = 0; // Total length of all passwords
++    int numberOfPasskeys = 0; // Number of passkeys
++    int numberOfTotpEntries = 0; // Number of entries with TOTP setup
+ 
+     explicit DatabaseStats(QSharedPointer<Database> db);
+ 
+--- a/src/cli/DatabaseInfo.cpp
++++ b/src/cli/DatabaseInfo.cpp
+@@ -69,6 +69,8 @@
+     out << QObject::tr("Entries excluded from reports") << ": " << QString::number(stats.excludedEntries) << Qt::endl;
+     out << QObject::tr("Average password length") << ": "
+         << QObject::tr("%1 character(s)", "", stats.averagePwdLength()).arg(stats.averagePwdLength()) << Qt::endl;
++    out << QObject::tr("Number of passkeys") << ": " << QString::number(stats.numberOfPasskeys) << Qt::endl;
++    out << QObject::tr("Entries with TOTP setup") << ": " << QString::number(stats.numberOfTotpEntries) << Qt::endl;
+ 
+     return EXIT_SUCCESS;
+ }
+--- a/src/cli/Utils.cpp
++++ b/src/cli/Utils.cpp
+@@ -51,24 +51,28 @@
+     void setDefaultTextStreams()
+     {
+         auto fd = new QFile();
+-        fd->open(stdout, QIODevice::WriteOnly);
+-        STDOUT.setDevice(fd);
++        if (fd->open(stdout, QIODevice::WriteOnly)) {
++            STDOUT.setDevice(fd);
++        }
+ 
+         fd = new QFile();
+-        fd->open(stderr, QIODevice::WriteOnly);
+-        STDERR.setDevice(fd);
++        if (fd->open(stderr, QIODevice::WriteOnly)) {
++            STDERR.setDevice(fd);
++        }
+ 
+         fd = new QFile();
+-        fd->open(stdin, QIODevice::ReadOnly);
+-        STDIN.setDevice(fd);
++        if (fd->open(stdin, QIODevice::ReadOnly)) {
++            STDIN.setDevice(fd);
++        }
+ 
+         fd = new QFile();
+ #ifdef Q_OS_WIN
+-        fd->open(fopen("nul", "w"), QIODevice::WriteOnly);
+-#else
+-        fd->open(fopen("/dev/null", "w"), QIODevice::WriteOnly);
+-#endif
+-        DEVNULL.setDevice(fd);
++        if (fd->open(fopen("nul", "w"), QIODevice::WriteOnly)) {
++#else
++        if (fd->open(fopen("/dev/null", "w"), QIODevice::WriteOnly)) {
++#endif
++            DEVNULL.setDevice(fd);
++        }
+ 
+ #ifdef Q_OS_WIN
+         origCodePage = GetConsoleCP();
+@@ -348,6 +352,8 @@
+ 
+             if (clipProcess->exitCode() == EXIT_SUCCESS) {
+                 return EXIT_SUCCESS;
++            } else {
++                failedProgramNames.append(prog.first);
+             }
+         }
+ 

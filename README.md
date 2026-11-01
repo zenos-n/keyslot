@@ -307,7 +307,11 @@ the upstream parser and reject empty lists, with a warning below 1296 words.
 Settings are remembered in a private `keyslot/generator.json`; generated results
 are never saved there. Editing a result recalculates its password strength.
 The package also supplies a `keepassxc` launcher for the GTK application, alongside
-the unchanged upstream `keepassxc-cli` and the corrected browser proxy.
+the pinned upstream `keepassxc-cli` with reviewed2.8 compatibility backports and
+the corrected browser proxy. CLI `db-info` includes passkey and TOTP-entry counts;
+stdio-open guards and failed clipboard-tool diagnostics match the newer source.
+See [CLI Compatibility](engine/CliCompatibility.md). The core still reports its
+actual2.7.12 version; these changes do not claim a complete2.8 CLI port.
 The GUI accepts `--lock`, `--keyfile PATH`, `--pw-stdin`, `--minimized`,
 `--version`/`-v` and `--debug-info`. Lock and diagnostics work without opening a
 window. Stdin unlock reads one UTF-8 password line per database, including an
@@ -320,7 +324,9 @@ stdin credentials are never saved in application settings.
 files; `KPXC_CONFIG` and `KPXC_CONFIG_LOCAL` supply their defaults. Unspecified
 global settings use the XDG config location; local state prefers KeePassXC2.8's
 XDG state file, retaining an existing2.7 cache file when modern state is absent.
-Explicitly empty local overrides use the global file for both roles.
+Empty CLI configuration values select the corresponding configured defaults.
+An empty `KPXC_CONFIG_LOCAL` environment override, or choosing the same file for
+both explicit roles, uses the global file for both roles.
 See [Configuration Layouts](docs/configuration-layouts.md). Existing Keyslot private
 preferences stay in use. On first launch, before private preferences have been
 saved, Keyslot reuses an existing stock global/local INI profile automatically.

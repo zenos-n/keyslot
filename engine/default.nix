@@ -58,6 +58,7 @@ pkgs.keepassxc.overrideAttrs (old: {
     cp ${./KeyslotBrowserValues.h} src/KeyslotBrowserValues.h
     cp ${./SecurityCheck.cpp} src/KeyslotSecurityCheck.cpp
     patch -p1 < ${./SecurityBackports.patch}
+    patch -p1 < ${./CliCompatibility.patch}
     patch -p1 < ${./SerializationFixes.patch}
     # Reuse upstream text/binary secret conversion independently of Qt widgets.
     substituteInPlace src/fdosecrets/objects/Item.cpp \

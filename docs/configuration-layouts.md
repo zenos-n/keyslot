@@ -23,11 +23,16 @@ unsupported values and decoding warnings remain explicit errors.
 `--config` and `--localconfig` take precedence over their corresponding
 `KPXC_CONFIG`/`KPXC_CONFIG_LOCAL` environment defaults. Explicit local paths skip
 default state/cache probing entirely, including inaccessible unused defaults.
-An explicitly empty local override (including `--localconfig=`) disables the
-separate local file: both roles use the selected global INI, matching upstream
-single-file settings behavior. An empty global override is rejected. CLI remote
+An empty CLI value (`--config=` or `--localconfig=`) selects the corresponding
+configured default, including its environment override, as upstream's
+`createConfigFromFile` does. An empty `KPXC_CONFIG_LOCAL` environment override
+disables the separate local file: both roles use the selected global INI.
+Explicitly pointing both CLI roles at the same file also selects single-file
+mode. An empty `KPXC_CONFIG` environment override is rejected. CLI remote
 URIs are rejected with a configuration error rather than an internal exception.
 Relative explicit file paths retain their existing invoking-directory semantics.
+This corrects the earlier description of `--localconfig=` as single-file mode;
+the early CLI validation had also rejected empty values before profile selection.
 
 First-launch stock-profile adoption still requires an existing global file
 and no saved Keyslot private preferences. Ordinary secondary launches keep the

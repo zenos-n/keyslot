@@ -24,8 +24,8 @@ def configure(app):
         app.add_main_option(name, short, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, description, None)
     app.add_main_option("keyfile", 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING,
                         "Key file for the databases being opened", "PATH")
-    for name, description in (("config", "KeePassXC global settings INI file"),
-                              ("localconfig", "KeePassXC local settings INI file")):
+    for name, description in (("config", "KeePassXC global settings INI file (empty uses the default)"),
+                              ("localconfig", "KeePassXC local settings INI file (empty uses the default)")):
         app.add_main_option(name, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING, description, "PATH")
     app.add_main_option(GLib.OPTION_REMAINING, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING_ARRAY,
                         "Databases to open", "FILE…")
@@ -69,11 +69,8 @@ def select_configuration(app, options, bus):
             if value is None:
                 continue
             argument = value.unpack()
-            if not argument and name == "localconfig":
-                chosen[name] = ""
-                continue
             if not argument:
-                raise VaultError("Choose a nonempty global configuration file path.")
+                continue
             chosen[name] = Gio.File.new_for_commandline_arg(argument).get_path()
             if chosen[name] is None:
                 raise VaultError("Choose local files for --config and --localconfig.")
@@ -81,7 +78,8 @@ def select_configuration(app, options, bus):
         if not explicit and not Path(paths[0]).is_file():
             return
         existing = primary_profile(bus)
-        automatic_local = profiles["localconfig"] is None and "KPXC_CONFIG_LOCAL" not in os.environ
+        local = profiles["localconfig"]
+        automatic_local = (local is None or not local.unpack()) and "KPXC_CONFIG_LOCAL" not in os.environ
         storage = IniProfile(*paths, automatic_local=automatic_local)
         if existing is not None and existing != storage.identity:
             raise VaultError("Keyslot is already running with a different configuration. Quit it before switching profiles.")
@@ -158,10 +156,8 @@ def local_options(app, options):
         return 1
     keyfile = options.lookup_value("keyfile", None)
     profiles = {name: options.lookup_value(name, None) for name in ("config", "localconfig")}
-    if any(value is not None and not value.unpack() for value in profiles.values()):
-        print("Configuration arguments require a nonempty file path.", file=sys.stderr)
-        return 1
-    files = arguments(options) + ([keyfile.unpack()] if keyfile else []) + [value.unpack() for value in profiles.values() if value is not None]
+    files = (arguments(options) + ([keyfile.unpack()] if keyfile else [])
+             + [value.unpack() for value in profiles.values() if value is not None and value.unpack()])
     if any(Gio.File.new_for_commandline_arg(path).get_path() is None for path in files):
         print("Database, key-file and configuration arguments must refer to local files.", file=sys.stderr)
         return 1
