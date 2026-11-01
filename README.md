@@ -767,6 +767,25 @@ authored multi-stroke sequences are preserved but disabled here until changed.
 The editor records one combination per action. These additions have runtime
 compilation only; desktop and keyboard-layout acceptance remain manual.
 
+## Adwaita entry icons
+
+Standard KeePass icons are displayed with GNOME/Adwaita equivalents while their
+database icon IDs stay unchanged. Existing custom icons retain their image.
+In Edit Entry → Icon, choose Adwaita Icons to search the symbolic icon catalog.
+Standard equivalents select their KeePass ID; additional choices are embedded
+as normal custom icons for other clients, with an `Adwaita:` name marker so
+Keyslot can show a theme-aware version after reopening. Adwaita assets are part
+of the package. The search-options popover also uses an available Adwaita icon
+and a wider, window-aware content size.
+
+The startup unlock handoff now dismisses a pending manual prompt before login
+keyring unlock begins, and successful rendering clears obsolete unlock prompts.
+Locks hide sensitive content immediately; stale or locked snapshots cannot
+repopulate the vault view. This addresses a reported screenshot showing vault
+metadata behind an unlock prompt. Password copying/autofill before manual input
+was not established, and no live startup reproduction was performed. These
+changes have runtime compilation only, with manual acceptance pending.
+
 ## Generate SSH keys
 
 Open an entry's SSH Key Settings and choose Generate New SSH Key. Select

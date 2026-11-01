@@ -1061,15 +1061,16 @@ class Vault:
             return base64.b64decode(self._rpc("icons.get", icon=icon, custom_icon=custom_icon), validate=True)
 
     def import_icon(self, source):
-        import base64
         source = Path(source)
         with source.open("rb") as stream:
             raw = stream.read(8 * 1024 * 1024 + 1)
-        if len(raw) > 8 * 1024 * 1024:
-            raise VaultError("Choose an icon file smaller than 8 MiB.")
+        return self.import_icon_data(raw, source.stem)
+
+    def import_icon_data(self, raw, name):
+        import base64
         raw = _icon_bytes(raw)
         with self._mutex:
-            result = self._rpc("icons.import", data=base64.b64encode(raw).decode("ascii"), name=source.stem)
+            result = self._rpc("icons.import", data=base64.b64encode(raw).decode("ascii"), name=name)
             self._set_snapshot(result["snapshot"])
             return result["icon"]
 

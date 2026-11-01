@@ -14,7 +14,7 @@ pkgs.stdenvNoCC.mkDerivation {
   };
   nativeBuildInputs = [ pkgs.meson pkgs.ninja pkgs.wrapGAppsHook4 pkgs.gobject-introspection ];
   nativeCheckInputs = [ pkgs.dbus pkgs.xvfb-run pkgs.gnome-keyring pkgs.libsodium pkgs.openssl pkgs.openssh pkgs.gcr_4 pkgs.nss_wrapper pkgs.zbar ];
-  buildInputs = [ pkgs.gtk4 pkgs.libadwaita pkgs.libsecret pkgs.gdk-pixbuf pkgs.librsvg (pkgs.python3.withPackages (p: [ p.pygobject3 ])) ];
+  buildInputs = [ pkgs.gtk4 pkgs.libadwaita pkgs.libsecret pkgs.gdk-pixbuf pkgs.librsvg pkgs.adwaita-icon-theme (pkgs.python3.withPackages (p: [ p.pygobject3 ])) ];
   mesonFlags = [ "-Dtests=${if doCheck then "true" else "false"}" ];
   postInstall = ''
     mkdir -p "$out/share/icons/hicolor"
@@ -25,6 +25,7 @@ pkgs.stdenvNoCC.mkDerivation {
     python3 -m compileall -q "$out/share/keyslot/keyslot"
   '';
   preFixup = ''
+    gappsWrapperArgs+=(--set KEYSLOT_ADWAITA_ICONS ${pkgs.adwaita-icon-theme}/share/icons)
     gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath [ engine ]})
     gappsWrapperArgs+=(--set KEYSLOT_ENGINE ${engine}/libexec/keyslot-engine)
     gappsWrapperArgs+=(--set KEYSLOT_STDIN_READER ${pkgs.coreutils}/bin/head)

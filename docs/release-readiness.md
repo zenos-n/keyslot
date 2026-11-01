@@ -6,6 +6,29 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+A user reported vault metadata behind an Unlock Database prompt after boot.
+Inspection found the normal-launch/manual-prompt plus login-keyring completion
+handoff could leave a stale manual prompt on an already unlocked view. Login
+unlock now dismisses and clears the tracked prompt before starting, canonicalizes
+the remembered path, and keeps the locked view until completion. Current vault
+rendering dismisses obsolete prompts and refuses locked/stale snapshot objects;
+security locking switches the view first, clears pending unlock requests, and
+worker delivery rechecks its epoch after state observers. Already unlocked
+vaults do not receive stale ordinary unlock requests. Changed-vault reauthentication
+continues to preserve the previous unlocked data explicitly. The screenshot
+establishes metadata visibility; password/autofill bypass remains unconfirmed.
+No user restart, vault/process action or automated behavior runs were performed;
+boot/activation/keyring/lock acceptance remains manual.
+
+Adwaita presentation maps standard KeePass icon IDs without database rewrites.
+The entry picker offers a searchable, paged Adwaita catalog. Additional icons are
+embedded with an explicit custom-icon name marker and PNG fallback; current
+custom images are retained. Only names present in the packaged theme are used
+for live themed rendering. Icon metadata/cache work remains vault-epoch scoped.
+Search options now use an available Adwaita icon and a window-aware minimum
+content width. These UI changes are compiled candidates with visual/manual
+acceptance still pending, and no new tests or automated runs.
+
 SSH generation now uses the upstream 2.8 Botan generator with the pinned 2.7.12
 parser/agent. GTK offers Ed25519, RSA and ECDSA, key sizes, comment and attachment
 name, plus optional protection with the entry's current password. Private bytes

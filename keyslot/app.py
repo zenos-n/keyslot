@@ -269,10 +269,10 @@ class Keyslot(Adw.Application):
         if options.contains("login"):
             if self.startup.login and self.startup.vault and not self.login_attempted:
                 self.login_attempted = True
-                path = self.startup.vault
+                path = Path(self.startup.vault).expanduser().resolve()
                 if not self.sessions:
                     self.restore_databases(present=False)
-                existing = next((item for item in self.sessions if item.path == path), None)
+                existing = next((item for item in self.sessions if item.path and item.path.resolve() == path), None)
                 session = existing or self.new_window(present=False)
                 if not self.active_session:
                     self.active_session, self.window = session, session.host_window

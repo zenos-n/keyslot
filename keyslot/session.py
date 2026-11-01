@@ -47,6 +47,8 @@ class SessionJobs:
             self.changed()
             try:
                 result = future.result()
+                if self.closed or epoch != self.epoch:
+                    return False
                 if done:
                     done(result)
             except (VaultError, OSError, ValueError) as exc:

@@ -31,7 +31,7 @@ class SearchOptions:
         self.protected = Adw.SwitchRow(title="Search Passwords", subtitle="Also searches protected custom fields", active=True)
         self.recycled = Adw.SwitchRow(title="Include Recycle Bin")
         self.disabled = Adw.SwitchRow(title="Search Disabled Groups", subtitle="Ignore groups' search-exclusion settings")
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, width_request=360,
                          margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
         browsing = Adw.PreferencesGroup(title="Browsing")
         browsing.add(self.recursive)
@@ -49,8 +49,10 @@ class SearchOptions:
         content.append(self.problem)
         self.popover = Gtk.Popover(child=Gtk.ScrolledWindow(child=content, hscrollbar_policy=Gtk.PolicyType.NEVER,
             propagate_natural_height=True, max_content_height=540, min_content_width=320))
-        self.button = Gtk.MenuButton(icon_name="view-filter-symbolic", tooltip_text="View and Search Options",
+        self.button = Gtk.MenuButton(icon_name="preferences-other-symbolic", tooltip_text="View and Search Options",
                                      popover=self.popover, valign=Gtk.Align.CENTER)
+        self.popover.connect("show", lambda *_: content.set_size_request(
+            max(220, min(360, (self.session.host_window.get_width() or 1180) - 72)), -1))
         self.status = Gtk.Label(xalign=0, wrap=True, visible=False, margin_start=12, margin_end=12,
                                 margin_bottom=12, css_classes=["dim-label"])
         self.scope.connect("notify::selected", self.options_changed)

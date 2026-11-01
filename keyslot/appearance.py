@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 from .backend import Entry, Group, VaultError
 from .database_views import _dialog
+from . import themed_icons
 
 
 class IconCache:
@@ -13,6 +14,9 @@ class IconCache:
         self.closed = False
         self.owner = session.vault.identity
         self.cache, self.pending = {}, {}
+        self.custom_names = None
+        self.theme = themed_icons.theme()
+        self.theme_names = frozenset(self.theme.get_icon_names())
         self.drafts = {}
         self.downloads = []
         self.manual_downloads = set()
@@ -22,6 +26,7 @@ class IconCache:
         self.epoch += 1
         self.cache.clear()
         self.pending.clear()
+        self.custom_names = None
 
     def close(self):
         self.clear()
@@ -43,8 +48,15 @@ class IconCache:
             self.clear()
             self.owner = self.session.vault.identity
         key = item.custom_icon or item.icon
+        if not item.custom_icon and 0 <= item.icon < len(themed_icons.STANDARD):
+            name = themed_icons.STANDARD[item.icon]
+            if not self.theme.has_icon(name):
+                name = "dialog-password-symbolic"
+            if self.theme.has_icon(name):
+                image.set_from_paintable(themed_icons.paintable(self.theme, name, size))
+                return image
         if key in self.cache:
-            self._paint(image, self.cache[key], size)
+            self._paint_cached(image, self.cache[key], size)
             return image
         if key in self.pending:
             self.pending[key].append((image, size))
@@ -55,15 +67,41 @@ class IconCache:
             if epoch != self.epoch or self.closed:
                 return None
             with self.session.vault.operation(generation):
-                return self.session.vault.icon(item.icon, item.custom_icon)
+                name = ""
+                if item.custom_icon:
+                    cached = self.custom_names
+                    if cached is None or cached[0] != epoch:
+                        names, offset = {}, 0
+                        while True:
+                            catalog = self.session.vault.icons(offset)
+                            names.update({icon["custom_icon"]: icon["name"] for icon in catalog["custom"]})
+                            offset += 100
+                            if offset >= catalog["total"]:
+                                break
+                        if epoch != self.epoch or self.closed:
+                            return None
+                        self.custom_names = epoch, names
+                    else:
+                        names = cached[1]
+                    label = names.get(item.custom_icon, "")
+                    if label.startswith(themed_icons.PREFIX):
+                        name = label[len(themed_icons.PREFIX):]
+                return self.session.vault.icon(item.icon, item.custom_icon), name
         future = self.executor.submit(load)
         def done():
             if self.closed or epoch != self.epoch or not self.session.vault.unlocked:
                 return False
             waiting = self.pending.pop(key, [])
             try:
-                raw = future.result()
-                if raw is None:
+                result = future.result()
+                if result is None:
+                    return False
+                raw, name = result
+                if name.endswith("-symbolic") and name in self.theme_names:
+                    self.cache[key] = name
+                    for widget, size in waiting:
+                        if widget.get_root() is not None:
+                            self._paint_cached(widget, name, size)
                     return False
                 loader = GdkPixbuf.PixbufLoader.new_with_type("png")
                 loader.write(raw)
@@ -88,6 +126,12 @@ class IconCache:
         scaled = pixbuf.scale_simple(max(1, round(width * scale)), max(1, round(height * scale)), GdkPixbuf.InterpType.BILINEAR)
         image.set_from_paintable(Gdk.Texture.new_for_pixbuf(scaled))
 
+    def _paint_cached(self, image, value, size):
+        if isinstance(value, str):
+            image.set_from_paintable(themed_icons.paintable(self.theme, value, size))
+        else:
+            self._paint(image, value, size)
+
 
 def choose_icon(session, callback, value=None, offset=0, dialog=None, website=None, current=None):
     if session.busy or not session.vault.unlocked:
@@ -102,7 +146,7 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
     def choose(values):
         callback(values)
         dialog.close()
-    standard = Adw.PreferencesGroup(title="Standard Icons")
+    standard = Adw.PreferencesGroup(title="Standard Icons", description="KeePass icon IDs shown with Adwaita equivalents")
     grid = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=8,
                        min_children_per_line=4, row_spacing=4, column_spacing=4, homogeneous=True)
     for icon in value["standard"]:
@@ -157,12 +201,16 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
             page.append(button)
         box.append(page)
     def imported(identifier):
+        session.icons.clear()
         session.window.show_vault(session.vault.snapshot)
         choose({"custom_icon": identifier})
     button = Gtk.Button(label="Import Icon…", valign=Gtk.Align.CENTER)
     button.connect("clicked", lambda *_: session.choose_file(lambda path:
         session.run_job(lambda: session.vault.import_icon(path), imported)))
     header.pack_start(button)
+    adwaita = Gtk.Button(label="Adwaita Icons…", valign=Gtk.Align.CENTER)
+    adwaita.connect("clicked", lambda *_: themed_icons.choose(session, choose))
+    box.prepend(adwaita)
     from . import icon_views
     download = Gtk.Button(label="Download Website Icon…", valign=Gtk.Align.CENTER)
     download.connect("clicked", lambda *_: icon_views.download(session, imported, website() if website else ""))

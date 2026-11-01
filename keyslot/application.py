@@ -92,6 +92,7 @@ class VaultSession:
         self.vault.auto_save_on_exit = application.startup.auto_save_on_exit
         self.requested_path = None
         self.pending_unlock = None
+        self.unlock_prompt = None
         self.pending_errors = []
         self.view_epoch = 0
         self.clipboard_provider = None
@@ -140,6 +141,9 @@ class VaultSession:
         self.emit_state()
 
     def _clear(self):
+        self.pending_unlock = None
+        if self.window:
+            self.window.show_locked()
         self.files.stop()
         self.totp.clear()
         self.urls.clear()
@@ -154,7 +158,6 @@ class VaultSession:
         self.close_dialogs()
         if self.window:
             self.window.set_busy(False)
-            self.window.show_locked()
 
     def run_job(self, job, done=None, failed=None):
         self.touch()
@@ -188,6 +191,11 @@ class VaultSession:
         self.run_keyring_job(remember)
 
     def unlock_at_login(self, path):
+        if self.vault.unlocked or self.busy:
+            return
+        self.pending_unlock = None
+        self.dismiss_unlock_prompt()
+        self.window.show_locked()
         def unlock(request):
             credentials = self.application.login_keyring().lookup(path, request)
             request.set_error_if_cancelled()
@@ -241,8 +249,12 @@ class VaultSession:
             return
         self.needs_attention = False
         if self.pending_unlock:
+            if self.busy:
+                return
             path, create, options, *key = self.pending_unlock
             self.pending_unlock = None
+            if self.vault.unlocked and not create and not options and Path(path).resolve() == self.vault.path:
+                return
             self._unlock_dialog(path, create, options, keyfile=key[0] if key else None)
         elif self.pending_errors:
             self.error(self.pending_errors.pop(0))
@@ -253,6 +265,22 @@ class VaultSession:
             clear_dialog_fields(dialog)
             dialog.force_close()
         self.dialogs.clear()
+
+    def dismiss_unlock_prompt(self):
+        dialog, self.unlock_prompt = self.unlock_prompt, None
+        if dialog is not None:
+            clear_dialog_fields(dialog)
+            dialog.force_close()
+
+    def present_unlock_prompt(self, dialog):
+        self.dismiss_unlock_prompt()
+        self.unlock_prompt = dialog
+        def closed(*_):
+            if self.unlock_prompt is dialog:
+                self.unlock_prompt = None
+        dialog.connect("closed", closed)
+        if not self.present_dialog(dialog):
+            self.unlock_prompt = None
 
     def present_dialog(self, dialog):
         if not self.active or self.jobs.closed:
@@ -356,6 +384,13 @@ class VaultSession:
 
     def _unlock_dialog(self, path, create=False, import_options=None, use_quick=True, keyfile=None, reopen=False,
                        merge=False, discard=False, recovery_checked=False, review=None):
+        if self.busy:
+            return
+        if (not reopen and not create and not import_options and self.vault.unlocked
+                and Path(path).resolve() == self.vault.path):
+            self.pending_unlock = None
+            self.dismiss_unlock_prompt()
+            return
         if not reopen and not create and not import_options and not recovery_checked:
             from .saving import offer_recovery
             if offer_recovery(self, path, lambda: self._unlock_dialog(path, use_quick=use_quick, keyfile=keyfile, recovery_checked=True)):
@@ -485,7 +520,10 @@ class VaultSession:
         toolbar.set_content(scroll(box, natural=True))
         dialog.set_child(toolbar)
         dialog.connect("closed", lambda *_: (password.set_text(""), repeat.set_text("") if repeat else None))
-        self.present_dialog(dialog)
+        if reopen:
+            self.present_dialog(dialog)
+        else:
+            self.present_unlock_prompt(dialog)
         password.grab_focus()
 
     def _quick_unlock_dialog(self, path, allow_recovery=False):
@@ -537,7 +575,7 @@ class VaultSession:
         dialog.connect("closed", lambda *_: password.set_text(""))
         toolbar.set_content(scroll(box, natural=True))
         dialog.set_child(toolbar)
-        self.present_dialog(dialog)
+        self.present_unlock_prompt(dialog)
         password.grab_focus()
 
     def focus_search(self):
@@ -1054,6 +1092,7 @@ class DatabaseView(Gtk.Box):
             action.set_enabled(self.app.vault.unlocked and not busy)
 
     def show_locked(self):
+        self.stack.set_visible_child_name("locked")
         self.snapshot = None
         self.set_selection_mode(False)
         self.selected_entry = None
@@ -1075,6 +1114,13 @@ class DatabaseView(Gtk.Box):
         self.app.emit_state()
 
     def show_vault(self, snapshot):
+        if not self.app.vault.unlocked:
+            self.show_locked()
+            return
+        if snapshot is not self.app.vault.snapshot:
+            return
+        self.app.pending_unlock = None
+        self.app.dismiss_unlock_prompt()
         previous = self.selected_entry.uuid if self.selected_entry else None
         selection = {entry.uuid for entry in self.selected_entries()}
         self.snapshot = snapshot
