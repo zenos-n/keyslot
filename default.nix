@@ -18,10 +18,10 @@ pkgs.stdenvNoCC.mkDerivation {
   mesonFlags = [ "-Dtests=${if doCheck then "true" else "false"}" ];
   postInstall = ''
     mkdir -p "$out/share/icons/hicolor"
-    cp -r ${pkgs.keepassxc.src}/share/icons/application/* "$out/share/icons/hicolor/"
-    install -Dm644 ${pkgs.keepassxc.src}/COPYING "$out/share/licenses/keyslot/UPSTREAM-COPYING"
-    install -Dm644 ${pkgs.keepassxc.src}/LICENSE.MIT "$out/share/licenses/keyslot/LICENSE.MIT"
-    install -Dm644 ${pkgs.keepassxc.src}/LICENSE.CC0 "$out/share/licenses/keyslot/LICENSE.CC0"
+    cp -r ${engine.src}/share/icons/application/* "$out/share/icons/hicolor/"
+    install -Dm644 ${engine.src}/COPYING "$out/share/licenses/keyslot/UPSTREAM-COPYING"
+    install -Dm644 ${engine.src}/LICENSE.MIT "$out/share/licenses/keyslot/LICENSE.MIT"
+    install -Dm644 ${engine.src}/LICENSE.CC0 "$out/share/licenses/keyslot/LICENSE.CC0"
     python3 -m compileall -q "$out/share/keyslot/keyslot"
   '';
   preFixup = ''

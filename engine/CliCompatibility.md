@@ -1,5 +1,9 @@
 # CLI compatibility backports
 
+Historical2.7.12/Qt5 checkpoint. The current engine source/retained changes are
+documented in [Native2.8 Migration](Native28.md); older patches are not applied
+as a stack to2.8, and their historical verification is not reused as2.8 evidence.
+
 `CliCompatibility.patch` adapts these KeePassXC2.8 changes to the pinned2.7.12
 native CLI and core without replacing Qt5 or changing the reported version:
 

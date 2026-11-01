@@ -8,7 +8,7 @@ The chooser has the same two search scopes as KeePassXC:
   destination associations retain their individual sequences.
 - **Search All Unlocked Databases** uses the native EntrySearcher, including
   field prefixes, negation, regular expressions and protected-field search as
-  supported by the pinned core. An empty query becomes `*`. Each eligible entry
+  supported by the pinned2.8 core. An empty query becomes `*`. Each eligible entry
   contributes its nonempty effective default sequence and every distinct,
   nonempty custom association sequence, irrespective of destination pattern.
   Empty/inherited association sequences do not create duplicate rows. Group
@@ -58,5 +58,5 @@ selection memory, Enter/edit/scope/lock/reload/close/error/queue races and real
 X11/Wayland focus/keyboard behavior. [Locked-vault resumption](autotype-unlock.md) now uses existing providers and
 immediate temporary-vault relocking and a chooser for other locked vaults. Sort
 preferences, portal persistence/clipboard typing and wider
-platform/accessibility acceptance remain separate work. The core remains
-2.7.12/Qt5; this does not establish full2.8 parity or production readiness.
+platform/accessibility acceptance remain separate work. The core now uses [2.8/Qt6](../engine/Native28.md); GTK behavior and production
+readiness remain unproven.

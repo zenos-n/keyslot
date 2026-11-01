@@ -5,7 +5,7 @@
 #include "core/Entry.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
-#include "core/UrlTools.h"
+#include "gui/UrlTools.h"
 #include <QHostAddress>
 #include <QHash>
 #include <QJsonArray>
@@ -184,7 +184,7 @@ QJsonObject KeyslotIcons::prepare(const QSharedPointer<Database>& db, const QJso
         fail("invalid_request", "Choose a download timeout between 1 and 300 seconds.");
     m_timeout = int(timeout * 1000);
     QHostAddress address;
-    const auto base = address.setAddress(url.host()) ? QString() : urlTools()->getBaseDomainFromUrl(url.toString());
+    const auto base = address.setAddress(url.host()) ? QString() : UrlTools::getBaseDomainFromUrl(url.toString());
     auto add = [&](QUrl candidate) {
         for (const auto& item : m_candidates) if (item.url == candidate) return;
         m_candidates.append({candidate, 0});

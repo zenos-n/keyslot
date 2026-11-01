@@ -73,7 +73,7 @@ callers, repeated requests, all cancellation/timer/authentication/animation/save
 races, multiple vaults, duplicate names, stale/busy/closed choices, repeated
 vault/provider switches with the original deadline, old-provider callbacks,
 Copy/lock clearing and relock on/off. Sort preferences, portal persistence and
-clipboard typing, global shortcut preferences, full Qt6/native2.8 migration,
+clipboard typing, global shortcut preferences, the native2.8 migration's manual acceptance,
 platform/accessibility acceptance and broader parity remain open. No production
 readiness or complete replacement claim is established.
 

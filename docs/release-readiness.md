@@ -6,6 +6,8 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+The native migration now builds from the exact KeePassXC2.8.0 release using Qt6, with retained Keyslot boundary/headless/serialization guards and matching client handshake/assets. See [Native2.8 Migration](../engine/Native28.md). Native/runtime/Python compilation only; no tests/harnesses or behavioral runs. The extensive historical2.7 evidence below is not proof of current2.8 correctness, feature parity or production readiness. Every workflow/protocol/data-preservation/security boundary still needs user manual acceptance.
+
 Unlock for Auto-Type now offers the other currently locked vault windows in every provider form, clears old provider input on handoff and preserves the captured destination/trust/original monotonic180-second expiry. Closed/busy/unlocked/path-changed choices and stale provider callbacks cannot redirect authentication. See [Unlock for Auto-Type](autotype-unlock.md). Runtime/Python compilation only, user manual multi-vault/provider/deadline/UI acceptance remains; no tests/harnesses or behavioral runs.
 
 Auto-Type can resume from a locked vault through existing master/key-file/hardware, quick and Polkit providers, with a bounded destination-bound request and cancellation guards. Stock relock now affects only a vault opened for that flow; selector Copy stays open. See [Unlock for Auto-Type](autotype-unlock.md) for lifecycle changes, recovery behavior and manual limits. Runtime/Python compilation only; no new tests/harnesses or behavioral runs.
@@ -510,9 +512,10 @@ user's open vaults or desktop session to perform acceptance tests.
 ## Replacement compatibility
 
 The [coverage matrix](parity.md) remains the full replacement checklist. Security
-backports retain the pinned 2.7.12/Qt5 API and do not implement all 2.8 features.
+backport checkpoints below describe the earlier2.7.12/Qt5 baseline; the current
+[Native2.8 Migration](../engine/Native28.md) uses the released2.8 source with Qt6.
 The [official 2.8 release](https://keepassxc.org/blog/2026-10-21-2.8.0-released/)
-adds features beyond the pinned baseline. Runtime candidates now include configurable
+adds features beyond the historical2.7 baseline; native-source migration alone does not supply every GTK workflow. Runtime candidates now include configurable
 shortcuts, SSH generation, additional Proton Pass types, passkey/TOTP statistics,
 attribute-name suggestions, and remote synchronization. Linux Polkit session
 unlock now has an encrypted native broker/process-keyring adapter, explicit enrollment, per-release authorization, cancellation/revocation

@@ -1,0 +1,542 @@
+diff --git a/src/autotype/AutoType.cpp b/src/autotype/AutoType.cpp
+index e5731d5..ec04e34 100644
+--- a/src/autotype/AutoType.cpp
++++ b/src/autotype/AutoType.cpp
+@@ -569,7 +569,8 @@ void AutoType::resetAutoTypeState()
+  * If error is provided then syntax checking will be performed.
+  */
+ QList<QSharedPointer<AutoTypeAction>>
+-AutoType::parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly)
++AutoType::parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly,
++                        const std::function<QPair<QString, bool>(const QString&, const QString&)>& picker)
+ {
+     if (!entry) {
+         error = tr("Invalid entry provided");
+@@ -710,6 +711,15 @@ AutoType::parseSequence(const QString& entrySequence, const Entry* entry, QStrin
+             // Show pickchars dialog for the desired attribute
+             auto password = entry->resolvePlaceholder(entry->attribute(attribute));
+             if (!password.isEmpty()) {
++                if (picker) {
++                    const auto selection = picker(attribute, password);
++                    for (const auto& ch : selection.first) {
++                        actions << QSharedPointer<AutoTypeKey>::create(ch);
++                        if (selection.second) actions << QSharedPointer<AutoTypeKey>::create(g_placeholderToKey["tab"]);
++                    }
++                    if (selection.second && !selection.first.isEmpty()) actions.removeLast();
++                    continue;
++                }
+                 PickcharsDialog pickcharsDialog(password);
+                 if (pickcharsDialog.exec() == QDialog::Accepted && !pickcharsDialog.selectedChars().isEmpty()) {
+                     for (const auto& ch : pickcharsDialog.selectedChars()) {
+diff --git a/src/autotype/AutoType.h b/src/autotype/AutoType.h
+index 51e3518..b55f078 100644
+--- a/src/autotype/AutoType.h
++++ b/src/autotype/AutoType.h
+@@ -21,6 +21,7 @@
+ 
+ #include "AutoTypeAction.h"
+ 
++#include <functional>
+ #include <QMutex>
+ #include <QTimer>
+ #include <QWidget>
+@@ -81,6 +82,7 @@ private slots:
+     void resetAutoTypeState();
+ 
+ private:
++    friend class KeyslotAutoType;
+     enum WindowState
+     {
+         Normal,
+@@ -97,7 +99,8 @@ private:
+     void restoreWindowState();
+ 
+     static QList<QSharedPointer<AutoTypeAction>>
+-    parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly = false);
++    parseSequence(const QString& entrySequence, const Entry* entry, QString& error, bool syntaxOnly = false,
++                  const std::function<QPair<QString, bool>(const QString&, const QString&)>& picker = {});
+ 
+     QMutex m_inAutoType;
+     QMutex m_inGlobalAutoTypeDialog;
+diff --git a/src/autotype/xcb/AutoTypeXCB.cpp b/src/autotype/xcb/AutoTypeXCB.cpp
+index e0da7a0..792ac3a 100644
+--- a/src/autotype/xcb/AutoTypeXCB.cpp
++++ b/src/autotype/xcb/AutoTypeXCB.cpp
+@@ -40,16 +40,10 @@ static const QPair<KeySym, KeySym> deadMap[] = {
+ AutoTypePlatformX11::AutoTypePlatformX11()
+     : m_executor(new AutoTypeExecutorX11(this))
+ {
+-    // Qt handles XCB slightly differently so we open our own connection
+-    if (auto* native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()) {
+-        m_dpy = XOpenDisplay(XDisplayString(native->display()));
+-        m_rootWindow = DefaultRootWindow(native->display());
+-    } else {
+-        qWarning("Auto-Type: Unable to connect to X server, Auto-Type is disabled.");
+-        return;
+-    }
+-
+-    Q_ASSERT(m_dpy);
++    // Private QCoreApplication helpers do not own a Qt GUI/X11 connection.
++    m_dpy = XOpenDisplay(nullptr);
++    if (!m_dpy) return;
++    m_rootWindow = DefaultRootWindow(m_dpy);
+ 
+     m_atomWmState = XInternAtom(m_dpy, "WM_STATE", True);
+     m_atomWmName = XInternAtom(m_dpy, "WM_NAME", True);
+@@ -70,7 +64,6 @@ AutoTypePlatformX11::AutoTypePlatformX11()
+     m_xkb = nullptr;
+ 
+     m_loaded = true;
+-    m_executor = new AutoTypeExecutorX11(this);
+ }
+ 
+ bool AutoTypePlatformX11::isAvailable()
+@@ -80,6 +73,7 @@ bool AutoTypePlatformX11::isAvailable()
+     }
+ 
+     int ignore;
++    if (!m_dpy) return false;
+ 
+     if (!XQueryExtension(m_dpy, "XInputExtension", &ignore, &ignore, &ignore)) {
+         return false;
+@@ -94,6 +88,8 @@ bool AutoTypePlatformX11::isAvailable()
+ 
+ AutoTypePlatformX11::~AutoTypePlatformX11()
+ {
++    delete m_executor;
++    m_executor = nullptr;
+     m_keymap.clear();
+ 
+     if (m_xkb) {
+@@ -207,7 +203,9 @@ QString AutoTypePlatformX11::windowTitle(Window window, bool useBlacklist)
+             return {};
+         }
+ 
+-        QList<Window> keepassxWindows = widgetsToX11Windows(QApplication::topLevelWidgets());
++        QList<Window> keepassxWindows;
++        if (qobject_cast<QApplication*>(QCoreApplication::instance()))
++            keepassxWindows = widgetsToX11Windows(QApplication::topLevelWidgets());
+         if (keepassxWindows.contains(window)) {
+             return {};
+         }
+@@ -669,7 +667,7 @@ bool AutoTypePlatformX11::raiseWindow(WId window)
+     event.xclient.format = 32;
+     event.xclient.data.l[0] = 1; // FromApplication
+     event.xclient.data.l[1] = appUserTime(window);
+-    QWidget* activeWindow = QApplication::activeWindow();
++    QWidget* activeWindow = qobject_cast<QApplication*>(QCoreApplication::instance()) ? QApplication::activeWindow() : nullptr;
+     if (activeWindow) {
+         event.xclient.data.l[2] = activeWindow->internalWinId();
+     } else {
+diff --git a/src/autotype/xcb/AutoTypeXCB.h b/src/autotype/xcb/AutoTypeXCB.h
+index d34e723..0569047 100644
+--- a/src/autotype/xcb/AutoTypeXCB.h
++++ b/src/autotype/xcb/AutoTypeXCB.h
+@@ -46,6 +46,7 @@ public:
+     AutoTypeAction::Result sendKey(KeySym keysym, unsigned int modifiers = Qt::NoModifier);
+ 
+ private:
++    friend class KeyslotAutoType;
+     QString windowTitle(Window window, bool useBlacklist);
+     QStringList windowTitlesRecursive(Window window);
+     QString windowClassName(Window window);
+@@ -82,7 +83,7 @@ private:
+         int mask;
+     } KeyDesc;
+ 
+-    XkbDescPtr m_xkb;
++    XkbDescPtr m_xkb = nullptr;
+     QList<KeyDesc> m_keymap;
+     KeyCode m_modifier_keycode[N_MOD_INDICES];
+     KeyCode m_remapKeycode;
+diff --git a/src/browser/BrowserAction.cpp b/src/browser/BrowserAction.cpp
+index bb0fb01..5c72361 100644
+--- a/src/browser/BrowserAction.cpp
++++ b/src/browser/BrowserAction.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "BrowserAction.h"
++#include "KeyslotBrowserValues.h"
+ #include "BrowserMessageBuilder.h"
+ #include "BrowserPasskeys.h"
+ #include "BrowserSettings.h"
+@@ -312,6 +313,9 @@ QJsonObject BrowserAction::handleSetLogin(const QJsonObject& json, const QString
+     const auto groupUuid = browserRequest.getString("groupUuid");
+     const auto downloadFavicon = browserRequest.getString("downloadFavicon");
+     const QString realm;
++    if (keyslotBrowserHasPlaceholder(login) || keyslotBrowserHasPlaceholder(password)) {
++        return getErrorReply(action, ERROR_KEEPASS_CANNOT_USE_REFERENCES);
++    }
+ 
+     if (EntryPlaceholders::containsPlaceholder(login) || EntryPlaceholders::containsPlaceholder(password)) {
+         return getErrorReply(action, ERROR_KEEPASS_CANNOT_USE_REFERENCES);
+diff --git a/src/browser/BrowserService.cpp b/src/browser/BrowserService.cpp
+index ee94f53..ebe8e58 100644
+--- a/src/browser/BrowserService.cpp
++++ b/src/browser/BrowserService.cpp
+@@ -837,7 +837,8 @@ void BrowserService::addPasskeyToEntry(Entry* entry,
+                                        const QString& username,
+                                        const QString& credentialId,
+                                        const QString& userHandle,
+-                                       const QString& privateKey)
++                                       const QString& privateKey,
++                                       bool confirmed)
+ {
+     // Reserved for future use
+     Q_UNUSED(rpName)
+@@ -848,7 +849,7 @@ void BrowserService::addPasskeyToEntry(Entry* entry,
+     }
+ 
+     // Ask confirmation if entry already contains a Passkey
+-    if (entry->hasPasskey()) {
++    if (entry->hasPasskey() && !confirmed) {
+         if (MessageBox::question(m_currentDatabaseWidget,
+                                  tr("KeePassXC - Update passkey"),
+                                  tr("Entry already has a passkey.\nDo you want to overwrite the passkey in %1 - %2?")
+diff --git a/src/browser/BrowserService.h b/src/browser/BrowserService.h
+index c6efb63..4d1b56a 100644
+--- a/src/browser/BrowserService.h
++++ b/src/browser/BrowserService.h
+@@ -112,7 +112,8 @@ public:
+                            const QString& username,
+                            const QString& credentialId,
+                            const QString& userHandle,
+-                           const QString& privateKey);
++                           const QString& privateKey,
++                           bool confirmed = false);
+ 
+     void addEntry(const EntryParameters& entryParameters,
+                   const QString& group,
+diff --git a/src/core/Entry.cpp b/src/core/Entry.cpp
+index 121e4d0..5d734ae 100644
+--- a/src/core/Entry.cpp
++++ b/src/core/Entry.cpp
+@@ -612,6 +612,10 @@ void Entry::setTotp(QSharedPointer<Totp::Settings> settings)
+     m_attributes->remove(Totp::ATTRIBUTE_OTP);
+     m_attributes->remove(Totp::ATTRIBUTE_SEED);
+     m_attributes->remove(Totp::ATTRIBUTE_SETTINGS);
++    m_attributes->remove(Totp::KP2_TOTP_SECRET);
++    m_attributes->remove(Totp::KP2_TOTP_ALGORITHM);
++    m_attributes->remove(Totp::KP2_TOTP_LENGTH);
++    m_attributes->remove(Totp::KP2_TOTP_PERIOD);
+ 
+     if (!settings || settings->key.isEmpty()) {
+         m_data.totpSettings.reset();
+diff --git a/src/core/Merger.cpp b/src/core/Merger.cpp
+index 1f76212..9aafadc 100644
+--- a/src/core/Merger.cpp
++++ b/src/core/Merger.cpp
+@@ -745,7 +745,8 @@ Merger::ChangeList Merger::mergeMetadata(const MergeContext& context)
+         // Transfer new/existing keys
+         for (const auto& key : sourceCustomDataKeys) {
+             // Don't merge auto-generated keys
+-            if (sourceMetadata->customData()->isAutoGenerated(key)) {
++            if (sourceMetadata->customData()->isAutoGenerated(key)
++                || key == QStringLiteral("KPXC_REMOTE_SYNC_SETTINGS")) {
+                 continue;
+             }
+ 
+diff --git a/src/core/Totp.cpp b/src/core/Totp.cpp
+index ed15a9f..593de6c 100644
+--- a/src/core/Totp.cpp
++++ b/src/core/Totp.cpp
+@@ -216,13 +216,13 @@ QString Totp::checkValidSettings(const QSharedPointer<Totp::Settings>& settings)
+         return QObject::tr("Invalid Settings", "TOTP");
+     }
+     QVariant secret = Base32::decode(Base32::sanitizeInput(settings->key.toLatin1()));
+-    if (secret.isNull()) {
++    if (secret.isNull() || secret.toByteArray().isEmpty()) {
+         return QObject::tr("Invalid Key", "TOTP");
+     }
+     if (settings->step == 0) {
+         return QObject::tr("Invalid Step", "TOTP");
+     }
+-    if (settings->digits == 0) {
++    if (settings->digits == 0 || settings->digits > 10) {
+         return QObject::tr("Invalid Digits", "TOTP");
+     }
+     return {};
+@@ -284,7 +284,10 @@ QString Totp::generateTotp(const QSharedPointer<Totp::Settings>& settings, bool*
+         direction = 1;
+         startpos = 0;
+     }
+-    quint32 digitsPower = pow(encoder.alphabet.size(), digits);
++    quint64 digitsPower = 1;
++    for (uint i = 0; i < digits; ++i) {
++        digitsPower *= static_cast<quint64>(encoder.alphabet.size());
++    }
+ 
+     quint64 password = binary % digitsPower;
+     QString retval(int(digits), encoder.alphabet[0]);
+diff --git a/src/format/KdbxXmlReader.cpp b/src/format/KdbxXmlReader.cpp
+index b69107d..5a7de8d 100644
+--- a/src/format/KdbxXmlReader.cpp
++++ b/src/format/KdbxXmlReader.cpp
+@@ -1032,6 +1032,11 @@ QString KdbxXmlReader::readString(bool& isProtected, bool& protectInMemory)
+     QString value = m_xml.readElementText();
+ 
+     if (isProtected && !value.isEmpty()) {
++        if (!m_randomStream) {
++            value.clear();
++            raiseError(tr("Protected XML value has no inner encryption stream."));
++            return value;
++        }
+         QByteArray ciphertext = QByteArray::fromBase64(value.toLatin1());
+         bool ok;
+         QByteArray plaintext = m_randomStream->process(ciphertext, &ok);
+diff --git a/src/format/KdbxXmlWriter.cpp b/src/format/KdbxXmlWriter.cpp
+index 8a921af..cab8cc3 100644
+--- a/src/format/KdbxXmlWriter.cpp
++++ b/src/format/KdbxXmlWriter.cpp
+@@ -56,7 +56,7 @@ void KdbxXmlWriter::writeDatabase(QIODevice* device,
+     m_xml.setAutoFormatting(true);
+     m_xml.setAutoFormattingIndent(-1); // 1 tab
+ 
+-    if (m_kdbxVersion < KeePass2::FILE_VERSION_4) {
++    if (m_kdbxVersion < KeePass2::FILE_VERSION_4 || m_innerStreamProtectionDisabled) {
+         fillBinaryIdxMap();
+     }
+ 
+@@ -163,7 +163,7 @@ void KdbxXmlWriter::writeMetadata()
+     if (m_kdbxVersion >= KeePass2::FILE_VERSION_4) {
+         writeDateTime("SettingsChanged", m_meta->settingsChanged());
+     }
+-    if (m_kdbxVersion < KeePass2::FILE_VERSION_4) {
++    if (m_kdbxVersion < KeePass2::FILE_VERSION_4 || m_innerStreamProtectionDisabled) {
+         writeBinaries();
+     }
+     writeCustomData(m_meta->customData(), true);
+diff --git a/src/format/KeePass1Reader.cpp b/src/format/KeePass1Reader.cpp
+index c718e96..e7734ff 100644
+--- a/src/format/KeePass1Reader.cpp
++++ b/src/format/KeePass1Reader.cpp
+@@ -195,7 +195,10 @@ KeePass1Reader::readDatabase(QIODevice* device, const QString& password, QIODevi
+     for (Entry* entry : asConst(entries)) {
+         if (isMetaStream(entry)) {
+             parseMetaStream(entry);
+-            m_entryUuids.remove(m_entryUuids.key(entry));
++            for (auto it = m_entryUuids.begin(); it != m_entryUuids.end();) {
++                if (it.value() == entry) it = m_entryUuids.erase(it);
++                else ++it;
++            }
+             m_entryGroupIds.remove(entry);
+             delete entry;
+         } else {
+@@ -869,7 +872,7 @@ bool KeePass1Reader::parseCustomIcons4(const QByteArray& data)
+         auto iconSize = Endian::bytesToSizedInt<quint32>(data.mid(pos, 4), KeePass1::BYTEORDER);
+         pos += 4;
+ 
+-        if (static_cast<quint32>(data.size()) < (pos + iconSize)) {
++        if (static_cast<quint64>(iconSize) > static_cast<quint64>(data.size() - pos)) {
+             return false;
+         }
+         QByteArray icon = data.mid(pos, iconSize);
+@@ -880,7 +883,7 @@ bool KeePass1Reader::parseCustomIcons4(const QByteArray& data)
+         m_db->metadata()->addCustomIcon(uuid, icon);
+     }
+ 
+-    if (static_cast<quint32>(data.size()) < (pos + numEntries * 20)) {
++    if (static_cast<quint64>(numEntries) * 20 > static_cast<quint64>(data.size() - pos)) {
+         return false;
+     }
+ 
+@@ -896,7 +899,7 @@ bool KeePass1Reader::parseCustomIcons4(const QByteArray& data)
+         }
+     }
+ 
+-    if (static_cast<quint32>(data.size()) < (pos + numGroups * 8)) {
++    if (static_cast<quint64>(numGroups) * 8 > static_cast<quint64>(data.size() - pos)) {
+         return false;
+     }
+ 
+diff --git a/src/format/ProtonPassReader.cpp b/src/format/ProtonPassReader.cpp
+index 0d33791..9381091 100644
+--- a/src/format/ProtonPassReader.cpp
++++ b/src/format/ProtonPassReader.cpp
+@@ -36,6 +36,14 @@
+ 
+ namespace
+ {
++    QString uniqueAttributeName(const Entry* entry, QString name)
++    {
++        if (name.isEmpty()) name = QStringLiteral("Field");
++        const auto base = name;
++        for (int suffix = 2; entry->attributes()->hasKey(name); ++suffix) name = base + "_" + QString::number(suffix);
++        return name;
++    }
++
+     Entry* readItem(const QJsonObject& item)
+     {
+         const auto itemMap = item.toVariantMap();
+@@ -126,15 +134,15 @@ namespace
+         }
+         // Unknown Type (not custom or note)
+         else if (type.compare("custom", Qt::CaseInsensitive) != 0 && type.compare("note", Qt::CaseInsensitive) != 0) {
+-            entry->setNotes(QString("Unknown entry type '%1'. Content data fields have been added as attributes.\n\n%2")
++            entry->setNotes(QString("Unknown entry type '%1'. Content data fields have been added as protected attributes (structured values use JSON).\n\n%2")
+                                 .arg(type, entry->notes()));
+             // Place all content fields as attributes
+             const auto contentMap = dataMap.value("content").toMap();
+             for (const auto& key : contentMap.keys()) {
+-                auto value = contentMap.value(key).toString();
+-                if (!value.isEmpty()) {
+-                    entry->attributes()->set("content_" + key, value);
+-                }
++                const auto json = QJsonValue::fromVariant(contentMap.value(key));
++                const auto encoded = QJsonDocument(QJsonArray{json}).toJson(QJsonDocument::Compact);
++                const auto value = json.isString() ? json.toString() : QString::fromUtf8(encoded.mid(1, encoded.size() - 2));
++                entry->attributes()->set(uniqueAttributeName(entry.data(), "content_" + key), value, true);
+             }
+         }
+ 
+@@ -142,10 +150,7 @@ namespace
+         for (const auto& field : dataMap.value("extraFields").toList()) {
+             // Derive a prefix for attribute names using the title or uuid if missing
+             const auto fieldMap = field.toMap();
+-            auto name = fieldMap.value("fieldName").toString();
+-            if (entry->attributes()->hasKey(name)) {
+-                name = QString("%1_%2").arg(name, QUuid::createUuid().toString().mid(1, 5));
+-            }
++            const auto name = uniqueAttributeName(entry.data(), fieldMap.value("fieldName").toString());
+ 
+             QString value;
+             const auto fieldType = fieldMap.value("type").toString();
+@@ -155,7 +160,8 @@ namespace
+                 value = fieldMap.value("data").toJsonObject().value("content").toString();
+             }
+ 
+-            entry->attributes()->set(name, value, fieldType.compare("hidden", Qt::CaseInsensitive) == 0);
++            entry->attributes()->set(name, value, fieldType.compare("hidden", Qt::CaseInsensitive) == 0
++                                    || fieldType.compare("totp", Qt::CaseInsensitive) == 0);
+         }
+ 
+         // Checked expired/deleted state
+diff --git a/src/keeshare/ShareExport.cpp b/src/keeshare/ShareExport.cpp
+index a8cf102..737877b 100644
+--- a/src/keeshare/ShareExport.cpp
++++ b/src/keeshare/ShareExport.cpp
+@@ -216,7 +216,7 @@ ShareObserver::Result ShareExport::intoContainer(const QString& resolvedPath,
+ 
+         signatureData = KeeShareSettings::Sign::serialize(sign).toLatin1();
+ 
+-        auto zf = zipOpen64(resolvedPath.toLatin1().data(), 0);
++        auto zf = zipOpen64(QFile::encodeName(resolvedPath).constData(), 0);
+         if (!zf) {
+             return {reference.path, ShareObserver::Result::Error, ShareExport::tr("Could not write export container.")};
+         }
+diff --git a/src/keeshare/ShareImport.cpp b/src/keeshare/ShareImport.cpp
+index 1df5429..0698417 100644
+--- a/src/keeshare/ShareImport.cpp
++++ b/src/keeshare/ShareImport.cpp
+@@ -31,6 +31,11 @@ namespace
+         int bytes, bytesRead = 0;
+         unzOpenCurrentFile(uf);
+         do {
++            // Bound encrypted ZIP payload expansion before allocation in the headless importer.
++            if (data.size() > 256 * 1024 * 1024 - 8192) {
++                unzCloseCurrentFile(uf);
++                return {};
++            }
+             data.resize(data.size() + 8192);
+             bytes = unzReadCurrentFile(uf, data.data() + bytesRead, 8192);
+             if (bytes > 0) {
+@@ -49,7 +54,7 @@ ShareObserver::Result ShareImport::containerInto(const QString& resolvedPath,
+ {
+     QByteArray dbData;
+ 
+-    auto uf = unzOpen64(resolvedPath.toLatin1().constData());
++    auto uf = unzOpen64(QFile::encodeName(resolvedPath).constData());
+     if (uf) {
+         // Open zip share, extract database portion, ignore signature file
+         char zipFileName[256];
+diff --git a/src/proxy/NativeMessagingProxy.cpp b/src/proxy/NativeMessagingProxy.cpp
+index b545e70..86b98f8 100644
+--- a/src/proxy/NativeMessagingProxy.cpp
++++ b/src/proxy/NativeMessagingProxy.cpp
+@@ -17,6 +17,9 @@
+ 
+ #include "NativeMessagingProxy.h"
+ #include "browser/BrowserShared.h"
++#include "BrowserFraming.h"
++#include <QJsonDocument>
++#include <QJsonParseError>
+ 
+ #include <QCoreApplication>
+ #include <QFuture>
+@@ -106,14 +109,32 @@ void NativeMessagingProxy::setupLocalSocket()
+ 
+ void NativeMessagingProxy::transferSocketMessage()
+ {
+-    auto msg = m_localSocket->readAll();
+-    if (!msg.isEmpty()) {
+-        // Explicitly write the message length as 1 byte chunks
+-        uint len = msg.size();
+-        std::cout.write(reinterpret_cast<char*>(&len), sizeof(len));
+-
+-        // Write the message and flush the stream
+-        std::cout << msg.toStdString() << std::flush;
++    m_socketInput += m_localSocket->readAll();
++    while (!m_socketInput.isEmpty()) {
++        int leading = 0;
++        while (leading < m_socketInput.size() && (m_socketInput[leading] == ' ' || m_socketInput[leading] == '\n'
++               || m_socketInput[leading] == '\r' || m_socketInput[leading] == '\t')) ++leading;
++        m_socketInput.remove(0, leading);
++        if (m_socketInput.isEmpty()) return;
++        const int end = browserFrameEnd(m_socketInput);
++        if (m_socketInput[0] != '{' || end < 0 || end > BrowserShared::SOCKET_BUFFER_SIZE
++            || (!end && m_socketInput.size() > BrowserShared::SOCKET_BUFFER_SIZE)) {
++            QCoreApplication::exit(2);
++            return;
++        }
++        if (!end) return;
++        const auto msg = m_socketInput.left(end);
++        QJsonParseError error;
++        const auto document = QJsonDocument::fromJson(msg, &error);
++        if (error.error != QJsonParseError::NoError || !document.isObject()) {
++            QCoreApplication::exit(2);
++            return;
++        }
++        m_socketInput.remove(0, end);
++        const uint len = msg.size();
++        std::cout.write(reinterpret_cast<const char*>(&len), sizeof(len));
++        std::cout.write(msg.constData(), msg.size());
++        std::cout.flush();
+     }
+ }
+ 
+diff --git a/src/proxy/NativeMessagingProxy.h b/src/proxy/NativeMessagingProxy.h
+index 935fc77..89a0cf5 100644
+--- a/src/proxy/NativeMessagingProxy.h
++++ b/src/proxy/NativeMessagingProxy.h
+@@ -19,6 +19,7 @@
+ #define NATIVEMESSAGINGPROXY_H
+ 
+ #include <QLocalSocket>
++#include <QByteArray>
+ 
+ class QWinEventNotifier;
+ class QSocketNotifier;
+@@ -44,6 +45,7 @@ private:
+ 
+ private:
+     QScopedPointer<QLocalSocket> m_localSocket;
++    QByteArray m_socketInput;
+ 
+     Q_DISABLE_COPY(NativeMessagingProxy)
+ };
+diff --git a/src/streams/SymmetricCipherStream.cpp b/src/streams/SymmetricCipherStream.cpp
+index afe6c1b..be47d1e 100644
+--- a/src/streams/SymmetricCipherStream.cpp
++++ b/src/streams/SymmetricCipherStream.cpp
+@@ -204,6 +204,10 @@ bool SymmetricCipherStream::writeBlock(bool lastBlock)
+ {
+     Q_ASSERT(m_streamCipher || lastBlock || (m_buffer.size() == blockSize()));
+ 
++    if (lastBlock && m_streamCipher && m_buffer.isEmpty()) {
++        return true;
++    }
++
+     if (lastBlock && !m_streamCipher) {
+         QByteArray end;
+         if (!m_cipher->finish(m_buffer)) {

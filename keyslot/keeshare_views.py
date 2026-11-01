@@ -1,4 +1,5 @@
 """KeeShare group references and explicit synchronization controls."""
+from . import CORE_VERSION
 from .database_views import Adw, Gtk, _dialog, _save
 from .passkey_views import _lifetime
 from .backend import VaultError
@@ -47,7 +48,7 @@ def settings(session, group, data=None):
     if not all(global_settings.values()):
         box.append(Gtk.Label(label="KeeShare imports and exports also need to be enabled in Preferences.", wrap=True, xalign=0))
     box.append(Gtk.Label(label="Use .kdbx for standard encrypted shares. Legacy .kdbx.share containers are supported; "
-        "KeePassXC 2.7.12 ignores their signatures when importing.", wrap=True, xalign=0, css_classes=["dim-label"]))
+        f"KeePassXC {CORE_VERSION} ignores their signatures when importing.", wrap=True, xalign=0, css_classes=["dim-label"]))
     sync = Gtk.Button(label="Synchronize Saved Settings Now")
     sync.connect("clicked", lambda *_: synchronize(session) if current() else None)
     box.append(sync)

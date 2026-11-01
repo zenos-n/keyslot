@@ -12,7 +12,6 @@
 #include <QJsonArray>
 #include <QMap>
 #include <QRegularExpression>
-#include <QRegExp>
 #include <QThread>
 #include <unistd.h>
 #include "autotype/xcb/AutoTypeXCB.h"
@@ -71,13 +70,12 @@ void boundPlan(const QList<QSharedPointer<AutoTypeAction>>& actions, int startDe
 }
 
 KeyslotAutoType::KeyslotAutoType() { clock.start(); }
-KeyslotAutoType::~KeyslotAutoType() { if (platform) platform->unload(); }
+KeyslotAutoType::~KeyslotAutoType() = default;
 void KeyslotAutoType::clear() { pending = {}; }
 AutoTypePlatformX11* KeyslotAutoType::x11() {
     if (!platform) {
         auto candidate = std::make_unique<AutoTypePlatformX11>();
         if (!candidate->isAvailable()) {
-            candidate->unload();
             reject("unavailable", "X11 auto-type is unavailable. Use the GNOME companion on Wayland.");
         }
         platform = std::move(candidate);
@@ -180,14 +178,15 @@ QJsonObject KeyslotAutoType::search(const QSharedPointer<Database>& db, const QJ
     EntrySearcher searcher;
     const auto entries = all ? searcher.search(query.isEmpty() ? "*" : query, db->rootGroup())
                              : db->rootGroup()->entriesRecursive();
-    const QRegExp filter(query, Qt::CaseInsensitive, QRegExp::Wildcard);
+    const QRegularExpression filter(QRegularExpression::wildcardToRegularExpression(query,
+        QRegularExpression::UnanchoredWildcardConversion), QRegularExpression::CaseInsensitiveOption);
     QJsonArray result;
     for (auto* entry : entries) {
         if (entry->isRecycled() || !entry->autoTypeEnabled() || !entry->group()->resolveAutoTypeEnabled()
             || (hideExpired && entry->isExpired())) continue;
-        if (!all && !query.isEmpty() && filter.indexIn(entry->group()->name()) < 0
-            && filter.indexIn(entry->resolveMultiplePlaceholders(entry->title())) < 0
-            && filter.indexIn(entry->resolveMultiplePlaceholders(entry->username())) < 0) continue;
+        if (!all && !query.isEmpty() && !filter.match(entry->group()->name()).hasMatch()
+            && !filter.match(entry->resolveMultiplePlaceholders(entry->title())).hasMatch()
+            && !filter.match(entry->resolveMultiplePlaceholders(entry->username())).hasMatch()) continue;
         QStringList sequences;
         if (all) {
             const auto sequence = entry->effectiveAutoTypeSequence();
@@ -321,13 +320,13 @@ QJsonObject KeyslotAutoType::finish(const QSharedPointer<Database>& db, const QJ
     const auto window = request.target.toULong();
     if (p->windowTitle(window, true) != request.title || ownWindow(p->m_dpy, window) || !p->raiseWindow(window))
         reject("conflict", "The auto-type target is no longer available.");
-    std::unique_ptr<AutoTypeExecutor> executor(p->createExecutor());
+    auto& executor = p->executor();
     Tools::wait(request.startDelay);
     int typed = 0;
     for (const auto& action : actions) {
         for (int attempt = 0; ; ++attempt) {
             if (p->activeWindow() != window) reject("focus_changed", "Auto-type stopped because the active window changed.");
-            const auto result = action->exec(executor.get());
+            const auto result = action->exec(executor);
             if (result.isOk()) break;
             if (!result.canRetry() || attempt == 4) reject("type_failed", "Auto-type could not send a key. Release modifiers and check Caps Lock.");
             Tools::wait(100);

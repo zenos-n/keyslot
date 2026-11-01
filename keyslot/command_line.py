@@ -8,7 +8,7 @@ import termios
 
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
-from . import APP_ID, VERSION
+from . import APP_ID, VERSION, CORE_VERSION
 from .backend import VaultError
 
 
@@ -125,10 +125,10 @@ def restore_echo(app):
 
 def local_options(app, options):
     if options.contains("version"):
-        print(f"Keyslot {VERSION}\nKeePassXC core 2.7.12")
+        print(f"Keyslot {VERSION}\nKeePassXC core {CORE_VERSION}")
         return 0
     if options.contains("debug-info"):
-        print(f"Keyslot: {VERSION}\nKeePassXC core (pinned): 2.7.12\n"
+        print(f"Keyslot: {VERSION}\nKeePassXC core (pinned): {CORE_VERSION}\n"
               f"Python: {platform.python_version()}\n"
               f"GTK: {Gtk.get_major_version()}.{Gtk.get_minor_version()}.{Gtk.get_micro_version()}\n"
               f"libadwaita: {Adw.get_major_version()}.{Adw.get_minor_version()}.{Adw.get_micro_version()}\n"

@@ -4,6 +4,7 @@
 #include "core/Database.h"
 #include "core/Entry.h"
 #include "core/EntryAttributes.h"
+#include "core/EntryPlaceholders.h"
 #include "core/EntrySearcher.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
@@ -67,7 +68,7 @@ void setAttributes(Entry* entry, const QJsonObject& values, bool creating = fals
             reject("invalid_request", "A read-only Secret Service attribute cannot be changed.");
         }
         if (it.key() == EntryAttributes::PasswordKey || candidate.isProtected(it.key())
-            || EntryAttributes::matchReference(it.value().toString()).hasMatch())
+            || EntryPlaceholders::matchReference(it.value().toString()).hasMatch())
             reject("invalid_request", "Protected fields and references cannot be assigned through lookup attributes.");
         candidate.set(it.key(), it.value().toString());
     }
@@ -75,13 +76,13 @@ void setAttributes(Entry* entry, const QJsonObject& values, bool creating = fals
 }
 void setSecret(Entry* entry, const QJsonObject& args) {
     const auto value = bytes(args, "value");
-    if (EntryAttributes::matchReference(value).hasMatch())
+    if (EntryPlaceholders::matchReference(QString::fromUtf8(value)).hasMatch())
         reject("invalid_request", "Secret Service secrets cannot contain KeePass reference expressions.");
     if (!FdoSecrets::setEntrySecret(entry, value, text(args, "content_type", 1024, "text/plain")).ok())
         reject("invalid_request", "The secret content type or value is invalid.");
 }
 void setLabel(Entry* entry, const QString& label) {
-    if (EntryAttributes::matchReference(label).hasMatch())
+    if (EntryPlaceholders::matchReference(label).hasMatch())
         reject("invalid_request", "Secret Service labels cannot contain KeePass reference expressions.");
     entry->setTitle(label);
 }
@@ -396,7 +397,7 @@ QJsonObject KeyslotSecrets::mutate(const QSharedPointer<Database>& db, const QJs
     root(db);
     if (kind == "collection-label") {
         const auto label = text(args, "label");
-        if (EntryAttributes::matchReference(label).hasMatch()) reject("invalid_request", "Collection labels cannot contain references.");
+        if (EntryPlaceholders::matchReference(label).hasMatch()) reject("invalid_request", "Collection labels cannot contain references.");
         transaction([&] { db->metadata()->setName(label); });
         return {};
     }

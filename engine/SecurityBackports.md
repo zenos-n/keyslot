@@ -1,5 +1,9 @@
 # Pinned engine security backports
 
+Historical2.7.12/Qt5 checkpoint. The current engine source/retained changes are
+documented in [Native2.8 Migration](Native28.md); older patches are not applied
+as a stack to2.8, and their historical verification is not reused as2.8 evidence.
+
 Keyslot retains the reviewed KeePassXC 2.7.12 / Qt 5 API. `SecurityBackports.patch`
 adapts the following upstream 2.8 fixes; it is not a claim of 2.8 feature parity.
 Original upstream file headers and licenses remain in the patched source.

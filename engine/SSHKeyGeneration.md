@@ -1,5 +1,9 @@
 # SSH key generation backport
 
+Historical2.7.12/Qt5 checkpoint. The current engine source/retained changes are
+documented in [Native2.8 Migration](Native28.md); older patches are not applied
+as a stack to2.8, and their historical verification is not reused as2.8 evidence.
+
 `OpenSSHKeyGen.cpp` and `.h` come from KeePassXC 2.8.0:
 
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/sshagent/OpenSSHKeyGen.cpp

@@ -50,7 +50,7 @@
 #include "format/OpVaultReader.h"
 #include "format/ProtonPassReader.h"
 #include "keys/FileKey.h"
-#ifdef WITH_XC_YUBIKEY
+#ifdef Q_OS_LINUX
 #include "keys/ChallengeResponseKey.h"
 #endif
 
@@ -403,7 +403,7 @@ class Engine {
         }
         const auto hardware = text(args, "yubikey");
         if (!hardware.isEmpty()) {
-#ifdef WITH_XC_YUBIKEY
+#ifdef Q_OS_LINUX
             auto match = QRegularExpression("^([12])(?::([0-9]+))?$").match(hardware);
             if (!match.hasMatch()) fail("invalid_request", "Use hardware key slot 1 or 2, optionally followed by :serial.");
             bool valid = true;
@@ -1018,9 +1018,9 @@ public:
                     fail("invalid_request", "A keyboard shortcut is invalid.");
                 const auto source = value.toString();
                 auto sequence = QKeySequence::fromString(source, QKeySequence::NativeText);
-                if (!source.isEmpty() && (sequence.isEmpty() || sequence[0] == Qt::Key_unknown))
+                if (!source.isEmpty() && (sequence.isEmpty() || sequence[0].key() == Qt::Key_unknown))
                     sequence = QKeySequence::fromString(source, QKeySequence::PortableText);
-                const int stroke = sequence.isEmpty() ? 0 : sequence[0];
+                const int stroke = sequence.isEmpty() ? 0 : sequence[0].toCombined();
                 const int key = stroke & ~int(Qt::KeyboardModifierMask);
                 result.append(QJsonObject{{"text", sequence.toString(QKeySequence::PortableText)},
                     {"key", key ? QKeySequence(key).toString(QKeySequence::PortableText) : QString()},
@@ -1817,8 +1817,8 @@ public:
                 return compared ? compared < 0 : left < right;
             });
             QJsonArray page;
-            const auto count = std::min(100, std::max(0, sorted.size() - offset));
-            for (int i = 0; i < count; ++i) page.append(sorted[offset + i]);
+            const auto count = std::min<qsizetype>(100, std::max<qsizetype>(0, sorted.size() - offset));
+            for (qsizetype i = 0; i < count; ++i) page.append(sorted[offset + i]);
             return QJsonObject{{"names", page}, {"total", sorted.size()}, {"offset", offset}, {"omitted", omitted}};
         }
         if (method == "attribute.info") {

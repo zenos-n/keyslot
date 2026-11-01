@@ -16,13 +16,15 @@ Auto-Type chooser search now supports window-match filtering and native all-vaul
 
 ## Native engine
 
-Version 0.2 replaces the CLI boundary in the app with a private helper linked
-against the actual **KeePassXC 2.7.12 core**. It does not reconstruct databases
-from XML. The packaged source and dependencies come from the same pinned
-Nixpkgs KeePassXC derivation; a version assertion prevents an unreviewed engine
-upgrade. The old CLI adapter remains only for regression tests. New databases use
-KDBX4 and upstream Argon2id defaults (64 MiB, 10 rounds). Existing databases keep
-their configured KDF; required format upgrades follow upstream serialization rules.
+The private helper now links the actual **KeePassXC 2.8.0 core**, from release
+commit `1c2f23ef5914c0f442a00533def1689857afb5a7`, using Qt6. It does not
+reconstruct databases from XML. Dependencies come from the reviewed Nixpkgs
+lock; the fixed source hash and strict client/native version handshake pair the
+release with its adapter. [Native 2.8 Migration](engine/Native28.md) records the
+retired backports and retained boundary/serialization/headless changes. New
+vaults use KDBX4 and native Argon2id defaults; existing vaults retain configured
+KDF/format settings subject to upstream serialization rules. Historical 2.7
+verification does not establish2.8 behavior; the migration awaits manual acceptance.
 
 The helper addresses entries and groups by UUID, so duplicate names and slashes
 are no longer ambiguous. Its source supports clearing fields, multiline and
@@ -161,7 +163,7 @@ A changed vault must be reviewed again.
 
 ## Build and run
 
-Requires Linux, Nixpkgs with KeePassXC 2.7.12, and a graphical session with GTK4,
+Requires Linux, the locked Nixpkgs dependencies including Qt6, and a graphical session with GTK4,
 libadwaita, PyGObject, and a session bus. The Nix package supplies runtime
 libraries and the helper. Normal builds do not build or run tests.
 
@@ -172,15 +174,14 @@ nix build
 nix run
 # Build just the private native helper:
 nix build .#engine
-# Run the real-core, GTK and login-keyring package checks:
-nix flake check
+# Historical development-check instructions are recorded in docs/release-readiness.md.
 ```
 
-The flake locks the reviewed Nixpkgs revision containing KeePassXC 2.7.12 and
+The flake locks the reviewed Nixpkgs dependency revision and the recipe separately pins the exact 2.8 release. It
 exports `keyslot` (also the default package/app), `engine`, and a development
 shell for `x86_64-linux` and `aarch64-linux`. The companion extension remains
 a separate repository and package. Update the Nixpkgs pin together with an
-engine review; the recipe rejects an unexpected KeePassXC version.
+engine review; mixed client/native versions are rejected before opening a vault.
 
 The development shell supplies the helper, GTK/libadwaita/libsecret typelibs,
 the CLI used by regression tests, and the pinned upstream import fixtures:
@@ -240,7 +241,7 @@ KeeShare settings are available for each group. Enable imports and/or exports in
 Preferences to start checking configured share files every 30 seconds while their
 vaults are unlocked. Standard encrypted `.kdbx` shares and legacy `.kdbx.share`
 containers use upstream cloning/import/merge code. Legacy signatures are ignored
-on import, as in KeePassXC 2.7.12. The helper stages encrypted input/output, rejects
+on import, following the native reader. The helper stages encrypted input/output, rejects
 the open database as a target and detects changes before committing an export.
 Shares and expanded encrypted ZIP payloads are limited to 256 MiB. Signing identity
 data stays in a private `keyslot/keeshare-identity.xml` under the configuration
@@ -311,11 +312,11 @@ the upstream parser and reject empty lists, with a warning below 1296 words.
 Settings are remembered in a private `keyslot/generator.json`; generated results
 are never saved there. Editing a result recalculates its password strength.
 The package also supplies a `keepassxc` launcher for the GTK application, alongside
-the pinned upstream `keepassxc-cli` with reviewed2.8 compatibility backports and
-the corrected browser proxy. CLI `db-info` includes passkey and TOTP-entry counts;
-stdio-open guards and failed clipboard-tool diagnostics match the newer source.
-See [CLI Compatibility](engine/CliCompatibility.md). The core still reports its
-actual2.7.12 version; these changes do not claim a complete2.8 CLI port.
+the upstream 2.8 `keepassxc-cli` and the corrected browser proxy. CLI statistics,
+stdio and terminal behavior now come from that release. The earlier
+[CLI Compatibility](engine/CliCompatibility.md) document describes the historical
+2.7 backport; [Native 2.8 Migration](engine/Native28.md) describes the current
+source. Runtime compilation does not establish behavioral equivalence.
 The GUI accepts `--lock`, `--keyfile PATH`, `--pw-stdin`, `--minimized`,
 `--version`/`-v` and `--debug-info`. Lock and diagnostics work without opening a
 window. Stdin unlock reads one UTF-8 password line per database, including an
@@ -410,8 +411,8 @@ and remaining advanced options still need work.
 **Open Entry URL** (Ctrl+U) uses the native KeePassXC placeholder resolver and Qt
 URL normalization, then GTK's asynchronous URI launcher and your chosen handler.
 It supports ordinary URI schemes and local files. A separate **Open URL Override**
-action uses the entry's stored override: the pinned KeePassXC 2.7.12 normal Open
-action does not read that metadata, so normal Open keeps the upstream behavior.
+action uses the entry's stored override. These remain separate GTK actions; the
+new native version and broader URL-handler behavior require manual acceptance.
 
 `cmd://` entries show a GTK confirmation with a masked preview. Protected fields,
 nested references, conversions and TOTP are masked before preview expansion;

@@ -3,3 +3,4 @@
 APP_ID = "com.neg-zero.keyslot"
 ICON_NAME = "keepassxc"
 VERSION = "0.2.0"
+CORE_VERSION = "2.8.0"

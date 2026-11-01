@@ -1,5 +1,9 @@
 # Proton Pass record backport
 
+Historical2.7.12/Qt5 checkpoint. The current engine source/retained changes are
+documented in [Native2.8 Migration](Native28.md); older patches are not applied
+as a stack to2.8, and their historical verification is not reused as2.8 evidence.
+
 The Wi-Fi, SSH-key and unknown-record handling in `ProtonPassRecords.patch`
 comes from KeePassXC 2.8.0's `src/format/ProtonPassReader.cpp`:
 https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/format/ProtonPassReader.cpp

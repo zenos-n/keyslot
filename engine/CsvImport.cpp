@@ -9,7 +9,7 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QRegularExpression>
-#include <QTextCodec>
+#include <QStringConverter>
 #include <cmath>
 #include <limits>
 
@@ -42,7 +42,7 @@ bool CsvImport::load(const QString& path, const QJsonObject& options) {
     for (const auto* key : {"backslash", "has_header", "allow_empty_title"})
         if (options.contains(key) && !options.value(key).isBool()) return reject("CSV switches must be booleans.");
     const auto codec = options.value("codec").toString("UTF-8");
-    if (!QTextCodec::codecForName(codec.toUtf8())) return reject("The selected CSV encoding is unavailable.");
+    if (!QStringConverter::encodingForName(codec.toUtf8())) return reject("The selected CSV encoding is unavailable.");
     const auto separator = options.value("separator").toString(",");
     const auto qualifier = options.value("qualifier").toString("\"");
     const auto comment = options.value("comment").toString("#");
@@ -89,7 +89,8 @@ QJsonObject CsvImport::inspect(int row, int column, bool reveal) const {
     const int columns = m_parser.getCsvCols();
     auto label = [&](int index) { return m_header ? m_table.first().at(index).left(128) : QString("Column %1").arg(index + 1); };
     for (int index = 0; index < qMin(columns, 128); ++index) headers.append(label(index));
-    for (const auto& codec : QTextCodec::availableCodecs()) codecs.append(QString::fromLatin1(codec));
+    for (const auto* codec : {"UTF-8", "UTF-16", "UTF-16LE", "UTF-16BE", "UTF-32", "UTF-32LE", "UTF-32BE", "ISO-8859-1", "System"})
+        if (QStringConverter::encodingForName(codec)) codecs.append(QString::fromLatin1(codec));
     row = qBound(0, row < 0 ? m_skip : row, m_table.size() - 1);
     column = qBound(0, column, columns - 1);
     for (int index = column; index < qMin(columns, column + 16); ++index) previewHeaders.append(label(index));

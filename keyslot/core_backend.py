@@ -18,6 +18,7 @@ import threading
 import time
 
 from .backend import Entry, Group, Snapshot, VaultError
+from . import CORE_VERSION
 
 MAX_FRAME = 64 * 1024 * 1024
 
@@ -212,7 +213,7 @@ class Vault:
                 raise
         try:
             hello = self._rpc("hello")
-            if not isinstance(hello, dict) or hello.get("protocol") != 1 or hello.get("engine") != "keepassxc-core" or hello.get("upstream") != "2.7.12":
+            if not isinstance(hello, dict) or hello.get("protocol") != 1 or hello.get("engine") != "keepassxc-core" or hello.get("upstream") != CORE_VERSION:
                 raise VaultError("The native engine protocol is incompatible with this client.")
             self.capabilities = frozenset(hello.get("capabilities", []))
             if not self.auto_save:

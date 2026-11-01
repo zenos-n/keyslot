@@ -1,5 +1,9 @@
 # Serialization corrections
 
+Historical2.7.12/Qt5 checkpoint. The current engine source/retained changes are
+documented in [Native2.8 Migration](Native28.md); older patches are not applied
+as a stack to2.8, and their historical verification is not reused as2.8 evidence.
+
 `SerializationFixes.patch` corrects two defects reproduced in the pinned
 KeePassXC 2.7.12 core. These are Keyslot corrections, separate from the upstream
 security backports; original source copyright and GPL licensing are retained.
