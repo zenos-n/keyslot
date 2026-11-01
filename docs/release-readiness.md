@@ -6,6 +6,17 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Group icon propagation now supports child groups, entries or both from Edit
+Group. Native counts and a revision/group/icon/scope-bound, two-minute single-use
+review precede one encrypted group-and-children transaction. Recycled descendants
+are counted, ambiguous UUIDs rejected and unchanged icons skipped. Changed
+entries use existing history/custom-data backports and configured history
+limits; groups have no history. Drafts survive review cancellation/failure.
+See [Group Icons](../engine/GroupIcons.md). Native/package/Python compilation
+only; no tests/harnesses or automated GTK/native/vault/history/save runs.
+Manual scope, icon/history/plugin preservation, stale-review, lock/cancel,
+manual-save/recovery, format and accessibility acceptance remains open.
+
 The [clipboard registry](clipboard.md) now tracks regular and primary-selection
 providers, native GTK selections and built-in Copy actions. Explicit copies
 carry KeePassXC's Linux secret hint. Timeout changes re-evaluate existing copy

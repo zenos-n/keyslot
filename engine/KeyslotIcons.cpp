@@ -7,6 +7,7 @@
 #include "core/Metadata.h"
 #include "core/UrlTools.h"
 #include <QHostAddress>
+#include <QHash>
 #include <QJsonArray>
 #include <cmath>
 
@@ -37,6 +38,21 @@ Entry* target(Database* db, const QUuid& id) {
     if (!result || result->isRecycled()) fail("not_found", "The website icon entry is no longer available.");
     return result;
 }
+QJsonObject groupRequest(Database* db, const QJsonObject& args) {
+    const auto id = QUuid(text(args, "group"));
+    const auto customText = text(args, "custom_icon");
+    const auto custom = QUuid(customText);
+    const auto icon = args.value("icon"), scope = args.value("icon_scope");
+    if (id.isNull() || (!customText.isEmpty() && (custom.isNull() || !db->metadata()->hasCustomIcon(custom)))
+        || !icon.isDouble() || std::floor(icon.toDouble()) != icon.toDouble() || icon.toDouble() < 0 || icon.toDouble() > 68
+        || !scope.isDouble() || std::floor(scope.toDouble()) != scope.toDouble() || scope.toDouble() < 1 || scope.toDouble() > 3)
+        fail("invalid_request", "Choose a current group, icon and child icon scope.");
+    return {{"group", uid(id)}, {"custom_icon", customText.isEmpty() ? QString() : uid(custom)},
+            {"icon", icon.toInt()}, {"icon_scope", scope.toInt()}};
+}
+template <typename T> bool differentIcon(const T* item, int icon, const QUuid& custom) {
+    return custom.isNull() ? !item->iconUuid().isNull() || item->iconNumber() != icon : item->iconUuid() != custom;
+}
 }
 
 void KeyslotIcons::require(const Ticket& ticket, const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
@@ -60,6 +76,56 @@ QString KeyslotIcons::reserve(const QSharedPointer<Database>& db, const QString&
     const auto token = uid(QUuid::createUuid());
     m_reservations.insert(token, {db, entry->uuid(), entry->iconUuid(), entry->url(), entry->iconNumber()});
     return token;
+}
+QJsonObject KeyslotIcons::reviewGroup(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
+    cancel(m_group.token);
+    const auto request = groupRequest(db.data(), args);
+    const auto id = QUuid(request.value("group").toString());
+    QHash<QUuid, int> groups, entries;
+    Group* source = nullptr;
+    for (auto* item : db->rootGroup()->groupsRecursive(true)) {
+        ++groups[item->uuid()];
+        if (item->uuid() == id) source = item;
+    }
+    if (!source || groups.value(id) != 1) fail("conflict", "The group icon source is missing or ambiguous.");
+    for (const auto* item : db->rootGroup()->entriesRecursive(false)) ++entries[item->uuid()];
+    int changedGroups = 0, changedEntries = 0, recycledGroups = 0, recycledEntries = 0;
+    const int scope = request.value("icon_scope").toInt(), icon = request.value("icon").toInt();
+    const auto custom = QUuid(request.value("custom_icon").toString());
+    if (scope & 1) for (const auto* item : source->groupsRecursive(false)) {
+        if (item->uuid().isNull() || groups.value(item->uuid()) != 1)
+            fail("conflict", "A child group icon target is ambiguous.");
+        if (differentIcon(item, icon, custom)) { ++changedGroups; if (item->isRecycled()) ++recycledGroups; }
+    }
+    if (scope & 2) for (const auto* item : source->entriesRecursive(false)) {
+        if (item->uuid().isNull() || entries.value(item->uuid()) != 1)
+            fail("conflict", "A child entry icon target is ambiguous.");
+        if (differentIcon(item, icon, custom)) { ++changedEntries; if (item->isRecycled()) ++recycledEntries; }
+    }
+    m_groupRequest = request;
+    m_group = {db, revision, uid(QUuid::createUuid())};
+    m_groupClock.start();
+    return {{"token", m_group.token}, {"groups", changedGroups}, {"entries", changedEntries},
+            {"recycled_groups", recycledGroups}, {"recycled_entries", recycledEntries}};
+}
+void KeyslotIcons::confirmGroup(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
+    auto tokenArgs = args;
+    tokenArgs.insert("token", text(args, "icon_review"));
+    require(m_group, db, tokenArgs, revision);
+    if (!m_groupClock.isValid() || m_groupClock.elapsed() >= 120000 || groupRequest(db.data(), args) != m_groupRequest)
+        fail("conflict", "The group icon review expired or the chosen group, icon or scope changed. Review again.");
+    cancel(m_group.token);
+}
+void KeyslotIcons::applyGroupChildren(Group* group, int scope) {
+    const int icon = group->iconNumber();
+    const auto custom = group->iconUuid();
+    if (scope & 1) for (auto* item : group->groupsRecursive(false))
+        if (differentIcon(item, icon, custom)) group->applyGroupIconTo(item);
+    if (scope & 2) for (auto* item : group->entriesRecursive(false)) if (differentIcon(item, icon, custom)) {
+        item->beginUpdate();
+        group->applyGroupIconTo(item);
+        item->endUpdate();
+    }
 }
 QJsonObject KeyslotIcons::reviewUnused(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision) {
     m_unused = {}; m_remove.clear(); m_keep.clear();
@@ -210,6 +276,7 @@ QString KeyslotIcons::finish(const QSharedPointer<Database>& db, const QJsonObje
 }
 void KeyslotIcons::cancel(const QString& token) {
     m_reservations.remove(token);
+    if (token == m_group.token) { m_group = {}; m_groupRequest = {}; m_groupClock.invalidate(); }
     if (token == m_unused.token) { m_unused = {}; m_remove.clear(); m_keep.clear(); }
     if (token == m_download.token) {
         m_download = {}; m_candidates.clear(); m_visited.clear(); m_png.clear(); m_name.clear();
@@ -217,4 +284,4 @@ void KeyslotIcons::cancel(const QString& token) {
         m_entryUrl.clear(); m_entryIcon = {}; m_entryStandardIcon = 0;
     }
 }
-void KeyslotIcons::clear() { cancel(m_unused.token); cancel(m_download.token); m_reservations.clear(); }
+void KeyslotIcons::clear() { cancel(m_unused.token); cancel(m_download.token); cancel(m_group.token); m_reservations.clear(); }

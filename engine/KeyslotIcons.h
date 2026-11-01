@@ -10,6 +10,7 @@
 #include <functional>
 
 class Database;
+class Group;
 
 class KeyslotIcons {
 public:
@@ -18,6 +19,9 @@ public:
     using Normalize = std::function<QByteArray(const QByteArray&)>;
     QString reserve(const QSharedPointer<Database>& db, const QString& entry);
     QJsonObject reviewUnused(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision);
+    QJsonObject reviewGroup(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision);
+    void confirmGroup(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision);
+    static void applyGroupChildren(Group* group, int scope);
     void removeUnused(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision, const Commit& commit);
     QJsonObject prepare(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision);
     QJsonObject step(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& revision);
@@ -27,7 +31,9 @@ public:
     void clear();
 private:
     struct Ticket { QWeakPointer<Database> database; QByteArray revision; QString token; };
-    Ticket m_unused, m_download;
+    Ticket m_unused, m_download, m_group;
+    QJsonObject m_groupRequest;
+    QElapsedTimer m_groupClock;
     struct Reservation { QWeakPointer<Database> database; QUuid entry, icon; QString url; int standardIcon; };
     QHash<QString, Reservation> m_reservations;
     QList<QUuid> m_remove;

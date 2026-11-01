@@ -801,7 +801,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1186,10 +1186,11 @@ public:
             } catch (const KeyslotEntryActions::Failure& error) { throw Failure{error.code, error.message}; }
             fail("unsupported", "This entry action is not supported.");
         }
-        if (method.startsWith("icons.favicon.") || method.startsWith("icons.unused.")) {
+        if (method.startsWith("icons.favicon.") || method.startsWith("icons.unused.") || method.startsWith("icons.group.")) {
             try {
-                if (method == "icons.favicon.cancel" || method == "icons.unused.cancel") { iconTools.cancel(text(args, "token")); return true; }
+                if (method == "icons.favicon.cancel" || method == "icons.unused.cancel" || method == "icons.group.cancel") { iconTools.cancel(text(args, "token")); return true; }
                 unchanged();
+                if (method == "icons.group.review") return iconTools.reviewGroup(db, args, hash);
                 if (method == "icons.unused.review") return iconTools.reviewUnused(db, args, hash);
                 if (method == "icons.unused.remove") {
                     iconTools.removeUnused(db, args, hash, [this](const std::function<void()>& change) { transaction(change); });
@@ -1919,6 +1920,12 @@ public:
             if (existing == db->rootGroup() && parent) fail("invalid_request", "The root group cannot be moved.");
             for (auto* p = parent; p; p = p->parentGroup())
                 if (p == existing) fail("invalid_request", "A group cannot be moved inside itself.");
+            const int iconScope = args.contains("icon_scope") ? integer(args, "icon_scope", 0, 3) : 0;
+            if (iconScope) {
+                if (!existing || !boolean(args, "icons_approved")) fail("invalid_request", "Review the child icon changes first.");
+                try { iconTools.confirmGroup(db, args, hash); }
+                catch (const KeyslotIcons::Failure& error) { throw Failure{error.code, error.message}; }
+            } else if (args.contains("icon_review")) fail("invalid_request", "Choose the reviewed child icon scope.");
             return transaction([&] {
                 auto* g = existing;
                 if (!g) { g = new Group(); g->setUuid(QUuid::createUuid()); }
@@ -1934,6 +1941,7 @@ public:
                     g->setExpiryTime(expiry);
                 }
                 if (parent) g->setParent(parent);
+                if (iconScope) KeyslotIcons::applyGroupChildren(g, iconScope);
             });
         }
         if (method == "group.recycle") {

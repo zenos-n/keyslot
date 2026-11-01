@@ -1210,6 +1210,16 @@ class Vault:
                 params["parent"] = parent
             return self._snapshot_call("group.save", **params)
 
+    def review_group_icons(self, group, scope, icon, custom_icon):
+        with self._mutex:
+            if "group-icon-propagation" not in self.capabilities:
+                raise VaultError("Update the native engine before applying group icons to their contents.")
+            return self._rpc("icons.group.review", group=group, icon_scope=scope, icon=icon, custom_icon=custom_icon)
+
+    def cancel_group_icons(self, token):
+        with self._mutex:
+            return self._rpc("icons.group.cancel", token=token)
+
     def icons(self, offset=0):
         with self._mutex:
             return self._rpc("icons.list", offset=offset)

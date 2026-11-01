@@ -793,7 +793,13 @@ class VaultSession:
             fields.add(parent)
         icon, decoration = appearance.icon_row(self, current, dialog=dialog)
         fields.add(icon)
+        icon_scope = Adw.ComboRow(title="Apply Icon To", model=Gtk.StringList.new([
+            "This Group Only", "Also Child Groups", "Also Child Entries", "All Children"]),
+            sensitive=current.addressable)
+        fields.add(icon_scope)
         box.append(fields)
+        from .group_icon_views import Changes
+        icon_changes = Changes(self, dialog, box, save)
         options = Adw.PreferencesGroup(title="Group Options")
         tags = Adw.EntryRow(title="Tags (separated by semicolons)", text=current.tags)
         searching = Adw.ComboRow(title="Search Entries", model=Gtk.StringList.new(["Inherit", "Enabled", "Disabled"]))
@@ -832,6 +838,9 @@ class VaultSession:
                         "expires": expires.get_active()}
             if expires.get_active():
                 advanced["expiry"] = expiry.get_text()
+            if icon_scope.get_selected():
+                icon_changes.start(values, advanced, icon_scope.get_selected())
+                return
             self.run_job(lambda: self.vault.save_group(*values, **advanced),
                          lambda snapshot: (dialog.close(), self.window.show_vault(snapshot)))
         save.connect("clicked", submit)
