@@ -240,9 +240,10 @@ def icon_row(session, item, website=None, dialog=None):
         dialog.connect("closed", lambda *_: session.icons.drafts.pop(token, None))
     row = Adw.ActionRow(title="Icon", activatable=True)
     row.target = item
+    row.user_selected_icon = False
     preview = session.icons.image(item, 32)
     row.add_prefix(preview)
-    def chosen(selected):
+    def chosen(selected, explicit=True):
         nonlocal preview
         if "removed" in selected:
             if isinstance(row.target, Entry):
@@ -252,10 +253,13 @@ def icon_row(session, item, website=None, dialog=None):
             if values["custom_icon"] != selected["removed"]:
                 return
             selected = {"icon": 48 if isinstance(item, Group) else 0, "custom_icon": ""}
+        if explicit:
+            row.user_selected_icon = True
         values.update(selected)
         row.remove(preview)
         preview = session.icons.image(SimpleNamespace(**values), 32)
         row.add_prefix(preview)
+    row.select_icon = lambda selected: chosen(selected, explicit=False)
     row.connect("activated", lambda *_: choose_icon(session, chosen, website=website, current=lambda: values["custom_icon"]))
     row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
     return row, values

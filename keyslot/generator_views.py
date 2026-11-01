@@ -37,10 +37,39 @@ def _validate(data):
 
 def _load(path):
     try:
-        data = json.loads(path.read_text())
+        with path.open() as stream:
+            encoded = stream.read(1024 * 1024 + 1)
+        data = json.loads(encoded) if len(encoded) <= 1024 * 1024 else None
         return data if _validate(data) else dict(DEFAULTS)
     except (OSError, ValueError):
         return dict(DEFAULTS)
+
+
+def saved_settings(startup, *, strict=False):
+    if startup.storage:
+        return startup.storage.read_generator()
+    path = startup.directory / "keyslot" / "generator.json"
+    if not strict:
+        return _load(path)
+    try:
+        with path.open() as stream:
+            encoded = stream.read(1024 * 1024 + 1)
+    except FileNotFoundError:
+        if path.is_symlink():
+            raise VaultError("The saved generator settings link is broken. Review Generator Options before generating.")
+        return dict(DEFAULTS)
+    if len(encoded) > 1024 * 1024:
+        raise VaultError("The saved generator settings are too large. Review Generator Options before generating.")
+    data = json.loads(encoded)
+    if not _validate(data):
+        raise VaultError("The saved generator settings are invalid. Review Generator Options before generating.")
+    return data
+
+
+def parameters(chosen):
+    params = {key: value for key, value in chosen.items() if key != "word_count"}
+    params["length"] = chosen["word_count"] if chosen["passphrase"] else chosen["length"]
+    return params
 
 
 def show(session, on_apply=None):
@@ -52,7 +81,7 @@ def show(session, on_apply=None):
     storage = getattr(session.application.startup, "storage", None)
     library = WordLists(session.application.startup)
     try:
-        saved = storage.read_generator() if storage else _load(path)
+        saved = saved_settings(session.application.startup)
     except (OSError, ValueError, VaultError) as exc:
         session.error(str(exc))
         return
@@ -400,8 +429,7 @@ def show(session, on_apply=None):
         invalidate()
         revision = state["revision"]
         chosen = settings()
-        params = {key: value for key, value in chosen.items() if key != "word_count"}
-        params["length"] = chosen["word_count"] if chosen["passphrase"] else chosen["length"]
+        params = parameters(chosen)
         def generated(data):
             if state["closed"] or revision != state["revision"]:
                 return
@@ -411,7 +439,7 @@ def show(session, on_apply=None):
                 return
             set_output(data["value"])
             display_health(data)
-            if chosen != state["saved"]:
+            if chosen != state["saved"] or not storage:
                 try:
                     if storage:
                         storage.write_generator(chosen)
@@ -451,6 +479,16 @@ def show(session, on_apply=None):
         invalidate()
         if on_apply and not state["applied"]:
             on_apply(None)
+    def clear_sensitive():
+        state["closed"] = True
+        invalidate()
+    dialog._clear_sensitive_fields = clear_sensitive
+    def close_attempt(*_):
+        from .application import clear_dialog_fields
+        clear_dialog_fields(dialog)
+        dialog.force_close()
+    dialog.set_can_close(False)
+    dialog.connect("close-attempt", close_attempt)
     dialog.connect("closed", closed)
     session.present_dialog(dialog)
     def catalogue(data):

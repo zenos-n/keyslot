@@ -635,11 +635,11 @@ class VaultSession:
         secret = Adw.PasswordEntryRow(title="New Password" if entry else "Password")
         dirty_password = [False]
         secret.connect("changed", lambda *_: dirty_password.__setitem__(0, True))
-        secret.add_suffix(button("view-refresh-symbolic", "Generate Password",
-            lambda: self.run_job(lambda: self.vault.generate(24), lambda value: secret.set_text(value))))
         for row in (title, username, url, secret):
             fields.add(row)
         box.append(fields)
+        from .entry_defaults import Generation
+        generation = Generation(self, dialog, secret, save, box)
         if entry:
             fields.set_description("Leave the password unchanged to keep the current one.")
         groups = [g for g in self.vault.snapshot.groups if g.addressable and not g.recycled]
@@ -649,10 +649,18 @@ class VaultSession:
         location = Adw.PreferencesGroup()
         location.add(group)
         box.append(location)
-        inherited = groups[group.get_selected()]
-        initial_icon = inherited.icon if inherited.custom_icon or inherited.icon not in (48, 49) else 0
-        icon, decoration = appearance.icon_row(self, entry or SimpleNamespace(icon=initial_icon, custom_icon=inherited.custom_icon),
+        def default_icon():
+            inherited = groups[group.get_selected()]
+            if not self.application.startup.inherit_group_icon:
+                return {"icon": 0, "custom_icon": ""}
+            return {"icon": inherited.icon if inherited.custom_icon or inherited.icon not in (48, 49) else 0,
+                    "custom_icon": inherited.custom_icon}
+        icon, decoration = appearance.icon_row(self, entry or SimpleNamespace(**default_icon()),
                                                 website=lambda: url.get_text(), dialog=dialog)
+        def changed_group(*_):
+            if not entry and not icon.user_selected_icon:
+                icon.select_icon(default_icon())
+        group.connect("notify::selected", changed_group)
         visual = Adw.PreferencesGroup(title="Appearance")
         visual.add(icon)
         foreground = appearance.color_row("Text Color", entry.foreground if entry else "")
@@ -692,7 +700,7 @@ class VaultSession:
         ], entry)
 
         def submit(*_):
-            if self.busy:
+            if self.busy or generation.blocked:
                 return
             buf = notes.get_buffer()
             fields = (groups[group.get_selected()].identity, title.get_text(), username.get_text(),
@@ -708,9 +716,8 @@ class VaultSession:
         save.connect("clicked", submit)
         toolbar.set_content(scroll(box, natural=True))
         dialog.set_child(toolbar)
-        dialog.connect("closed", lambda *_: (secret.set_text(""), notes.get_buffer().set_text(""),
-                                              title.set_text(""), username.set_text(""), url.set_text("")))
-        self.present_dialog(dialog)
+        if self.present_dialog(dialog) and not entry and self.application.startup.generate_password_on_create:
+            generation.request()
 
     def new_group(self):
         if not self.vault.unlocked or self.busy:

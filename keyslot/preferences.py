@@ -105,6 +105,8 @@ def show(session):
     automatic.connect("notify::active", changed_saving)
     on_exit.connect("notify::active", changed_saving)
     page.add(saving)
+    from .entry_defaults import preferences as entry_preferences
+    entry_preferences(session, page)
     locking = Adw.PreferencesGroup(title="Automatic Locking",
         description="Applies to all vaults. Screen and user-switch detection requires GNOME and systemd-logind.")
     timeouts = [0, 60, 300, 600, 900, 1800, 3600]

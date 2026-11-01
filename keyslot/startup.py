@@ -14,6 +14,7 @@ PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_pr
                         monospace_notes=False, password_empty_placeholder=False)
 WINDOW_DEFAULTS = dict(hide_window_on_copy=False, minimize_on_copy=True, drop_to_background_on_copy=False,
                        minimize_after_unlock=False, minimize_to_background=False)
+ENTRY_DEFAULTS = dict(inherit_group_icon=True, generate_password_on_create=False)
 
 
 def _xdg_directory(name, fallback):
@@ -97,6 +98,8 @@ class Startup:
             setattr(self, name, value)
         for name, value in WINDOW_DEFAULTS.items():
             setattr(self, name, value)
+        for name, value in ENTRY_DEFAULTS.items():
+            setattr(self, name, value)
         self.ssh = False
         self.ssh_socket = self.ssh_provider = ""
         self.autotype = dict(AUTO_TYPE_DEFAULTS)
@@ -125,6 +128,10 @@ class Startup:
                 if type(value) is bool:
                     setattr(self, name, value)
             for name, default in WINDOW_DEFAULTS.items():
+                value = data.get(name, default)
+                if type(value) is bool:
+                    setattr(self, name, value)
+            for name, default in ENTRY_DEFAULTS.items():
                 value = data.get(name, default)
                 if type(value) is bool:
                     setattr(self, name, value)
@@ -202,7 +209,8 @@ class Startup:
              auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None,
              hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None,
              hide_window_on_copy=None, minimize_on_copy=None, drop_to_background_on_copy=None,
-             minimize_after_unlock=None, minimize_to_background=None):
+             minimize_after_unlock=None, minimize_to_background=None,
+             inherit_group_icon=None, generate_password_on_create=None):
         with self.mutex:
             locks = {name: getattr(self, name) if value is None else value for name, value in (
                 ("lock_on_screen", lock_on_screen), ("lock_on_user_switch", lock_on_user_switch), ("lock_on_minimize", lock_on_minimize))}
@@ -219,6 +227,10 @@ class Startup:
                 ("minimize_after_unlock", minimize_after_unlock), ("minimize_to_background", minimize_to_background))}
             if any(type(value) is not bool for value in windows.values()):
                 raise ValueError("Choose supported window behavior switches.")
+            entries = {name: getattr(self, name) if value is None else value for name, value in (
+                ("inherit_group_icon", inherit_group_icon), ("generate_password_on_create", generate_password_on_create))}
+            if any(type(value) is not bool for value in entries.values()):
+                raise ValueError("Choose supported new-entry switches.")
             background = self.background if background is None else bool(background)
             autotype = _autotype_options(self.autotype if autotype is None else autotype)
             keeshare = _keeshare_options(self.keeshare if keeshare is None else keeshare)
@@ -282,6 +294,7 @@ class Startup:
                 data.update(locks)
                 data.update(privacy)
                 data.update(windows)
+                data.update(entries)
                 if seconds != timeout * 60:
                     data["lock_seconds"] = seconds
                 if clipboard_seconds != 20:
@@ -313,6 +326,8 @@ class Startup:
             for name, value in privacy.items():
                 setattr(self, name, value)
             for name, value in windows.items():
+                setattr(self, name, value)
+            for name, value in entries.items():
                 setattr(self, name, value)
             self.ssh, self.ssh_socket, self.ssh_provider = ssh, ssh_socket, ssh_provider
             self.autotype = autotype

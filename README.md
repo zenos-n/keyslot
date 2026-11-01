@@ -345,6 +345,12 @@ stdin unlock and key changes. Explicit `--keyfile` arguments override remembered
 files. Passwords and hardware secrets are never written to these dictionaries.
 Other KeePassXC preferences and broader desktop/hardware acceptance remain open.
 
+New-entry preferences support group-icon inheritance and optional automatic
+password generation. The entry Generate button uses your saved generator
+settings; its dropdown opens the full options without discarding the draft.
+See [New-entry Defaults](docs/new-entry-defaults.md). These workflows await
+manual acceptance; no new automated runs were performed.
+
 The desktop, window and welcome screen temporarily use the themed `keepassxc` icon.
 
 Encrypted vault files are monitored for external changes, including atomic

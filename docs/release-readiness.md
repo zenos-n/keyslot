@@ -6,6 +6,16 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+New-entry defaults now expose group-icon inheritance and optional automatic
+password generation through stock INI keys or private flags. The entry Generate
+button uses the saved generator settings and offers the full options dialog.
+Late results are guarded against edited fields, closed forms and session changes;
+drafts remain on generation/config errors. Existing entry passwords/icons are not
+automatically replaced. See [New-entry Defaults](new-entry-defaults.md).
+Runtime/Python compilation only; no tests/harnesses or automated GUI/generator/
+settings/vault runs. Manual behavior, format, cancellation and accessibility
+acceptance remains open.
+
 Configuration discovery now supports KeePassXC2.8's XDG state layout with an
 existing2.7 cache fallback, explicit CLI/environment overrides and single-file
 mode. Invalid XDG base directories use standard defaults. Automatically selected

@@ -21,6 +21,8 @@ STARTUP_KEYS = {
     "drop_to_background_on_copy": ("global", "DropToBackgroundOnCopy", False),
     "minimize_after_unlock": ("global", "MinimizeAfterUnlock", False),
     "minimize_to_background": ("global", "GUI/MinimizeToTray", False),
+    "inherit_group_icon": ("global", "UseGroupIconOnEntryCreation", True),
+    "generate_password_on_create": ("global", "AutoGeneratePasswordForNewEntries", False),
     "auto_reload": ("global", "AutoReloadOnChange", True),
     "auto_save": ("global", "AutoSaveAfterEveryChange", True),
     "auto_save_on_exit": ("global", "AutoSaveOnExit", True),
