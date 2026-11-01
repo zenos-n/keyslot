@@ -78,6 +78,23 @@ for _key, _default in SEARCH_KEYS.values():
     GLOBAL[_key] = _default
 
 
+def _present(path):
+    try:
+        path.lstat()
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def _local_candidates():
+    return (_xdg_directory("XDG_STATE_HOME", ".local/state") / "keepassxc/keepassxc.ini",
+            _xdg_directory("XDG_CACHE_HOME", ".cache") / "keepassxc/keepassxc.ini")
+
+
+def _profile_identity(paths):
+    return hashlib.sha256(json.dumps(paths, sort_keys=True).encode()).hexdigest()
+
+
 def default_paths(*, global_override=None, local_override=None):
     global_path = global_override if global_override is not None else os.environ.get(
         "KPXC_CONFIG", _xdg_directory("XDG_CONFIG_HOME", ".config") / "keepassxc/keepassxc.ini")
@@ -87,16 +104,9 @@ def default_paths(*, global_override=None, local_override=None):
         return global_path, local_override or global_path
     if "KPXC_CONFIG_LOCAL" in os.environ:
         return global_path, os.environ["KPXC_CONFIG_LOCAL"] or global_path
-    state = _xdg_directory("XDG_STATE_HOME", ".local/state") / "keepassxc/keepassxc.ini"
-    cache = _xdg_directory("XDG_CACHE_HOME", ".cache") / "keepassxc/keepassxc.ini"
-    def present(path):
-        try:
-            path.lstat()
-            return True
-        except FileNotFoundError:
-            return False
+    state, cache = _local_candidates()
     # Keep legacy installations in place; modern state is authoritative when both exist.
-    return global_path, state if present(state) or not present(cache) else cache
+    return global_path, state if _present(state) or not _present(cache) else cache
 
 
 def _local_path(name):
@@ -115,8 +125,16 @@ class IniProfile:
                           ("--localconfig", os.path.abspath(local_path))]
         self.paths = {role: str(Path(path).resolve()) for role, (_option, path) in
                       zip(("global", "local"), self.arguments)}
-        self.identity = hashlib.sha256(json.dumps(self.paths, sort_keys=True).encode()).hexdigest()
-        self.directory = _xdg_directory("XDG_CONFIG_HOME", ".config") / "keyslot/profiles" / self.identity
+        self.identity = _profile_identity(self.paths)
+        root = _xdg_directory("XDG_CONFIG_HOME", ".config") / "keyslot/profiles"
+        self.directory = root / self.identity
+        identity_file = Path("keyslot/keeshare-identity.xml")
+        if automatic_local and not _present(self.directory / identity_file):
+            for candidate in _local_candidates():
+                previous = root / _profile_identity(dict(self.paths, local=str(candidate.resolve())))
+                if _present(previous / identity_file):
+                    self.directory = previous
+                    break
         self.schemas = {}
         for role, schema in (("global", GLOBAL), ("local", LOCAL)):
             self.schemas.setdefault(self.paths[role], {}).update(schema)

@@ -12,7 +12,10 @@ mode. Invalid XDG base directories use standard defaults. Automatically selected
 local layouts and symlink targets are checked around settings I/O; a detected
 change requires reopening, and a late write is reported as possibly committed.
 Default-selected login launchers preserve discovery; explicit local choices
-stay fixed. Existing files are not migrated by discovery. See
+stay fixed. Known default-layout profile folders are reused to retain an existing
+KeeShare signing identity when the selected profile has none; existing selected
+identities and explicit profile separation are preserved. Existing files are not
+migrated by discovery. See
 [Configuration Layouts](configuration-layouts.md) for precedence, older launcher
 limitations and non-atomic race handling. Package/Python compilation only;
 no tests/harnesses or automated config/path/login/vault/GTK behavior runs.

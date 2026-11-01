@@ -56,6 +56,18 @@ adopt default discovery. This update does not rewrite a user's launcher or
 settings outside the application's normal preference save/launcher refresh.
 Vault credentials stay in the existing login-keyring workflow.
 
+The profile fingerprint still identifies the actual global/local files. For
+default-selected layouts, when the selected profile has no KeeShare signing
+identity, Keyslot reuses a known modern/cache default-profile folder containing
+an existing identity under the same canonical global INI. An identity already
+present in the selected profile always wins. No key is read, copied or replaced
+by this folder selection, and explicit local profiles remain separate. Imported
+word lists already follow the global INI's parent directory and need no move.
+This lookup cannot infer a historical nonstandard local symlink target after
+it disappears; such profiles need an explicit path. It also does not merge
+multiple existing identity folders or select an identity from another global
+profile. Native identity validation and reuse remain unchanged.
+
 References: upstream configuration behavior is GPL2-or-3; Keyslot's adapter is
 GPL3-only. This adds layout compatibility without changing the native2.7.12
 core or claiming every Qt6-encoded2.8 setting has been accepted.
