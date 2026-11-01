@@ -1,31 +1,35 @@
 """One destination-bound unlock request; never a credential or typing approval."""
 import os
+import time
+from collections import Counter
 import weakref
 from pathlib import Path
-from gi.repository import GLib
+from gi.repository import Adw, GLib, Gtk
 from . import autotype
 from .application import clear_dialog_fields
 
 
 class UnlockRequest:
-    def __init__(self, session, allow_automatic):
+    def __init__(self, session, allow_automatic, expires=None, expected_path=None):
         self.app = session.application
         self.owner = weakref.ref(session)
-        self.path = Path(session.path).resolve()
+        self.path = expected_path if expected_path is not None else Path(session.path).resolve()
         self.epoch = session.epoch
         self.allow_automatic = allow_automatic
         self.dialog = self.target = self.result = None
         self.closing = weakref.WeakSet()
         self.resetting = self.switching = self.cancelled = False
         self.watch = self.timer = 0
-        self.deadline = GLib.timeout_add(180000, self.expired)
+        self.expires = time.monotonic() + 180 if expires is None else expires
+        self.deadline = GLib.timeout_add(max(1, int((self.expires - time.monotonic()) * 1000)), self.expired)
         self.app.autotype_unlock = self
 
     def valid(self):
         session = self.owner()
         monitor = self.app.desktop_lock
         try:
-            return bool(not self.cancelled and self.app.autotype_unlock is self and not self.app.quitting
+            return bool(not self.cancelled and time.monotonic() < self.expires
+                and self.app.autotype_unlock is self and not self.app.quitting
                 and session and not session.jobs.closed and session in self.app.sessions
                 and self.app.active_session is session and session.epoch == self.epoch
                 and session.path and Path(session.path).resolve() == self.path
@@ -86,6 +90,61 @@ class UnlockRequest:
             self.resetting = False
         return self.valid()
 
+    def add_vault_choice(self, dialog, box):
+        choices = []
+        for session in self.app.sessions:
+            if session.jobs.closed or session.vault.unlocked or not session.path:
+                continue
+            try:
+                choices.append((weakref.ref(session), Path(session.path).resolve()))
+            except OSError:
+                continue
+        if len(choices) < 2:
+            return
+        owner = self.owner()
+        selected = next((index for index, (reference, _path) in enumerate(choices) if reference() is owner), None)
+        if selected is None:
+            return
+        names = Counter(path.name for _reference, path in choices)
+        labels = [path.name if names[path.name] == 1 else f"{path.name} · {path.parent}"
+                  for _reference, path in choices]
+        row = Adw.ComboRow(title="Vault", model=Gtk.StringList.new(labels), selected=selected,
+                           subtitle=str(self.path.parent), use_subtitle=False, use_markup=False)
+        group = Adw.PreferencesGroup()
+        group.add(row)
+        box.append(group)
+        def changed(*_):
+            index = row.get_selected()
+            if index == selected:
+                return
+            # Restore the old form's owner before attempting a provider handoff.
+            row.set_selected(selected)
+            if self.owns(dialog) and index < len(choices):
+                reference, path = choices[index]
+                self.switch_vault(reference(), path)
+        row.connect("notify::selected", changed)
+
+    def switch_vault(self, session, path):
+        owner = self.owner()
+        if not self.valid() or not owner or owner.busy:
+            return
+        if (not session or session not in self.app.sessions or session.jobs.closed or session.vault.unlocked
+                or session.busy or session.vault.finishing or session.file_requests
+                or any(dialog is not session.unlock_prompt for dialog in session.dialogs)):
+            owner.toast("That vault is no longer available to unlock. Finish its current operation and try again.")
+            return
+        try:
+            if not session.path or Path(session.path).resolve() != path:
+                owner.toast("That vault changed. Open it again before using Auto-Type.")
+                return
+        except OSError:
+            owner.toast("That vault path is no longer available.")
+            return
+        target, automatic, expires = self.target, self.allow_automatic, self.expires
+        self.cancel()
+        self.app.select_session(session, activate=False)
+        request(session, allow_automatic=automatic, target=target, expires=expires, captured=True, expected_path=path)
+
     def present(self, dialog):
         if not self.valid():
             clear_dialog_fields(dialog)
@@ -107,7 +166,7 @@ class UnlockRequest:
 
     def open(self, target=None):
         if not self.valid():
-            self.cancel()
+            self.cancel(lock=False)
             return
         self.target = target
         session = self.owner()
@@ -154,7 +213,7 @@ class UnlockRequest:
         return GLib.SOURCE_REMOVE
 
 
-def request(session, *, allow_automatic=True, global_shortcut=False):
+def request(session, *, allow_automatic=True, global_shortcut=False, target=None, expires=None, captured=False, expected_path=None):
     app = session.application
     if global_shortcut and any(item.host_window.is_active() for item in app.sessions):
         return
@@ -168,14 +227,19 @@ def request(session, *, allow_automatic=True, global_shortcut=False):
         return
     if app.desktop_lock and app.desktop_lock.blocked:
         return
+    if expires is not None and time.monotonic() >= expires:
+        session.toast("Auto-Type unlock request expired. Invoke Auto-Type again.")
+        return
     if app.active_session is None:
         app.active_session, app.window = session, session.host_window
     try:
-        pending = UnlockRequest(session, allow_automatic)
+        pending = UnlockRequest(session, allow_automatic, expires, expected_path)
     except OSError:
         session.error("The vault path is no longer available. Open it again before using Auto-Type.")
         return
-    if os.environ.get("XDG_SESSION_TYPE") == "wayland":
+    if captured:
+        pending.open(target)
+    elif os.environ.get("XDG_SESSION_TYPE") == "wayland":
         def failed(message):
             pending.cancel()
             app.select_session(session, activate=False)

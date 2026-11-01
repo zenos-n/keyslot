@@ -6,6 +6,8 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Unlock for Auto-Type now offers the other currently locked vault windows in every provider form, clears old provider input on handoff and preserves the captured destination/trust/original monotonic180-second expiry. Closed/busy/unlocked/path-changed choices and stale provider callbacks cannot redirect authentication. See [Unlock for Auto-Type](autotype-unlock.md). Runtime/Python compilation only, user manual multi-vault/provider/deadline/UI acceptance remains; no tests/harnesses or behavioral runs.
+
 Auto-Type can resume from a locked vault through existing master/key-file/hardware, quick and Polkit providers, with a bounded destination-bound request and cancellation guards. Stock relock now affects only a vault opened for that flow; selector Copy stays open. See [Unlock for Auto-Type](autotype-unlock.md) for lifecycle changes, recovery behavior and manual limits. Runtime/Python compilation only; no new tests/harnesses or behavioral runs.
 
 Auto-Type chooser search now uses native query syntax for all initially unlocked vaults and preserves distinct default/custom association sequences. Window matches retain a separate wildcard scope. Async query/scope/context guards clear stale actions; Enter waits for current results. See [Chooser Search](autotype-search.md). Native/runtime compilation only; user manual search/keyboard/race/platform acceptance remains, with no tests/harnesses or automated behavior runs.

@@ -8,6 +8,18 @@ fallbacks retain this specific request. No credential is retained in the request
 object and no login-keyring unlock is started implicitly. If an unlocked vault
 already exists, the existing multi-vault matching path still uses it.
 
+When multiple open vaults are locked, **Vault** appears in each provider's form.
+Choose another locked vault without leaving the Auto-Type workflow. Duplicate
+filenames include their parent path. The old provider form is closed and cleared,
+then the selected vault's own master/quick/system provider and remembered key
+components are used. No credential or provider state is transferred. Choices
+use weak window references and captured canonical paths; a closed, busy,
+already-unlocked or changed vault is rejected, with the old selection restored.
+Selection during authentication does not redirect the in-flight operation.
+The original destination, caller policy and monotonic expiry are preserved;
+switching vaults or providers never recaptures a target or restarts the timeout.
+Vaults opened after a form was built require a new invocation. There are no tabs.
+
 The unlock form says **Unlock for Auto-Type**. After authentication, the exact
 current snapshot/native identity/generation/path are checked, closing unlock
 animations and existing credential-remembrance work are allowed to finish, and
@@ -17,7 +29,8 @@ hide/cancel the continuation. On X11, the existing explicit destination chooser
 opens after unlocking; no active-window-capture parity is claimed.
 
 The pending request expires after180 seconds, earlier than the companion's240
-second lease. It serializes with ordinary Auto-Type flows. Canceling a form,
+second lease. Expiry is also checked directly against monotonic time, even if
+the GTK timeout callback has been delayed. It serializes with ordinary Auto-Type flows. Canceling a form,
 hiding/closing/switching its vault window, explicit locking, login unlock,
 an unrelated dialog/error, path/session changes, desktop locking or shutdown
 ends it. In-flight authentication is canceled through the existing session lock
@@ -57,8 +70,9 @@ clipboard, portal, browser, profile or vault runs were added/performed. Manual
 acceptance remains for all providers/fallbacks and wrong credentials, recovery,
 initially hidden windows, X11/Wayland capture and expired leases, verified/untrusted
 callers, repeated requests, all cancellation/timer/authentication/animation/save
-races, multiple vaults, Copy/lock clearing and relock on/off. Choosing another
-locked vault inside the unlock form, sort preferences, portal persistence and
+races, multiple vaults, duplicate names, stale/busy/closed choices, repeated
+vault/provider switches with the original deadline, old-provider callbacks,
+Copy/lock clearing and relock on/off. Sort preferences, portal persistence and
 clipboard typing, global shortcut preferences, full Qt6/native2.8 migration,
 platform/accessibility acceptance and broader parity remain open. No production
 readiness or complete replacement claim is established.

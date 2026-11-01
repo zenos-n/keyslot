@@ -37,8 +37,7 @@ and focus leases retain their existing expiry and validation.
 This adds the selection-memory workflow, not a complete Auto-Type parity claim.
 [Chooser Search](autotype-search.md) now preserves native query syntax and association
 variants. [Locked-vault resumption](autotype-unlock.md) and immediate temporary-vault
-relocking are implemented. Sort preferences, choosing another locked vault in
-the unlock form, portal
+relocking and a locked-vault chooser are implemented. Sort preferences, portal
 persistence/clipboard typing and broader platform behavior remain separate gaps.
 Confirmation preferences follow the linked policy.
 

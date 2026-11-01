@@ -17,6 +17,8 @@ def unlock(session, path, allow_recovery=False, resume=None):
     state = {"closed": False, "working": False}
     box.append(Gtk.Image(icon_name="changes-prevent-symbolic", pixel_size=64))
     box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
+    if resume:
+        resume.add_vault_choice(dialog, box)
     box.append(Gtk.Label(label="Authenticate using your system's agent. It may offer your login password or configured biometrics. "
                          "A hardware key may still require a touch afterward.", xalign=0, wrap=True))
     status = Gtk.Label(wrap=True, xalign=0)

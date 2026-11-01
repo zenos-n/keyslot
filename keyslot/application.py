@@ -477,6 +477,8 @@ class VaultSession:
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         box.append(Gtk.Image(icon_name="changes-prevent-symbolic", pixel_size=64))
         box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
+        if resume:
+            resume.add_vault_choice(dialog, box)
         if reopen:
             box.append(Gtk.Label(label="The vault changed elsewhere. Enter its current credential. Your previous data stays open until unlocking succeeds.", wrap=True))
         group = Adw.PreferencesGroup()
@@ -610,6 +612,8 @@ class VaultSession:
         toolbar.add_top_bar(Adw.HeaderBar())
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
+        if resume:
+            resume.add_vault_choice(dialog, box)
         password = Adw.PasswordEntryRow(title="Short Password")
         group = Adw.PreferencesGroup()
         group.add(password)
