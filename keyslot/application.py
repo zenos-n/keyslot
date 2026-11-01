@@ -107,6 +107,8 @@ class VaultSession:
         self.jobs = SessionJobs(self.vault, GLib.idle_add, self._changed, self._clear, self.error)
         if host_window:
             application.clipboards.watch(host_window.get_display())
+        from .window_behavior import WindowBehavior
+        self.windows = WindowBehavior(self)
         self.files = FileChanges(self)
         self.urls = url_views.UrlController(self)
         self.totp = totp_views.TotpController(self)
@@ -147,6 +149,7 @@ class VaultSession:
         self.emit_state()
 
     def _clear(self):
+        self.windows.cancel()
         self.pending_unlock = None
         if self.window:
             self.window.show_locked()
@@ -207,7 +210,12 @@ class VaultSession:
             credentials = self.application.login_keyring().lookup(path, request)
             request.set_error_if_cancelled()
             return self.vault.unlock(path, **credentials)
-        self.run_keyring_job(unlock, self.window.show_vault)
+        self.run_keyring_job(unlock, self.show_unlocked)
+
+    def show_unlocked(self, snapshot):
+        self.window.show_vault(snapshot)
+        if self.vault.unlocked and snapshot is self.vault.snapshot and self.window.snapshot is snapshot:
+            self.windows.unlocked()
 
     def lock(self):
         self.jobs.lock()
@@ -237,6 +245,7 @@ class VaultSession:
         save_as(self)
 
     def shutdown(self):
+        self.windows.close()
         self.previews.close()
         self.files.stop()
         self.totp.clear()
@@ -247,6 +256,7 @@ class VaultSession:
         self.icons.close()
 
     def deactivate(self):
+        self.windows.cancel()
         self.totp.clear()
         self.view_epoch += 1
         self.cancel_file_requests()
@@ -295,10 +305,12 @@ class VaultSession:
         if not self.active or self.jobs.closed:
             clear_dialog_fields(dialog)
             return False
+        self.windows.cancel()
         self.dialogs.append(dialog)
         dialog.connect("closed", lambda d: self.dialogs.remove(d) if d in self.dialogs else None)
         dialog.connect("closed", lambda *_: self.files.resume())
         dialog.connect("closed", lambda *_: self.application.shortcuts.refresh_state())
+        dialog.connect("closed", lambda *_: self.windows.finish_unlock())
         dialog.present(self.host_window)
         self.application.shortcuts.refresh_state()
         return True
@@ -330,9 +342,14 @@ class VaultSession:
         self.application.clipboards.clear(self)
         return GLib.SOURCE_REMOVE
 
+    def copy_entry(self, value):
+        if self.copy(value):
+            self.windows.copied()
+
     def choose_file(self, callback, save=False, name=None, kdbx=False, folder=False):
         if not self.active or self.jobs.closed:
             return
+        self.windows.cancel()
         epoch, view_epoch = self.epoch, self.view_epoch
         cancellable = Gio.Cancellable()
         self.file_requests.add(cancellable)
@@ -503,8 +520,10 @@ class VaultSession:
                     self.quick_attempts = 0
                     self.apply_refreshed(snapshot)
                     self.files.refreshed()
-                else:
+                elif create or import_options:
                     self.window.show_vault(snapshot)
+                else:
+                    self.show_unlocked(snapshot)
                 self.remember_unlocked({"password": secret, "keyfile": key,
                                         "yubikey": hardware, "no_password": key_only})
             def failed(message):
@@ -565,7 +584,7 @@ class VaultSession:
                     raise
             def opened(snapshot):
                 self.quick_attempts = 0
-                self.window.show_vault(snapshot)
+                self.show_unlocked(snapshot)
             self.run_job(open_vault, opened)
         def use_full(*_):
             dialog.close()
@@ -1484,7 +1503,7 @@ class DatabaseView(Gtk.Box):
         for name in entry.attributes:
             row = Adw.ActionRow(title=GLib.markup_escape_text(name), subtitle="Copy or edit this attribute")
             row.add_suffix(button("edit-copy-symbolic", "Copy " + name, lambda n=name: self.app.run_job(
-                lambda: self.app.vault.attribute(entry, n), self.app.copy)))
+                lambda: self.app.vault.attribute(entry, n), self.app.copy_entry)))
             row.add_suffix(button("document-edit-symbolic", "Edit " + name, lambda n=name: self.app.edit_attribute(entry, n)))
             custom.add(row)
         custom_add = Adw.ActionRow(title="Add Custom Attribute…", activatable=True)

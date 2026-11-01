@@ -317,4 +317,4 @@ def invoke_entry(session, operation):
         session.totp.copy(entry, combined=operation == "password-totp")
     else:
         name = {"title": "Title", "username": "UserName", "password": "Password", "url": "URL", "notes": "Notes"}[operation]
-        session.run_job(lambda: session.vault.attribute(entry, name), session.copy)
+        session.run_job(lambda: session.vault.attribute(entry, name), session.copy_entry)

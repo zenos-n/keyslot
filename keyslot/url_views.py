@@ -181,11 +181,7 @@ class UrlController:
     def _minimize(self):
         session = self.session
         if session.active and session.application.startup.minimize_on_url:
-            if session.application.background_enabled:
-                session.host_window.set_visible(False)
-                session.application.emit_state()
-            else:
-                session.host_window.minimize()
+            session.windows.minimize()
 
     def _linked(self, item):
         app = self.session.application
@@ -259,6 +255,7 @@ class UrlController:
                     except (OSError, ValueError, VaultError) as exc:
                         target.error(str(exc))
                     app.select_session(target)
+                    target.windows.unlocked()
                 if not target.run_job(accept, accepted):
                     item.target_owned = False
                     self.fail(item, "The destination is busy. Open the link again.")

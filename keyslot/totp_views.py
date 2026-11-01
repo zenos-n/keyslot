@@ -109,7 +109,7 @@ class TotpController:
         if not entry.totp:
             self.setup(entry)
         else:
-            self.session.run_job(lambda: self.session.vault.copy_totp(entry, combined), self.session.copy)
+            self.session.run_job(lambda: self.session.vault.copy_totp(entry, combined), self.session.copy_entry)
 
     def row(self, entry):
         row = Adw.ActionRow(title="One-Time Password", subtitle="Reveal or copy the current verification code", activatable=True)

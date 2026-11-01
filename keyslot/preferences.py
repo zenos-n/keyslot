@@ -200,18 +200,8 @@ def show(session):
     page.add(security)
     from .privacy_views import preferences as privacy_preferences
     privacy_preferences(session, page)
-    links = Adw.PreferencesGroup(title="Links")
-    minimize = Adw.SwitchRow(title="Minimize After Opening Links", active=settings.minimize_on_url,
-        subtitle="Hide this window when background mode is enabled")
-    def changed_minimize(*_):
-        try:
-            settings.save(settings.remember, settings.login, settings.vault, minimize_on_url=minimize.get_active())
-        except (OSError, ValueError, VaultError) as exc:
-            session.error(str(exc))
-            minimize.set_active(settings.minimize_on_url)
-    minimize.connect("notify::active", changed_minimize)
-    links.add(minimize)
-    page.add(links)
+    from .window_behavior import preferences as window_preferences
+    window_preferences(session, page, background)
     keyboard = Adw.PreferencesGroup(title="Keyboard")
     shortcuts = Adw.ActionRow(title="Keyboard Shortcuts…", subtitle="Customize application shortcuts and restore defaults", activatable=True)
     shortcuts.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))

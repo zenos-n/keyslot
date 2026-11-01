@@ -14,7 +14,18 @@ and minimize locking considers both clipboard deadlines. Clipboard managers can
 ignore the hint or retain previously read data. Runtime/Python compilation only;
 no tests/harnesses or automated clipboard/GUI/vault behavior runs. Manual
 X11/Wayland, multi-window, selection, timeout and clipboard-manager acceptance
-remains open, along with copy/minimize preferences.
+remains open.
+
+[Window Behavior](window-behavior.md) adds stock copy/minimize/lower, minimize
+after unlock and minimize-to-background preferences with INI mappings. Entry
+copies and successful unlocks share guarded session/window hooks; link actions
+use the same hide/minimize policy. Lowering uses companion version2/package0.2.0
+with current bus-owner, focused GTK unique-bus/window-path and compositor-state
+guards, no credentials or keyboard data. An absent/old companion fails with a
+nonblocking message. Package/Python compilation and JavaScript syntax parsing
+only; no tests/harnesses or automated desktop/config/auth/vault behavior runs.
+Every real unlock path, focus/lock/dialog race, hide/minimize/relock, extension
+upgrade and multi-window/X11/Wayland behavior remains manual acceptance.
 
 Entry/group Properties now expose identity, activity and counts, plus paged
 name-only plugin data and explicit sensitive inspect/copy/export. Selected removal
@@ -468,4 +479,5 @@ preview truncation and unchanged full Copy. Lifecycle/cancellation guards and
 passive queue behavior are documented in [Entry privacy](entry-privacy.md).
 Native/package/Python compilation is the only validation for this revision;
 actual privacy, reference, focus/selection/lock, config and clipboard behavior
-remains user-manual. Copy/minimize/background preferences are still open work.
+remains user-manual. Copy/minimize/background preferences are now implemented in
+[Window Behavior](window-behavior.md), with manual desktop acceptance open.

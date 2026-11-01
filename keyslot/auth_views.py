@@ -61,7 +61,7 @@ def unlock(session, path, allow_recovery=False):
                 return
             clear()
             dialog.force_close()
-            session.window.show_vault(snapshot)
+            session.show_unlocked(snapshot)
         session.run_job(operation, finished)
     def fallback(use_short=False):
         if not current() or state["working"]:

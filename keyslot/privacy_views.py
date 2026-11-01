@@ -23,7 +23,7 @@ class Field:
         self.row.add_suffix(self.toggle)
         copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Copy " + title, valign=Gtk.Align.CENTER)
         copy.connect("clicked", lambda *_: controller.session.run_job(
-            lambda: controller.session.vault.attribute(entry, name), controller.session.copy))
+            lambda: controller.session.vault.attribute(entry, name), controller.session.copy_entry))
         self.row.add_suffix(copy)
         self.buffer = None
         if notes:

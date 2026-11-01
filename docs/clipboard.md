@@ -54,4 +54,5 @@ vault or desktop behavior runs were added or performed. Manual acceptance is
 still needed for repeated/empty/Unicode copies, native editing and middle-click
 selection, replacement by another app, multiple vaults/displays, timeout changes,
 Never, mask/refresh/lock/hide/close, clipboard managers and X11/Wayland backends.
-Copy/minimize/background preferences remain separate implementation work.
+Copy/minimize/background preferences are now implemented in
+[Window Behavior](window-behavior.md), with manual desktop acceptance pending.

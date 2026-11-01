@@ -353,7 +353,7 @@ class PasswordInput:
                 session.activate()
                 self.epoch = session.epoch
             else:
-                session.window.show_vault(snapshot)
+                session.show_unlocked(snapshot)
                 session.remember_unlocked({"password": password, "keyfile": keyfile,
                                            "yubikey": hardware, "no_password": key_only})
             GLib.idle_add(self.next)

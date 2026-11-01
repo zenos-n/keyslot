@@ -65,5 +65,6 @@ Compilation-only candidate, no new tests/harnesses or automated native/GTK/vault
 clipboard/profile behavior runs. Actual reveal/hide/focus/lock/selection races,
 field references, empty/large/Unicode fields, config migration/conflicts, notes
 scrolling/monospace, clipboard, accessibility and desktop acceptance remain for
-user manual stress testing. Copy/minimize/background preferences remain separate
-implementation work; this batch does not claim those gaps are closed.
+user manual stress testing. Copy/minimize/background preferences are now
+implemented in [Window Behavior](window-behavior.md); their manual desktop
+acceptance remains open.

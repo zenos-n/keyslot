@@ -392,8 +392,12 @@ vault is selected, and failed credentials fall back to its unlock screen.
 Locking cancels pending launches and prevents late helper results from opening a
 vault. Linked openings update the remembered path; automatic login-keyring
 enrollment of the linked credential remains unfinished and currently requires
-explicit enrollment through Preferences. **Minimize After Opening Links** hides
-the origin window when background mode is enabled, otherwise requests minimization.
+explicit enrollment through Preferences. **Preferences → Window Behavior**
+controls minimize after opening links or unlocking, and minimize/lower after
+copying entry data. **Hide Instead of Minimize** hides the origin window only
+when Run in Background is enabled; otherwise it minimizes. Lowering requires
+companion version2/package0.2.0. See [Window Behavior](docs/window-behavior.md)
+for stock settings mappings, cancellation rules and pending manual acceptance.
 
 ## Entry actions
 

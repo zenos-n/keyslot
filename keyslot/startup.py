@@ -12,6 +12,8 @@ SECRET_SERVICE_DEFAULTS = dict(enabled=False, confirm_access=True, confirm_delet
 LOCK_DEFAULTS = dict(lock_on_screen=True, lock_on_user_switch=True, lock_on_minimize=False)
 PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_preview=True,
                         monospace_notes=False, password_empty_placeholder=False)
+WINDOW_DEFAULTS = dict(hide_window_on_copy=False, minimize_on_copy=True, drop_to_background_on_copy=False,
+                       minimize_after_unlock=False, minimize_to_background=False)
 
 
 def _autotype_options(value):
@@ -88,6 +90,8 @@ class Startup:
             setattr(self, name, value)
         for name, value in PRIVACY_DEFAULTS.items():
             setattr(self, name, value)
+        for name, value in WINDOW_DEFAULTS.items():
+            setattr(self, name, value)
         self.ssh = False
         self.ssh_socket = self.ssh_provider = ""
         self.autotype = dict(AUTO_TYPE_DEFAULTS)
@@ -112,6 +116,10 @@ class Startup:
                 if type(value) is bool:
                     setattr(self, name, value)
             for name, default in PRIVACY_DEFAULTS.items():
+                value = data.get(name, default)
+                if type(value) is bool:
+                    setattr(self, name, value)
+            for name, default in WINDOW_DEFAULTS.items():
                 value = data.get(name, default)
                 if type(value) is bool:
                     setattr(self, name, value)
@@ -187,7 +195,9 @@ class Startup:
              ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
              minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None,
              auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None,
-             hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None):
+             hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None,
+             hide_window_on_copy=None, minimize_on_copy=None, drop_to_background_on_copy=None,
+             minimize_after_unlock=None, minimize_to_background=None):
         with self.mutex:
             locks = {name: getattr(self, name) if value is None else value for name, value in (
                 ("lock_on_screen", lock_on_screen), ("lock_on_user_switch", lock_on_user_switch), ("lock_on_minimize", lock_on_minimize))}
@@ -198,6 +208,12 @@ class Startup:
                 ("monospace_notes", monospace_notes), ("password_empty_placeholder", password_empty_placeholder))}
             if any(type(value) is not bool for value in privacy.values()):
                 raise ValueError("Choose supported entry privacy switches.")
+            windows = {name: getattr(self, name) if value is None else value for name, value in (
+                ("hide_window_on_copy", hide_window_on_copy), ("minimize_on_copy", minimize_on_copy),
+                ("drop_to_background_on_copy", drop_to_background_on_copy),
+                ("minimize_after_unlock", minimize_after_unlock), ("minimize_to_background", minimize_to_background))}
+            if any(type(value) is not bool for value in windows.values()):
+                raise ValueError("Choose supported window behavior switches.")
             background = self.background if background is None else bool(background)
             autotype = _autotype_options(self.autotype if autotype is None else autotype)
             keeshare = _keeshare_options(self.keeshare if keeshare is None else keeshare)
@@ -260,6 +276,7 @@ class Startup:
                        "vault": str(vault) if vault else None}
                 data.update(locks)
                 data.update(privacy)
+                data.update(windows)
                 if seconds != timeout * 60:
                     data["lock_seconds"] = seconds
                 if clipboard_seconds != 20:
@@ -289,6 +306,8 @@ class Startup:
             for name, value in locks.items():
                 setattr(self, name, value)
             for name, value in privacy.items():
+                setattr(self, name, value)
+            for name, value in windows.items():
                 setattr(self, name, value)
             self.ssh, self.ssh_socket, self.ssh_provider = ssh, ssh_socket, ssh_provider
             self.autotype = autotype
