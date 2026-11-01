@@ -549,6 +549,8 @@ class MainWindow(Adw.ApplicationWindow):
     def attach(self, session):
         self.session = session
         self.set_content(session.window)
+        from . import drag_drop
+        drag_drop.window_files(session, self)
         for name, method in [("open", "choose_database"), ("new", "new_database"), ("lock", "request_lock"),
                              ("save", "save"),
                              ("save-as", "save_as"),

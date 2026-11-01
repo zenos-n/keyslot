@@ -20,6 +20,17 @@ def descendants(snapshot, root):
     return result
 
 
+def cancel_transfer(transfer, *sessions):
+    transfer.cancelled = True
+    for session in sessions:
+        if not session.jobs.closed:
+            try:
+                session.jobs.executor.submit(transfer.cancel)
+                return
+            except RuntimeError:
+                continue
+
+
 def choose(session, entries=(), source_group=""):
     if session.busy or not session.vault.unlocked:
         return
@@ -85,7 +96,9 @@ def choose(session, entries=(), source_group=""):
     session.present_dialog(dialog)
 
 
-def _review(source, destination, transfer, state):
+def _review(source, destination, transfer, state, presenter=None):
+    presenter = presenter or source
+    epochs = source.epoch, destination.epoch
     move = transfer.source_ticket["move"]
     names = [item["title"] for item in transfer.source_ticket["entries"]]
     count = transfer.source_ticket["count"]
@@ -104,6 +117,13 @@ def _review(source, destination, transfer, state):
         body = (transfer.source_ticket["group_name"] + f"\n{group_count} {group_word} and {count} {entry_word}, including nested groups."
                 + "\nGroup settings, including Auto-Type and KeeShare, are retained. Review shared-file paths in the destination.")
     body += f"\n\nFrom: {source.vault.snapshot.name or Path(source.path).name}\n{transfer.source_ticket['path']}\n\nTo: {target_name}\n{target_path}\nGroup: {group_name}"
+    if transfer.position >= 0:
+        position = transfer.position
+        if move and source is destination:
+            siblings = [item.identity for item in source.vault.snapshot.groups if item.parent == transfer.group]
+            if transfer.source_group in siblings and position > siblings.index(transfer.source_group):
+                position -= 1
+        body += f"\nInsert at position {position + 1} among the destination group's subgroups."
     if move and source is not destination:
         body += "\n\nThe destination will be saved before the originals are removed."
     if not source.application.startup.auto_save:
@@ -120,22 +140,22 @@ def _review(source, destination, transfer, state):
             return
         state["phase"] = "running" if choice == "apply" else "cancelled"
         if choice != "apply":
-            transfer.cancelled = True
-            source.jobs.executor.submit(transfer.cancel)
+            cancel_transfer(transfer, source, destination)
             return
-        if destination.jobs.closed or destination.busy or (destination is not source and destination.dialogs):
-            transfer.cancelled = True
-            source.jobs.executor.submit(transfer.cancel)
-            source.error("The destination is busy or closed. Choose it again.")
+        if (source.jobs.closed or source.busy or not source.vault.unlocked
+            or destination.jobs.closed or destination.busy or not destination.vault.unlocked
+            or any(item is not alert for item in destination.dialogs)
+            or any(item is not alert for item in source.dialogs)):
+            cancel_transfer(transfer, source, destination)
+            presenter.error("A transfer vault is busy, locked or closed. Choose the destination again.")
             return
         def destination_done(value):
             destination.window.selected_group = value.get("root_group") or transfer.group
             destination.window.show_vault(destination.vault.snapshot)
         if source is not destination:
             if not destination.run_job(transfer.receive, destination_done, lambda _message: None):
-                transfer.cancelled = True
-                source.jobs.executor.submit(transfer.cancel)
-                source.error("The destination is busy. Try again.")
+                cancel_transfer(transfer, source, destination)
+                presenter.error("The destination is busy. Try again.")
                 return
         def done(outcome):
             state["phase"] = "done"
@@ -156,16 +176,33 @@ def _review(source, destination, transfer, state):
                     body = "The destination contains a saved copy. The original was kept.\n\n" + outcome.message if outcome.copied else outcome.message
                 notice = Adw.AlertDialog(heading=title, body=body, body_use_markup=False)
                 notice.add_response("close", "Close")
-                if source.active:
-                    source.present_dialog(notice)
+                if presenter.active:
+                    presenter.present_dialog(notice)
                 else:
-                    source.error(title + "\n\n" + body)
+                    presenter.error(title + "\n\n" + body)
             else:
                 item = "Group" if grouped else "Entry" if count == 1 else f"{count} entries"
-                source.toast(item + (" moved" if outcome.moved else " copied"))
+                presenter.toast(item + (" moved" if outcome.moved else " copied"))
         if not source.run_job(transfer.send, done):
-            transfer.cancelled = True
-            source.jobs.executor.submit(transfer.cancel)
-            source.error("The source is busy. The transfer was cancelled.")
+            cancel_transfer(transfer, source, destination)
+            presenter.error("The source is busy. The transfer was cancelled.")
     alert.connect("response", response)
-    source.present_dialog(alert)
+    def release():
+        if state["phase"] == "review":
+            state["phase"] = "cancelled"
+            cancel_transfer(transfer, source, destination)
+        return False
+    alert.connect("closed", lambda *_: GLib.idle_add(release))
+    if not presenter.present_dialog(alert):
+        release()
+        return
+    def watch():
+        if state["phase"] != "review":
+            return False
+        if (source.jobs.closed or destination.jobs.closed or not source.vault.unlocked or not destination.vault.unlocked
+            or (source.epoch, destination.epoch) != epochs):
+            release()
+            alert.force_close()
+            return False
+        return True
+    GLib.timeout_add(250, watch)

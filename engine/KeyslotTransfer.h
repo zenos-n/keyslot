@@ -29,6 +29,7 @@ class KeyslotTransfer {
         QStringList entries, groups;
         qint64 expires;
         int sourcePid;
+        int position = -1;
     };
     QElapsedTimer clock;
     QHash<QString, Source> sources;

@@ -11,15 +11,15 @@ def _count(entries, groups):
     return " and ".join(parts)
 
 
-def choose(session, action="delete", entries=(), groups=(), bulk=False):
+def choose(session, action="delete", entries=(), groups=(), bulk=False, destination=""):
     if session.busy or not session.vault.unlocked:
         return
     entries, groups = list(entries), list(groups)
     session.run_job(lambda: session.vault.review_trash(action, entries, groups),
-                    lambda review: _review(session, action, review, bulk))
+                    lambda review: _review(session, action, review, bulk, destination))
 
 
-def _review(session, action, review, bulk):
+def _review(session, action, review, bulk, initial_destination=""):
     token = review["token"]
     state = {"phase": "review"}
 
@@ -71,6 +71,13 @@ def _review(session, action, review, bulk):
         options = Adw.PreferencesGroup()
         dropdown = Adw.ComboRow(title="Destination", model=Gtk.StringList.new(
             ["Original Locations"] + [item["path"] for item in destinations]))
+        if initial_destination:
+            index = next((index for index, item in enumerate(destinations) if item["id"] == initial_destination), None)
+            if index is None:
+                cancel()
+                session.error("The drop destination is no longer available for restoration.")
+                return
+            dropdown.set_selected(index + 1)
         options.add(dropdown)
         dialog.set_extra_child(options)
     dialog.add_response("cancel", "Cancel")
@@ -94,6 +101,8 @@ def _review(session, action, review, bulk):
             state["phase"] = "done"
             if bulk:
                 session.window.set_selection_mode(False)
+            if restore and destination:
+                session.window.selected_group = destination
             session.apply_refreshed(snapshot)
             session.toast("Items restored" if restore else "Recycle bin emptied" if action == "empty" else "Items deleted")
 

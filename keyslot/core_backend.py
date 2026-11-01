@@ -1414,11 +1414,13 @@ class Vault:
                 self._entry(entry)
             return self._snapshot_call("entries.recycle", entries=[entry.uuid for entry in entries])
 
-    def listen_transfer(self, source, group):
+    def listen_transfer(self, source, group, position=-1):
         with self._mutex:
+            if position >= 0 and "transfer-position" not in self.capabilities:
+                raise VaultError("Update the native engine before choosing a group insertion position.")
             return self._rpc("transfer.listen", source_pid=source["pid"], source_token=source["token"],
                              source_path=source["path"], entries=source["ids"], groups=source["groups"],
-                             source_group=source["source_group"], group=group)
+                             source_group=source["source_group"], group=group, position=position)
 
     def transfer_request(self, operation, **params):
         if operation not in ("send", "receive", "finish", "local", "cancel"):
@@ -1501,6 +1503,18 @@ class Vault:
             if not source.is_file():
                 raise VaultError("Choose a regular attachment file.")
             return self._snapshot_call("attachment.import", entry=entry.uuid, name=name, source=str(source), replace=replace)
+
+    def inspect_attachment_files(self, identifier, files):
+        with self._mutex:
+            if "attachment-files" not in self.capabilities:
+                raise VaultError("Update the native engine before importing dropped attachment files.")
+            return self._rpc("attachment.files.inspect", entry=identifier,
+                             files=[{"path": str(path), "name": Path(path).name} for path in files])
+
+    def import_attachment_files(self, identifier, review, replace=False):
+        with self._mutex:
+            return self._snapshot_call("attachment.files.import", entry=identifier, files=review["files"],
+                                       revision=review["revision"], replace=replace)
 
     def remove_attachment(self, entry, name):
         with self._mutex:

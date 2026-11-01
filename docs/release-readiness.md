@@ -421,3 +421,9 @@ preferences, import/export coverage and accessibility remain open.
 The supported target is Linux/GNOME; one window per database replaces tabs at
 the user's request. Platform-specific Windows/macOS features must be explicitly
 scoped rather than counted as implemented on GNOME.
+
+Drag-and-drop now has app-local entry/group payloads, Ctrl-copy, sibling group
+positions, reviewed recycle/restore, KDBX file opening and revision/source-bound
+attachment batches. [Limits and manual acceptance](../engine/DragAndDrop.md)
+remain open, including cross-vault recycled-item/copy behavior and actual GTK
+drag negotiation, cancellation, modifiers, save/recovery and accessibility.

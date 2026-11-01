@@ -839,3 +839,16 @@ The packaged action must be installed system-wide; `nix run` alone cannot instal
 it. Read [requirements and limits](engine/PolkitUnlock.md). Native vault helpers
 still die on lock. This candidate has compilation evidence only and awaits
 manual GNOME authentication/lifecycle acceptance.
+
+## Drag and drop
+
+Drag entries or groups to a sidebar group; hold Ctrl to copy. In selection mode,
+use an entry's grip to drag the selection. Drop a group near a row's upper/lower
+edge to position it among siblings. The destination window asks you to review
+the move or copy. Recycle-bin drops use the existing recycle/restore review.
+
+Drop local `.kdbx` files on the window to open them, or regular files on an
+entry's Attachments section to review a batch. Matching attachment names require
+explicit replacement consent. Batches allow 32 files/256 MiB; larger individual
+files can use Add Attachment. [Implementation and limits](engine/DragAndDrop.md).
+This candidate has compilation evidence only; pointer/desktop acceptance is pending.

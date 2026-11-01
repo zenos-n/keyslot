@@ -48,6 +48,13 @@ int pid(const QJsonObject& args, const char* key) {
         reject("invalid_request", "The transfer peer is invalid.");
     return int(number);
 }
+int position(const QJsonObject& args, const Group* target, bool group) {
+    if (!args.contains("position")) return -1;
+    const auto value = args.value("position"); const auto n = value.toDouble(-2);
+    if (!value.isDouble() || !std::isfinite(n) || std::floor(n) != n || n < -1 || n > target->children().size() || (!group && n != -1))
+        reject("invalid_request", "The reviewed group insertion position is invalid.");
+    return int(n);
+}
 QStringList identifiers(const QJsonObject& args, const char* field = "entries", bool allowEmpty = false) {
     if (!args.value(field).isArray() || (!allowEmpty && args.value(field).toArray().isEmpty()))
         reject("invalid_request", "Choose items to transfer.");
@@ -286,6 +293,7 @@ QJsonObject KeyslotTransfer::listen(const QSharedPointer<Database>& db, const QJ
     pending.group = text(args, "group", 64);
     const auto* group = db->rootGroup()->findGroupByUuid(QUuid(pending.group));
     if (!group || group->isRecycled()) reject("invalid_request", "Choose a destination group outside the recycle bin.");
+    pending.position = position(args, group, !pending.sourceGroup.isEmpty());
     const auto runtime = qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY", QDir::tempPath());
     pending.directory = QSharedPointer<QTemporaryDir>::create(runtime + "/transfer-XXXXXX");
     if (!pending.directory->isValid()) reject("file_error", "The private transfer directory could not be created.");
@@ -297,7 +305,7 @@ QJsonObject KeyslotTransfer::listen(const QSharedPointer<Database>& db, const QJ
     pending.expires = clock.elapsed() + 120000;
     const auto id = token(); destinations.insert(id, pending);
     return {{"token", id}, {"socket", socket}, {"pid", int(::getpid())}, {"path", db->filePath()},
-            {"group", uid(group->uuid())}, {"group_name", group->fullPath()}, {"name", db->metadata()->name()}};
+            {"group", uid(group->uuid())}, {"group_name", group->fullPath()}, {"name", db->metadata()->name()}, {"position", pending.position}};
 }
 QJsonObject KeyslotTransfer::send(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint) {
     const auto id = text(args, "token", 64);
@@ -388,6 +396,7 @@ QJsonObject KeyslotTransfer::receive(const QSharedPointer<Database>& db, const Q
         reject("invalid_request", "The transfer does not contain the reviewed entries and groups.");
     auto* group = db->rootGroup()->findGroupByUuid(QUuid(pending.group));
     if (!group || group->isRecycled()) reject("conflict", "The destination group changed before saving.");
+    if (pending.position > group->children().size()) reject("conflict", "The reviewed group position changed before saving.");
     QJsonArray imported, importedGroups;
     QString importedRoot;
     commit([&] {
@@ -405,7 +414,7 @@ QJsonObject KeyslotTransfer::receive(const QSharedPointer<Database>& db, const Q
         if (!pending.sourceGroup.isEmpty()) {
             auto* copy = children.first()->clone(Entry::CloneCopy);
             freshIds(copy, db.data()); remapIcons(copy, icons);
-            copy->setParent(group); importedRoot = uid(copy->uuid());
+            copy->setParent(group, pending.position); importedRoot = uid(copy->uuid());
             for (const auto* item : copy->entriesRecursive()) imported.append(uid(item->uuid()));
             for (const auto* item : copy->groupsRecursive(true)) importedGroups.append(uid(item->uuid()));
         } else for (const auto* original : capsule->rootGroup()->entries()) {
@@ -455,13 +464,16 @@ QJsonObject KeyslotTransfer::local(const QSharedPointer<Database>& db, const QJs
     Group* sourceGroup = pending.sourceGroup.isEmpty() ? nullptr : transferGroup(db.data(), pending.sourceGroup);
     if (sourceGroup && sourceGroup->findGroupByUuid(target->uuid()))
         reject("invalid_request", "A group cannot be copied or moved inside itself.");
+    auto insertion = position(args, target, sourceGroup != nullptr);
+    if (sourceGroup && pending.move && sourceGroup->parentGroup() == target && insertion >= 0
+        && insertion > target->children().indexOf(sourceGroup)) --insertion;
     QJsonArray result, resultGroups;
     QString root;
     commit([&] {
       if (sourceGroup) {
         auto* copy = pending.move ? sourceGroup : sourceGroup->clone(Entry::CloneCopy);
         if (!pending.move) freshIds(copy, db.data());
-        copy->setParent(target); root = uid(copy->uuid());
+        copy->setParent(target, insertion); root = uid(copy->uuid());
         for (const auto* item : copy->entriesRecursive()) result.append(uid(item->uuid()));
         for (const auto* item : copy->groupsRecursive(true)) resultGroups.append(uid(item->uuid()));
       } else for (auto* original : entries(db.data(), pending.entries)) {

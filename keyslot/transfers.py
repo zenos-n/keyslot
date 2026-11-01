@@ -19,10 +19,11 @@ class Outcome:
 
 
 class EntryTransfer:
-    def __init__(self, source, destination, entries, group, move, source_group=""):
+    def __init__(self, source, destination, entries, group, move, source_group="", position=-1):
         self.source, self.destination = source, destination
         self.entries, self.group, self.move = list(entries), group, move
         self.source_group = source_group
+        self.position = position
         self.contexts = [(vault, vault.identity, vault.generation) for vault in (source, destination)]
         self.source_ticket = self.destination_ticket = None
         self.received = Future()
@@ -43,7 +44,7 @@ class EntryTransfer:
         try:
             self.valid()
             if self.source is not self.destination:
-                self.destination_ticket = self.destination.listen_transfer(self.source_ticket, self.group)
+                self.destination_ticket = self.destination.listen_transfer(self.source_ticket, self.group, self.position)
             self.valid()
             return self.source_ticket
         except Exception:
@@ -101,7 +102,7 @@ class EntryTransfer:
             self.cancel()
             raise VaultError("The entry transfer approval expired. Choose the destination again.")
         if self.source is self.destination:
-            value = self.source.transfer_request("local", token=self.source_ticket["token"], group=self.group)
+            value = self.source.transfer_request("local", token=self.source_ticket["token"], group=self.group, position=self.position)
             return Outcome(True, value["moved"], value["entries"], destination_group=value.get("root_group", ""))
         error = None
         try:

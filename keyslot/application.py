@@ -1034,6 +1034,8 @@ class DatabaseView(Gtk.Box):
         long_press = Gtk.GestureLongPress(touch_only=True, propagation_phase=Gtk.PropagationPhase.CAPTURE)
         long_press.connect("pressed", lambda gesture, x, y: self._entry_secondary(gesture, 1, x, y))
         self.entries.add_controller(long_press)
+        from . import drag_drop
+        drag_drop.entry_list(self.app, self.entries)
         entries_box.append(scroll(margins(self.entries, 12)))
         self.empty_label = Gtk.Label(label="No entries found", visible=False, margin_bottom=24, css_classes=["dim-label"])
         entries_box.append(self.empty_label)
@@ -1150,6 +1152,8 @@ class DatabaseView(Gtk.Box):
             row.set_margin_start(min(group.depth, 6) * 10)
             row.group_path = group.identity
             row.group_name = group.name
+            from . import drag_drop
+            drag_drop.group_row(self.app, row, group)
             self.groups.append(row)
             if old_group == group.identity:
                 selected = row
@@ -1217,6 +1221,8 @@ class DatabaseView(Gtk.Box):
             hover.connect("leave", lambda *_args, prefix=prefix: prefix.set_visible_child_name("check" if self.selection_mode else "icon"))
             row.add_controller(hover)
             appearance.style_row(row, entry)
+            from . import drag_drop
+            drag_drop.entry_row(self.app, row, entry)
             if entry.totp:
                 row.add_suffix(Gtk.Image(icon_name="alarm-symbolic", tooltip_text="One-Time Password Available"))
             row.set_activatable(True)
@@ -1303,6 +1309,11 @@ class DatabaseView(Gtk.Box):
         row = self.entries.get_row_at_y(int(y))
         if not row:
             return
+        picked = self.entries.pick(_x, y, Gtk.PickFlags.DEFAULT)
+        while picked and picked is not self.entries:
+            if getattr(picked, "keyslot_drag_handle", False):
+                return
+            picked = picked.get_parent()
         gesture.set_state(Gtk.EventSequenceState.CLAIMED)
         state = gesture.get_current_event_state()
         if state & Gdk.ModifierType.SHIFT_MASK and self.selection_anchor:
@@ -1505,6 +1516,8 @@ class DatabaseView(Gtk.Box):
         add.connect("activated", lambda *_: self.app.choose_file(lambda source: self.app.import_attachment(entry, source)))
         attachments.add(add)
         self.detail.append(attachments)
+        from . import drag_drop
+        drag_drop.attachments(self.app, attachments, entry)
         from . import property_views
         properties = Gtk.Button(label="Entry Properties…")
         properties.connect("clicked", lambda *_: property_views.show(self.app, entry=entry.uuid))

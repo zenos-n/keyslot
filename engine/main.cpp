@@ -123,6 +123,13 @@ QByteArray digest(const QString& path)
     if (!hash.addData(&file)) fail("file_error", "The database could not be read completely.");
     return hash.result();
 }
+QString attachmentStamp(const struct stat& info) {
+    const auto record = QString::number(qulonglong(info.st_dev)) + ':' + QString::number(qulonglong(info.st_ino))
+        + ':' + QString::number(qlonglong(info.st_size)) + ':' + QString::number(qlonglong(info.st_mtim.tv_sec))
+        + ':' + QString::number(qlonglong(info.st_mtim.tv_nsec)) + ':' + QString::number(qlonglong(info.st_ctim.tv_sec))
+        + ':' + QString::number(qlonglong(info.st_ctim.tv_nsec));
+    return QString::fromLatin1(QCryptographicHash::hash(record.toUtf8(), QCryptographicHash::Sha256).toHex());
+}
 QByteArray importFingerprint(const QString& path, bool directory)
 {
     if (!directory) {
@@ -794,7 +801,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -2003,6 +2010,68 @@ public:
                 return true;
             }
             return QString::fromLatin1(e->attachments()->value(name).toBase64());
+        }
+        if (method == "attachment.files.inspect" || method == "attachment.files.import") {
+            unchanged();
+            auto* item = entry(args);
+            int matches = 0;
+            for (const auto* current : db->rootGroup()->entriesRecursive()) if (current->uuid() == item->uuid()) ++matches;
+            if (matches != 1) fail("invalid_request", "This entry identifier is ambiguous. Refresh before adding attachments.");
+            const bool importing = method == "attachment.files.import";
+            if (importing) historyRevision(args);
+            const auto files = args.value("files");
+            if (!files.isArray() || files.toArray().isEmpty() || files.toArray().size() > 32)
+                fail("invalid_request", "Drop between one and 32 attachment files.");
+            QJsonArray inspected;
+            QList<QPair<QString, QByteArray>> contents;
+            QSet<QString> names;
+            qint64 total = 0;
+            int replacements = 0;
+            const bool replace = boolean(args, "replace");
+            for (const auto& value : files.toArray()) {
+                if (!value.isObject()) fail("invalid_request", "An attachment file request is invalid.");
+                const auto file = value.toObject(); const auto name = text(file, "name");
+                const auto source = QFileInfo(requestedPath(file)).canonicalFilePath();
+                if (name.isEmpty() || name.contains(QChar(0)) || names.contains(name) || source.isEmpty())
+                    fail("invalid_request", "Choose existing files with distinct attachment names.");
+                names.insert(name);
+                struct stat before{}, after{}, current{};
+                if (::stat(QFile::encodeName(source).constData(), &before) || !S_ISREG(before.st_mode) || before.st_size < 0)
+                    fail("file_error", "Choose readable regular attachment files.");
+                if (before.st_size > 256LL * 1024 * 1024 - total)
+                    fail("invalid_request", "Drop at most 256 MiB at once. Larger individual files can use Add Attachment.");
+                total += before.st_size;
+                const auto stamp = attachmentStamp(before);
+                if (item->attachments()->hasKey(name)) {
+                    ++replacements;
+                    if (importing && !replace) fail("exists", "An attachment already uses a dropped file's name. Review replacements first.");
+                }
+                inspected.append(QJsonObject{{"path", source}, {"name", name}, {"size", double(before.st_size)}, {"stamp", stamp}});
+                if (importing) {
+                    if (text(file, "stamp") != stamp) fail("conflict", "A dropped file changed after review. Drop the files again.");
+                    QFile input(source);
+                    if (!input.open(QIODevice::ReadOnly) || ::fstat(input.handle(), &after) || attachmentStamp(after) != stamp)
+                        fail("file_error", "An attachment source changed or could not be opened.");
+                    auto bytes = input.read(before.st_size + 1);
+                    if (input.error() != QFile::NoError || bytes.size() != before.st_size || ::fstat(input.handle(), &after)
+                        || ::stat(QFile::encodeName(source).constData(), &current) || attachmentStamp(after) != stamp || attachmentStamp(current) != stamp)
+                        fail("conflict", "A dropped file changed while being read. No attachments were added.");
+                    contents.append({name, std::move(bytes)});
+                }
+            }
+            if (!importing) return QJsonObject{{"revision", QString::fromLatin1(hash.toHex())}, {"files", inspected},
+                {"replacements", replacements}, {"size", double(total)}};
+            for (const auto& value : inspected) {
+                const auto file = value.toObject(); struct stat current{};
+                if (::stat(QFile::encodeName(file.value("path").toString()).constData(), &current)
+                    || attachmentStamp(current) != file.value("stamp").toString())
+                    fail("conflict", "A dropped file changed before saving. No attachments were added.");
+            }
+            return transaction([&] {
+                item->beginUpdate();
+                for (const auto& file : contents) item->attachments()->set(file.first, file.second);
+                item->endUpdate();
+            });
         }
         if (method == "attachment.import" || method == "attachment.remove") {
             auto* e = entry(args);
