@@ -2,7 +2,7 @@
 
 Preferences → Wayland Keyboard Permission offers three lifetimes:
 
-- **Ask Every Time** requests no persistence.
+- **Do Not Remember** requests no permission persistence when a connection opens.
 - **Until Keyslot Quits** keeps a returned restore token in application memory.
   This is the stock `AutoTypeDesktopPortalPersistMode=1` default. Closing a
   background-enabled window does not quit Keyslot.
@@ -46,8 +46,9 @@ Permission persistence never authorizes a vault unlock or an Auto-Type sequence.
 Every invocation still captures a destination, applies its configured entry and
 field confirmation policy, prepares a native one-use token, and checks the vault,
 flow, focus lease, deadline and portal session while waiting and sending keys.
-Portal sessions still close after each invocation; the separate stock persistent
-connection preference and clipboard typing remain unimplemented. Tokens are
+Portal connections now use the separate stock keep-open preference and idle
+timeout; see [Keyboard connections](autotype-connections.md). Clipboard typing
+remains unimplemented. Tokens are
 opaque portal access metadata, never a substitute for master credentials, quick
 unlock, keyring enrollment or automatic approval of a different destination.
 

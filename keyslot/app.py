@@ -47,6 +47,8 @@ class Keyslot(Adw.Application):
         self.autotype_recent = RecentChoice(self)
         from .portal_permissions import PortalPermissions
         self.portal_permissions = PortalPermissions(self)
+        from .portal_connections import PortalConnections
+        self.portal_connections = PortalConnections(self)
         self.autotype_flow = None
         self.autotype_unlock = None
         self.last_activity = time.monotonic()
@@ -439,6 +441,7 @@ class Keyslot(Adw.Application):
         advance()
 
     def lock(self):
+        self.portal_connections.invalidate()
         if self.desktop_lock:
             self.desktop_lock.cancel_delayed()
         for request in list(self.command_requests):
@@ -457,6 +460,7 @@ class Keyslot(Adw.Application):
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        self.portal_connections.close()
         self.portal_permissions.close()
         if self.autotype_unlock:
             self.autotype_unlock.cancel()

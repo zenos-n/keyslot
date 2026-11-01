@@ -69,19 +69,30 @@ class PortalPermissions:
         # Immediate invalidation also stops a worker currently saving a token.
         self.epoch += 1
         self.token = ""
+        connections = getattr(self.application, "portal_connections", None)
+        if connections:
+            connections.invalidate()
 
     def valid(self, ticket):
         epoch, config, mode = ticket
         return (not self.closed and epoch == self.epoch and config is self.application.startup
                 and config.autotype["portal_mode"] == mode)
 
-    def begin(self, supported=True):
+    def capture(self):
         with self.mutex:
             config = self._bind()
             mode = config.autotype["portal_mode"]
             ticket = (self.epoch, config, mode)
             if not self.valid(ticket):
                 raise VaultError("Keyboard permission was cancelled.")
+            return ticket
+
+    def begin(self, supported=True, ticket=None):
+        with self.mutex:
+            ticket = self.capture() if ticket is None else ticket
+            if not self.valid(ticket):
+                raise VaultError("Keyboard permission was cancelled.")
+            _epoch, config, mode = ticket
             if not supported:
                 return ticket, ""
             if mode == 2:

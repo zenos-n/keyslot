@@ -396,6 +396,12 @@ granted; vault, destination and sequence approval remain per invocation. See
 [Keyboard permission](docs/autotype-permissions.md) for profile/token handling,
 older-portal fallback and manual acceptance limits.
 
+Wayland can also keep the keyboard connection open between invocations. Otherwise
+it closes after the last-entry timeout (or immediately at zero). Reuse obtains a
+fresh invocation lease; vault locking, Forget, policy changes and shutdown close
+the connection. See [Keyboard connections](docs/autotype-connections.md) for
+owner, timer, cleanup and manual acceptance boundaries.
+
 Encrypted vault files are monitored for external changes, including atomic
 replacements by sync clients. Asynchronous metadata polling also covers missed
 filesystem notifications. The native core checks the ciphertext against its

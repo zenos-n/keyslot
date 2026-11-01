@@ -45,15 +45,19 @@ class PortalKeyboard:
         self.persist_mode = 0
         self.persistence_supported = False
         self.restore_token = ""
+        self.owner = None
+        self.owner_subscription = 0
+        self.disposed = False
+        self.close_mutex = threading.Lock()
 
     def _check(self):
-        if (not self.valid() or self.closed
+        if (not self.valid() or self.closed or self.disposed
                 or (self.ticket is not None and not self.permissions.valid(self.ticket))):
             raise VaultError("Auto-type was cancelled.")
 
     def _call(self, method, parameters):
         self._check()
-        return self.connection.call_sync(PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE, method, parameters,
+        return self.connection.call_sync(self.owner or PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE, method, parameters,
             None, Gio.DBusCallFlags.NONE, 5000, None)
 
     def _request(self, method, values=()):
@@ -66,7 +70,7 @@ class PortalKeyboard:
         def response(_connection, _sender, _path, _interface, _signal, parameters):
             result.append(parameters.unpack())
             done.set()
-        subscription = self.connection.signal_subscribe(PORTAL_NAME, "org.freedesktop.portal.Request",
+        subscription = self.connection.signal_subscribe(self.owner or PORTAL_NAME, "org.freedesktop.portal.Request",
             "Response", path, None, Gio.DBusSignalFlags.NONE, response)
         self.request_path = path
         options = {"handle_token": GLib.Variant("s", token)}
@@ -104,7 +108,20 @@ class PortalKeyboard:
             if method == "SelectDevices":
                 self.restore_token = ""
 
-    def open(self):
+    def _current_owner(self):
+        return self.connection.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+            "GetNameOwner", GLib.Variant("(s)", (PORTAL_NAME,)), GLib.VariantType.new("(s)"),
+            Gio.DBusCallFlags.NO_AUTO_START, 3000, None).unpack()[0]
+
+    def same_owner(self):
+        try:
+            return bool(self.owner and self.owner == self._current_owner())
+        except GLib.Error:
+            return False
+
+    def open(self, ticket=None):
+        if self.permissions:
+            self.ticket = self.permissions.capture() if ticket is None else ticket
         self._check()
         try:
             version = self.connection.call_sync(PORTAL_NAME, PORTAL_PATH, "org.freedesktop.DBus.Properties", "Get",
@@ -112,14 +129,20 @@ class PortalKeyboard:
                 Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
         except GLib.Error:
             version = 0
+        self.owner = self._current_owner()
+        def owner_changed(_connection, _sender, _path, _interface, _signal, parameters):
+            if parameters.unpack()[2] != self.owner:
+                self.closed = True
+        self.owner_subscription = self.connection.signal_subscribe("org.freedesktop.DBus", "org.freedesktop.DBus",
+            "NameOwnerChanged", "/org/freedesktop/DBus", PORTAL_NAME, Gio.DBusSignalFlags.NONE, owner_changed)
         returned = self._request("CreateSession").get("session_handle")
         if returned != self.session:
             raise VaultError("The keyboard portal returned an invalid session.")
-        self.subscription = self.connection.signal_subscribe(PORTAL_NAME, "org.freedesktop.portal.Session",
+        self.subscription = self.connection.signal_subscribe(self.owner, "org.freedesktop.portal.Session",
             "Closed", self.session, None, Gio.DBusSignalFlags.NONE, lambda *_: setattr(self, "closed", True))
         self.persistence_supported = type(version) is int and version >= 2
         if self.permissions:
-            self.ticket, self.restore_token = self.permissions.begin(self.persistence_supported)
+            self.ticket, self.restore_token = self.permissions.begin(self.persistence_supported, self.ticket)
             self.persist_mode = self.ticket[2]
         self._request("SelectDevices")
         result = self._request("Start")
@@ -132,32 +155,39 @@ class PortalKeyboard:
 
     def _close_path(self, path, interface):
         try:
-            self.connection.call_sync(PORTAL_NAME, path, interface, "Close", None,
+            self.connection.call_sync(self.owner or PORTAL_NAME, path, interface, "Close", None,
                 None, Gio.DBusCallFlags.NO_AUTO_START, 1000, None)
         except GLib.Error:
             pass
 
     def close(self):
-        self.restore_token = ""
-        self.ticket = None
-        for key in reversed(self.pressed):
-            try:
-                self._notify(key, False, cleanup=True)
-            except GLib.Error:
-                pass
-        self.pressed.clear()
-        if self.subscription:
-            self.connection.signal_unsubscribe(self.subscription)
-            self.subscription = 0
-        if self.session:
-            self._close_path(self.session, "org.freedesktop.portal.Session")
-            self.session = None
-        self.closed = True
+        with self.close_mutex:
+            if self.disposed:
+                return
+            self.disposed = self.closed = True
+            self.valid = lambda: False
+            self.restore_token = ""
+            self.ticket = None
+            for key in reversed(self.pressed):
+                try:
+                    self._notify(key, False, cleanup=True)
+                except GLib.Error:
+                    pass
+            self.pressed.clear()
+            if self.subscription:
+                self.connection.signal_unsubscribe(self.subscription)
+                self.subscription = 0
+            if self.owner_subscription:
+                self.connection.signal_unsubscribe(self.owner_subscription)
+                self.owner_subscription = 0
+            if self.session:
+                self._close_path(self.session, "org.freedesktop.portal.Session")
+                self.session = None
 
     def _notify(self, key, pressed, cleanup=False):
         if not cleanup:
             self._check()
-        self.connection.call_sync(PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE, "NotifyKeyboardKeysym",
+        self.connection.call_sync(self.owner or PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE, "NotifyKeyboardKeysym",
             GLib.Variant("(oa{sv}iu)", (self.session, {}, key, int(pressed))), None,
             Gio.DBusCallFlags.NO_AUTO_START, 3000, None)
 
@@ -189,7 +219,9 @@ class PortalKeyboard:
 def execute_portal(session, target, token, pick, epoch, flow_valid=None):
     valid = lambda: (session.epoch == epoch and session.vault.unlocked and not session.jobs.closed
                      and (flow_valid is None or flow_valid()))
-    keyboard = PortalKeyboard(valid, session.application.portal_permissions)
+    connections = session.application.portal_connections
+    keyboard = None
+    success = False
     plan = collections.deque()
     focus_token = GLib.Variant("(s)", (target["target"],))
     deadline = time.monotonic() + 120
@@ -205,7 +237,7 @@ def execute_portal(session, target, token, pick, epoch, flow_valid=None):
             guard()
             time.sleep(min(0.05, max(0, end - time.monotonic())))
     try:
-        keyboard.open()
+        keyboard = connections.take(valid)
         keyboard._check()
         if not shell_call("Focus", focus_token, "(b)")[0]:
             raise VaultError("The auto-type destination is no longer available.")
@@ -229,9 +261,10 @@ def execute_portal(session, target, token, pick, epoch, flow_valid=None):
             elif action["type"] == "key":
                 keyboard.key(action["keysym"], action["modifiers"], guard)
                 wait(delay)
+        success = True
         return {"typed": True}
     except GLib.Error as exc:
         raise VaultError("The keyboard portal could not complete auto-type.") from exc
     finally:
         plan.clear()
-        keyboard.close()
+        connections.finish(keyboard, success)

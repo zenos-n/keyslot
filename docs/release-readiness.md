@@ -586,8 +586,18 @@ Wayland keyboard permission lifetimes now map stock persistence mode0/1/2 and
 the profile-local restore-token key. Version2 negotiation, old-version transient
 fallback, one-use consumption/rotation, empty-slot CAS and immediate policy/
 Forget/shutdown invalidation are implemented; tokens never replace per-invocation
-vault/focus/sequence checks. Persistent portal connections and clipboard typing
-remain separate gaps. Runtime/Python compilation only; no tests/harnesses or
+vault/focus/sequence checks. [Portal connections](autotype-connections.md) now
+implement keep-open/idle closure; clipboard typing remains a separate gap. Runtime/Python compilation only; no tests/harnesses or
 portal/input/profile/token/vault behavior runs. All desktop permission, rotation,
 revocation, profile/error/cancellation and accessibility acceptance remains
 manual. See [Keyboard permission](autotype-permissions.md).
+
+Wayland keyboard connection reuse now maps stock AutoTypeDesktopPortalPersistConnection
+(default false) and the retype-time idle timeout, with app-wide reservations and
+fresh invocation/permission leases. Idle transports drop invocation/entry/plan/
+destination references; vault lock/policy/Forget/shutdown invalidate them. Portal
+requests/input/signals/closes bind the unique owner, with explicit reuse checks,
+idempotent close, stale timers and modifier-cleanup reservations. Runtime/Python
+compilation only; no tests/harnesses or automated transport/timer/portal/GUI/
+keyboard/config/vault behavior runs. Reuse/timeout/revocation/owner/lock/cancel/
+shutdown/focus/accessibility acceptance remains manual.

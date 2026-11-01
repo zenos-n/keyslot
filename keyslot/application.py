@@ -157,6 +157,7 @@ class VaultSession:
         self.emit_state()
 
     def _clear(self):
+        self.application.portal_connections.invalidate()
         if pending := self.application.autotype_unlock:
             pending.cancel_for(self, locking=True)
         if self.application.autotype_flow:

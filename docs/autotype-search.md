@@ -80,6 +80,6 @@ selection memory, Enter/edit/scope/lock/reload/close/error/queue races and real
 X11/Wayland focus/keyboard behavior. [Locked-vault resumption](autotype-unlock.md) now uses existing providers and
 immediate temporary-vault relocking and a chooser for other locked vaults. Saved
 sort controls and [portal permission lifetimes](autotype-permissions.md) are implemented;
-protected/reference display collation, persistent portal connections/clipboard typing and wider
+protected/reference display collation, clipboard typing and wider
 platform/accessibility acceptance remain separate work. The core now uses [2.8/Qt6](../engine/Native28.md); GTK behavior and production
 readiness remain unproven.

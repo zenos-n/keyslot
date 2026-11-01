@@ -617,7 +617,7 @@ def add_preferences(session, page):
     widgets["delay"] = _spin("Delay Between Keys (Milliseconds)", values["delay"], 0, 500)
     widgets["start_delay"] = _spin("Delay Before Typing (Milliseconds)", values["start_delay"], 100, 10000)
     widgets["retype_seconds"] = _spin("Remember Last Typed Entry (Seconds)", values["retype_seconds"], 0, 60)
-    widgets["retype_seconds"].set_subtitle("Preselect the previous choice; 0 disables remembering")
+    widgets["retype_seconds"].set_subtitle("Preselect the previous choice and retain an idle keyboard connection; 0 disables both")
     updating = False
     def changed(*_):
         nonlocal updating
@@ -628,6 +628,7 @@ def add_preferences(session, page):
                                                for key, row in widgets.items()})
             config.save(config.remember, config.login, config.vault, autotype=options)
             session.application.autotype_recent.clear()
+            session.application.portal_connections.invalidate()
             widgets["skip_main_confirmation"].set_sensitive(config.autotype["always_ask"])
         except (OSError, ValueError, VaultError) as exc:
             updating = True
@@ -644,19 +645,24 @@ def add_preferences(session, page):
         group.add(row)
     page.add(group)
     permission_group = Adw.PreferencesGroup(title="Wayland Keyboard Permission",
-        description="Your desktop controls permission requests. Each Auto-Type invocation still checks its destination.")
+        description="Your desktop controls prompts when a connection opens. Each Auto-Type invocation still checks its destination.")
     policy = Adw.ComboRow(title="Remember Access", model=Gtk.StringList.new(
-        ["Ask Every Time", "Until Keyslot Quits", "Until I Forget"]), selected=config.autotype["portal_mode"])
+        ["Do Not Remember", "Until Keyslot Quits", "Until I Forget"]), selected=config.autotype["portal_mode"])
+    keep_connection = Adw.SwitchRow(title="Keep Keyboard Connection Open",
+        subtitle="Reuse the desktop connection between invocations; locking a vault closes it",
+        active=config.autotype["portal_connection"])
     forget = Adw.ActionRow(title="Forget Remembered Access", activatable=True,
         subtitle="Clear remembered access; the desktop controls future prompts")
     forget.add_suffix(Gtk.Image(icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER))
     permission_group.add(policy)
+    permission_group.add(keep_connection)
     permission_group.add(forget)
     page.add(permission_group)
     permission_state = {"updating": False, "busy": False}
     def restore_permission():
         permission_state["updating"] = True
         policy.set_selected(config.autotype["portal_mode"])
+        keep_connection.set_active(config.autotype["portal_connection"])
         permission_state["updating"] = False
         permission_state["busy"] = False
         permission_group.set_sensitive(True)
@@ -664,24 +670,32 @@ def add_preferences(session, page):
         if permission_state["updating"] or permission_state["busy"]:
             return
         selected_mode = policy.get_selected()
-        if not clear_only and selected_mode == config.autotype["portal_mode"]:
+        selected_connection = keep_connection.get_active()
+        change_permission = clear_only or selected_mode != config.autotype["portal_mode"]
+        if not change_permission and selected_connection == config.autotype["portal_connection"]:
             return
         if session.busy or session.jobs.closed:
             restore_permission()
             session.toast("Wait for the current operation to finish")
             return
         permissions = session.application.portal_permissions
-        permissions.invalidate()
+        if change_permission:
+            permissions.invalidate()
+        else:
+            session.application.portal_connections.invalidate()
         permission_state["busy"] = True
         permission_group.set_sensitive(False)
         def apply_permission():
-            permissions.forget(config)
+            if change_permission:
+                permissions.forget(config)
             if not clear_only:
                 with config.mutex:
                     if session.application.startup is not config:
                         raise VaultError("The configuration changed. Open Preferences again.")
                     config.save(config.remember, config.login, config.vault,
-                                autotype=dict(config.autotype, portal_mode=selected_mode))
+                                autotype=dict(config.autotype, portal_mode=selected_mode,
+                                              portal_connection=selected_connection))
+            session.application.portal_connections.invalidate()
         def saved(_result):
             restore_permission()
             if permission_group.get_root():
@@ -693,4 +707,5 @@ def add_preferences(session, page):
         if not session.run_job(apply_permission, saved, failed):
             restore_permission()
     policy.connect("notify::selected", permission_changed)
+    keep_connection.connect("notify::active", permission_changed)
     forget.connect("activated", lambda *_: permission_changed(clear_only=True))
