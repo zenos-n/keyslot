@@ -2,7 +2,6 @@
 import os
 import re
 import math
-import time
 from gi.repository import Gdk, Gio, GLib
 
 LOGIN = "org.freedesktop.login1"
@@ -223,10 +222,7 @@ class DesktopLock:
     def minimized(self):
         if self.closed or self.app.quitting or not self.app.startup.lock_on_minimize:
             return
-        remaining = 0
-        for session in self.app.sessions:
-            if session.clipboard_provider and session.window.get_clipboard().get_content() == session.clipboard_provider:
-                remaining = max(remaining, session.clipboard_deadline - time.monotonic())
+        remaining = self.app.clipboards.remaining()
         delay = min(20, max(1, math.ceil(remaining)))
         self.cancel_delayed()
         def expired():

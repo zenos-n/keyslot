@@ -151,7 +151,7 @@ def show(session):
     page.add(locking)
     security = Adw.PreferencesGroup(title="Security")
     clipboard_times = [0, 10, 20, 30, 60]
-    clipboard = Adw.ComboRow(title="Clear Clipboard After", model=Gtk.StringList.new([
+    clipboard = Adw.ComboRow(title="Clear Clipboard After", subtitle="Includes text selections for middle-click paste", model=Gtk.StringList.new([
         "Never", "10 Seconds", "20 Seconds", "30 Seconds", "1 Minute", "Custom…"]))
     clipboard.set_selected(clipboard_times.index(settings.clipboard_seconds)
                            if settings.clipboard_seconds in clipboard_times else len(clipboard_times))
@@ -160,12 +160,21 @@ def show(session):
     clipboard_custom.set_value(settings.clipboard_seconds or 20)
     clipboard_custom.set_visible(clipboard.get_selected() == len(clipboard_times))
     def changed_clipboard(*_):
+        if updating[0]:
+            return
         selected = clipboard.get_selected()
         clipboard_custom.set_visible(selected == len(clipboard_times))
         seconds = clipboard_times[selected] if selected < len(clipboard_times) else int(clipboard_custom.get_value())
         try:
             settings.save(settings.remember, settings.login, settings.vault, clipboard_seconds=seconds)
+            session.application.clipboards.refresh()
         except (OSError, ValueError, VaultError) as exc:
+            updating[0] = True
+            clipboard.set_selected(clipboard_times.index(settings.clipboard_seconds)
+                                   if settings.clipboard_seconds in clipboard_times else len(clipboard_times))
+            clipboard_custom.set_value(settings.clipboard_seconds or 20)
+            clipboard_custom.set_visible(clipboard.get_selected() == len(clipboard_times))
+            updating[0] = False
             session.error(str(exc))
     clipboard.connect("notify::selected", changed_clipboard)
     clipboard_custom.connect("notify::value", changed_clipboard)

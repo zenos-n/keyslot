@@ -6,6 +6,16 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+The [clipboard registry](clipboard.md) now tracks regular and primary-selection
+providers, native GTK selections and built-in Copy actions. Explicit copies
+carry KeePassXC's Linux secret hint. Timeout changes re-evaluate existing copy
+ages; session lock/reload/close and shutdown clear only still-owned providers,
+and minimize locking considers both clipboard deadlines. Clipboard managers can
+ignore the hint or retain previously read data. Runtime/Python compilation only;
+no tests/harnesses or automated clipboard/GUI/vault behavior runs. Manual
+X11/Wayland, multi-window, selection, timeout and clipboard-manager acceptance
+remains open, along with copy/minimize preferences.
+
 Entry/group Properties now expose identity, activity and counts, plus paged
 name-only plugin data and explicit sensitive inspect/copy/export. Selected removal
 requires a native revision/object/value-bound review and uses existing encrypted

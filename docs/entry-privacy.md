@@ -43,9 +43,10 @@ created. Notes undo history is disabled; password labels use plain text and
 are not selectable, using tracked Copy instead. Explicit note Copy/Cut actions
 are intercepted in the read-only view and use the owned timed clipboard for
 the selected displayed fragment; the header Copy retrieves the complete field. Native and transient GTK/Python
-strings are not promised secure-zero memory. Automatic primary-selection ownership and clipboard-manager lifetime are still
-separate clipboard integration/acceptance work; they are not claimed fixed by
-these explicit Copy hooks.
+strings are not promised secure-zero memory. Automatic primary-selection
+ownership and expiry are now tracked by the application-wide
+[clipboard registry](clipboard.md). Clipboard-manager retention remains outside
+the guarantee of ownership clearing; the secret hint is advisory.
 
 Preview errors keep the field masked/unavailable; only an explicit reveal
 reports an error dialog. A new helper capability detects unsupported older

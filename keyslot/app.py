@@ -41,6 +41,8 @@ class Keyslot(Adw.Application):
         self.quitting = False
         self.sessions = []
         self.active_session = None
+        from .clipboard import Clipboards
+        self.clipboards = Clipboards(self)
         self.last_activity = time.monotonic()
         self.desktop_lock = None
         self.connect("startup", self._startup)
@@ -468,6 +470,7 @@ class Keyslot(Adw.Application):
         for session in list(self.sessions):
             session.shutdown()
         self.sessions.clear()
+        self.clipboards.close()
         if getattr(self, "dbus_registration", 0):
             self.connection.unregister_object(self.dbus_registration)
 

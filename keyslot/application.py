@@ -4,7 +4,6 @@ from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 import sys
-import time
 
 import gi
 gi.require_version("Gtk", "4.0")
@@ -96,9 +95,6 @@ class VaultSession:
         self.unlock_prompt = None
         self.pending_errors = []
         self.view_epoch = 0
-        self.clipboard_provider = None
-        self.clipboard_deadline = 0
-        self.clipboard_timer = 0
         self.dialogs = []
         self.file_requests = set()
         self.credential_request = None
@@ -109,6 +105,8 @@ class VaultSession:
         self.window = None
         self.icons = appearance.IconCache(self)
         self.jobs = SessionJobs(self.vault, GLib.idle_add, self._changed, self._clear, self.error)
+        if host_window:
+            application.clipboards.watch(host_window.get_display())
         self.files = FileChanges(self)
         self.urls = url_views.UrlController(self)
         self.totp = totp_views.TotpController(self)
@@ -320,29 +318,16 @@ class VaultSession:
 
     def copy(self, value):
         if not self.active or self.jobs.closed:
-            return
-        if self.clipboard_timer:
-            GLib.source_remove(self.clipboard_timer)
-            self.clipboard_timer = 0
-        clipboard = self.window.get_clipboard()
-        self.clipboard_provider = Gdk.ContentProvider.new_for_value(value)
-        clipboard.set_content(self.clipboard_provider)
+            return False
+        if not self.application.clipboards.copy(self, value):
+            self.toast("Could not copy to the clipboard")
+            return False
         seconds = self.application.startup.clipboard_seconds
-        self.clipboard_deadline = time.monotonic() + seconds if seconds else 0
-        if seconds:
-            self.clipboard_timer = GLib.timeout_add_seconds(seconds, self.clear_clipboard)
         self.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
+        return True
 
     def clear_clipboard(self):
-        self.clipboard_deadline = 0
-        if self.clipboard_timer:
-            GLib.source_remove(self.clipboard_timer)
-            self.clipboard_timer = 0
-        if self.window and self.clipboard_provider:
-            clipboard = self.window.get_clipboard()
-            if clipboard.get_content() == self.clipboard_provider:
-                clipboard.set_content(None)
-        self.clipboard_provider = None
+        self.application.clipboards.clear(self)
         return GLib.SOURCE_REMOVE
 
     def choose_file(self, callback, save=False, name=None, kdbx=False, folder=False):
