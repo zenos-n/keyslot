@@ -826,3 +826,9 @@ foreground download/upload commands. Sync saves local edits before upload;
 provider atomicity and concurrent remote writers still require care. See
 [workflow, attribution and limits](engine/RemoteSynchronization.md). This
 candidate has compilation evidence only and awaits manual acceptance.
+
+**Entry Properties…** in entry details and the **Group Properties** button in the
+Groups header show identity, timestamps, counts and plugin data. Plugin values
+are fetched only on explicit inspection/copy; selected plugin data can be removed
+after native revision-bound review. See [properties and limits](engine/Properties.md).
+This candidate has compilation evidence only; manual acceptance remains pending.

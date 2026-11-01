@@ -967,6 +967,9 @@ class DatabaseView(Gtk.Box):
         sidebar = Adw.ToolbarView()
         head = Adw.HeaderBar(show_start_title_buttons=True, show_end_title_buttons=False)
         head.set_title_widget(Adw.WindowTitle(title="Groups"))
+        from . import property_views
+        head.pack_end(button("document-properties-symbolic", "Group Properties",
+            lambda: property_views.show(self.app, group=self.selected_group or self.app.vault.snapshot.root) if self.app.vault.unlocked else None))
         sidebar.add_top_bar(head)
         side_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.groups = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["navigation-sidebar"])
@@ -1498,6 +1501,10 @@ class DatabaseView(Gtk.Box):
         add.connect("activated", lambda *_: self.app.choose_file(lambda source: self.app.import_attachment(entry, source)))
         attachments.add(add)
         self.detail.append(attachments)
+        from . import property_views
+        properties = Gtk.Button(label="Entry Properties…")
+        properties.connect("clicked", lambda *_: property_views.show(self.app, entry=entry.uuid))
+        self.detail.append(properties)
         if entry.history_count:
             history = Gtk.Button(label=f"View History ({entry.history_count} Versions)")
             history.connect("clicked", lambda *_: self.app.show_history(entry))

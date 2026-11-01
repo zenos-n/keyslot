@@ -6,6 +6,14 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Entry/group Properties now expose identity, activity and counts, plus paged
+name-only plugin data and explicit sensitive inspect/copy/export. Selected removal
+requires a native revision/object/value-bound review and uses existing encrypted
+transactions and entry-history backport. Groups have no entry history. These
+[properties workflows](../engine/Properties.md) have compilation evidence only;
+manual GUI/history/export/recovery/permission-revocation acceptance remains.
+No tests/harnesses or automated behavior checks were added/run for this update.
+
 The Proton Pass reader now includes upstream 2.8 Wi-Fi and SSH-key handling,
 with protected private-key attributes and annotated unknown record content.
 Keyslot additionally protects unknown content and extra-field TOTP URIs,

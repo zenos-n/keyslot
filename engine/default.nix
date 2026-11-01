@@ -47,6 +47,8 @@ pkgs.keepassxc.overrideAttrs (old: {
     cp ${./KeyslotNetwork.cpp} src/KeyslotNetwork.cpp
     cp ${./KeyslotRemote.h} src/KeyslotRemote.h
     cp ${./KeyslotRemote.cpp} src/KeyslotRemote.cpp
+    cp ${./KeyslotProperties.h} src/KeyslotProperties.h
+    cp ${./KeyslotProperties.cpp} src/KeyslotProperties.cpp
     cp ${./RemoteRunner.cpp} src/keyslot-remote-runner.cpp
     patch -p1 < ${./RemoteSyncProtection.patch}
     cp ${./KeyslotBrowserValues.h} src/KeyslotBrowserValues.h
@@ -88,7 +90,7 @@ pkgs.keepassxc.overrideAttrs (old: {
       --replace-fail '    connect(m_browserHost, &BrowserHost::clientMessageReceived' '    if (headless) return;
     connect(m_browserHost, &BrowserHost::clientMessageReceived'
     cat >> src/CMakeLists.txt <<'CMAKE'
-    add_executable(keyslot-engine core/Alloc.cpp keyslot-engine.cpp KeyslotConfig.cpp CsvImport.cpp BrowserDatabase.cpp KeyslotPasskeys.cpp KeyslotSSH.cpp KeyslotAutoType.cpp KeyslotKeeShare.cpp KeyslotSecrets.cpp KeyslotTransfer.cpp KeyslotLaunch.cpp KeyslotHistory.cpp KeyslotTotp.cpp KeyslotTrash.cpp KeyslotEntryActions.cpp KeyslotReports.cpp KeyslotIcons.cpp KeyslotNetwork.cpp KeyslotRemote.cpp autotype/xcb/AutoTypeXCB.cpp)
+    add_executable(keyslot-engine core/Alloc.cpp keyslot-engine.cpp KeyslotConfig.cpp CsvImport.cpp BrowserDatabase.cpp KeyslotPasskeys.cpp KeyslotSSH.cpp KeyslotAutoType.cpp KeyslotKeeShare.cpp KeyslotSecrets.cpp KeyslotTransfer.cpp KeyslotLaunch.cpp KeyslotHistory.cpp KeyslotTotp.cpp KeyslotTrash.cpp KeyslotEntryActions.cpp KeyslotReports.cpp KeyslotIcons.cpp KeyslotNetwork.cpp KeyslotRemote.cpp KeyslotProperties.cpp autotype/xcb/AutoTypeXCB.cpp)
     target_sources(keyslot-engine PRIVATE sshagent/OpenSSHKeyGen.cpp)
     target_link_libraries(keyslot-engine keepassx_core Qt5::X11Extras X11 Xi Xtst)
     add_executable(keyslot-remote-runner keyslot-remote-runner.cpp)

@@ -900,6 +900,30 @@ class Vault:
                 raise VaultError("Update the native engine before configuring remote synchronization.")
             return self._rpc("remote.list") if name is None else self._rpc("remote.get", name=name)
 
+    def object_properties(self, target, query="", offset=0):
+        with self._mutex:
+            if "object-properties" not in self.capabilities:
+                raise VaultError("Update the native engine before inspecting entry or group properties.")
+            return self._rpc("properties.info", **target, query=query, offset=offset)
+
+    def plugin_value(self, target, name, revision, path=None):
+        with self._mutex:
+            value = self._rpc("properties.value", **target, name=name, revision=revision,
+                              **({"path": str(path)} if path is not None else {}))
+            return value.get("value", "") if path is None else value
+
+    def review_plugin_removal(self, target, names, revision):
+        with self._mutex:
+            return self._rpc("properties.review", **target, names=list(names), revision=revision)
+
+    def remove_plugin_data(self, token):
+        with self._mutex:
+            return self._snapshot_call("properties.remove", token=token, approved=True)
+
+    def cancel_plugin_removal(self, token):
+        with self._mutex:
+            return self._rpc("properties.cancel", token=token)
+
     def remote_edit(self, original, revision, profile=None):
         with self._mutex:
             return self._snapshot_call("remote.remove" if profile is None else "remote.save",
