@@ -894,6 +894,36 @@ class Vault:
                 password=password, keyfile=keyfile, yubikey=yubikey, no_password=no_password,
                 same_credentials=same_credentials)
 
+    def remote_locations(self, name=None):
+        with self._mutex:
+            if "remote-sync" not in self.capabilities:
+                raise VaultError("Update the native engine before configuring remote synchronization.")
+            return self._rpc("remote.list") if name is None else self._rpc("remote.get", name=name)
+
+    def remote_edit(self, original, revision, profile=None):
+        with self._mutex:
+            return self._snapshot_call("remote.remove" if profile is None else "remote.save",
+                                       original=original, revision=revision, **({"profile": profile} if profile is not None else {}))
+
+    def remote_prepare(self, name, revision):
+        with self._mutex:
+            return self._rpc("remote.prepare", name=name, revision=revision)
+
+    def remote_step(self, operation, token, **options):
+        with self._mutex:
+            try:
+                result = self._rpc("remote." + operation, token=token, **options)
+            except EngineError as exc:
+                if operation == "merge" and options.get("credentials") and exc.code in {"key_error", "invalid_request"}:
+                    return {"state": "credentials_required", "message": str(exc)}
+                if operation == "merge":
+                    # A transfer can fail after the local merge has already been durably saved.
+                    self._snapshot_call("snapshot")
+                raise
+            if "snapshot" in result:
+                self._set_snapshot(result.pop("snapshot"))
+            return result
+
     def report(self, excluded=False):
         with self._mutex:
             return self._rpc("database.report", excluded=excluded)

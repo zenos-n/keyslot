@@ -45,6 +45,10 @@ pkgs.keepassxc.overrideAttrs (old: {
     cp ${./KeyslotIcons.cpp} src/KeyslotIcons.cpp
     cp ${./KeyslotNetwork.h} src/KeyslotNetwork.h
     cp ${./KeyslotNetwork.cpp} src/KeyslotNetwork.cpp
+    cp ${./KeyslotRemote.h} src/KeyslotRemote.h
+    cp ${./KeyslotRemote.cpp} src/KeyslotRemote.cpp
+    cp ${./RemoteRunner.cpp} src/keyslot-remote-runner.cpp
+    patch -p1 < ${./RemoteSyncProtection.patch}
     cp ${./KeyslotBrowserValues.h} src/KeyslotBrowserValues.h
     cp ${./SecurityCheck.cpp} src/KeyslotSecurityCheck.cpp
     patch -p1 < ${./SecurityBackports.patch}
@@ -84,9 +88,11 @@ pkgs.keepassxc.overrideAttrs (old: {
       --replace-fail '    connect(m_browserHost, &BrowserHost::clientMessageReceived' '    if (headless) return;
     connect(m_browserHost, &BrowserHost::clientMessageReceived'
     cat >> src/CMakeLists.txt <<'CMAKE'
-    add_executable(keyslot-engine core/Alloc.cpp keyslot-engine.cpp KeyslotConfig.cpp CsvImport.cpp BrowserDatabase.cpp KeyslotPasskeys.cpp KeyslotSSH.cpp KeyslotAutoType.cpp KeyslotKeeShare.cpp KeyslotSecrets.cpp KeyslotTransfer.cpp KeyslotLaunch.cpp KeyslotHistory.cpp KeyslotTotp.cpp KeyslotTrash.cpp KeyslotEntryActions.cpp KeyslotReports.cpp KeyslotIcons.cpp KeyslotNetwork.cpp autotype/xcb/AutoTypeXCB.cpp)
+    add_executable(keyslot-engine core/Alloc.cpp keyslot-engine.cpp KeyslotConfig.cpp CsvImport.cpp BrowserDatabase.cpp KeyslotPasskeys.cpp KeyslotSSH.cpp KeyslotAutoType.cpp KeyslotKeeShare.cpp KeyslotSecrets.cpp KeyslotTransfer.cpp KeyslotLaunch.cpp KeyslotHistory.cpp KeyslotTotp.cpp KeyslotTrash.cpp KeyslotEntryActions.cpp KeyslotReports.cpp KeyslotIcons.cpp KeyslotNetwork.cpp KeyslotRemote.cpp autotype/xcb/AutoTypeXCB.cpp)
     target_sources(keyslot-engine PRIVATE sshagent/OpenSSHKeyGen.cpp)
     target_link_libraries(keyslot-engine keepassx_core Qt5::X11Extras X11 Xi Xtst)
+    add_executable(keyslot-remote-runner keyslot-remote-runner.cpp)
+    target_link_libraries(keyslot-remote-runner Qt5::Core)
     add_executable(keyslot-browser core/Alloc.cpp keyslot-browser.cpp browser/BrowserMessageBuilder.cpp)
     target_link_libraries(keyslot-browser keepassx_core Qt5::Network)
     add_executable(keyslot-ssh-agent core/Alloc.cpp keyslot-ssh-agent.cpp)
@@ -101,12 +107,13 @@ pkgs.keepassxc.overrideAttrs (old: {
   cmakeFlags = (old.cmakeFlags or []) ++ [ "-DWITH_TESTS=OFF" "-DWITH_GUI_TESTS=OFF" ];
   buildPhase = ''
     runHook preBuild
-    cmake --build . --target keyslot-engine keyslot-browser keyslot-browser-proxy keyslot-ssh-agent ${pkgs.lib.optionalString doCheck "keyslot-security-check"} keepassxc-cli keepassxc-proxy keepassxc-proxy-upstream translations --parallel "$NIX_BUILD_CORES"
+    cmake --build . --target keyslot-engine keyslot-remote-runner keyslot-browser keyslot-browser-proxy keyslot-ssh-agent ${pkgs.lib.optionalString doCheck "keyslot-security-check"} keepassxc-cli keepassxc-proxy keepassxc-proxy-upstream translations --parallel "$NIX_BUILD_CORES"
     runHook postBuild
   '';
   installPhase = ''
     runHook preInstall
     install -Dm755 src/keyslot-engine "$out/libexec/keyslot-engine"
+    install -Dm755 src/keyslot-remote-runner "$out/libexec/keyslot-remote-runner"
     install -Dm755 src/keyslot-browser "$out/libexec/keyslot-browser"
     install -Dm755 src/keyslot-ssh-agent "$out/libexec/keyslot-ssh-agent"
     install -Dm755 src/proxy/keepassxc-proxy "$out/libexec/keepassxc-proxy"

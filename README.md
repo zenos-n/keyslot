@@ -819,3 +819,10 @@ or the public-key preview to copy a public key. A review expires after two
 minutes or when the vault changes. This batch has runtime compilation only;
 manual OpenSSH and desktop acceptance remain open.
 
+
+Remote synchronization is available under **Main Menu → Database → Remote Synchronization…**.
+Named locations use the KeePassXC 2.8 encrypted settings format and reviewed
+foreground download/upload commands. Sync saves local edits before upload;
+provider atomicity and concurrent remote writers still require care. See
+[workflow, attribution and limits](engine/RemoteSynchronization.md). This
+candidate has compilation evidence only and awaits manual acceptance.

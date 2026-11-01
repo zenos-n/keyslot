@@ -17,6 +17,7 @@
 #include "KeyslotReports.h"
 #include "KeyslotIcons.h"
 #include "KeyslotNetwork.h"
+#include "KeyslotRemote.h"
 #include <QKeySequence>
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
@@ -342,6 +343,7 @@ class Engine {
     KeyslotEntryActions entryActions;
     KeyslotReports reports;
     KeyslotIcons iconTools;
+    KeyslotRemote remote;
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash, diskHash;
@@ -788,7 +790,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -814,7 +816,7 @@ public:
             discardManual(data);
             return true;
         }
-        if (method == "lock") { iconTools.clear(); reports.clear(); trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
+        if (method == "lock") { remote.clear(); iconTools.clear(); reports.clear(); trash.clear(); launch.clear(); transfer.clear(); secrets.clear(); autotype.clear(); db.reset(); path.clear(); hash.clear(); diskHash.clear(); manualOwner.reset(); manualManifest.clear(); manualSnapshot.clear(); modified = false; return true; }
         if (method == "url.offer" || method == "url.accept" || method == "url.cancel") {
             try {
                 if (method == "url.cancel") { launch.cancel(args); return true; }
@@ -1100,6 +1102,27 @@ public:
                 {"redirect", result.redirect.toString(QUrl::FullyEncoded)}, {"failed", !result.error.isEmpty()}};
         }
         requireDatabase();
+        if (method.startsWith("remote.")) {
+            try {
+                if (method == "remote.cancel") return remote.call(method, db, args, hash, {}, {});
+                try { unchanged(); } catch (...) { remote.clear(); throw; }
+                if (method == "remote.list") return QJsonObject{{"locations", KeyslotRemote::locations(db)}, {"revision", QString::fromLatin1(hash.toHex())}};
+                if (method == "remote.get") return QJsonObject{{"profile", KeyslotRemote::location(db, text(args, "name"))}, {"revision", QString::fromLatin1(hash.toHex())}};
+                if (method == "remote.save" || method == "remote.remove") {
+                    historyRevision(args);
+                    return transaction([&] { KeyslotRemote::edit(db, args, method == "remote.remove"); });
+                }
+                if (method == "remote.prepare") { historyRevision(args); return remote.prepare(db, args, hash); }
+                const auto key = method == "remote.merge" && boolean(args, "credentials")
+                    ? QSharedPointer<const CompositeKey>(makeKey(args)) : QSharedPointer<const CompositeKey>{};
+                auto result = remote.call(method, db, args, hash, key, [this](const std::function<void()>& change) {
+                    transaction(change, true); return hash;
+                });
+                if (method == "remote.merge") result.insert("snapshot", snapshot());
+                return result;
+            } catch (const KeyslotRemote::Failure& error) { throw Failure{error.code, error.message}; }
+            fail("unsupported", "This remote operation is not supported.");
+        }
         if (method.startsWith("entries.actions.")) {
             try {
                 if (method == "entries.actions.cancel") { entryActions.cancel(text(args, "token")); return true; }

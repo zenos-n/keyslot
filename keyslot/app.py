@@ -193,7 +193,7 @@ class Keyslot(Adw.Application):
             browser.state_changed()
         for session in self.sessions:
             editable = session.vault.unlocked and not session.busy
-            for name in ("new-entry", "search", "refresh", "settings", "change-key", "merge", "export", "save-copy", "reports"):
+            for name in ("new-entry", "search", "refresh", "settings", "change-key", "merge", "remote-sync", "export", "save-copy", "reports"):
                 if action := session.host_window.lookup_action(name):
                     action.set_enabled(editable)
             if action := session.host_window.lookup_action("lock"):
@@ -550,6 +550,8 @@ class MainWindow(Adw.ApplicationWindow):
         for name, operation in ENTRY_ACTIONS.items():
             self._action(name, lambda operation=operation: invoke_entry(session, operation))
         self._action("shortcut-settings", lambda: shortcut_settings(session))
+        from .remote_views import show as remote_sync
+        self._action("remote-sync", lambda: remote_sync(session))
         self.app.shortcuts.refresh_state()
 
     def _action(self, name, callback):
@@ -568,7 +570,7 @@ class MainWindow(Adw.ApplicationWindow):
         database.append("Save", "win.save")
         database.append("Save As…", "win.save-as")
         for actions in [[("Database Settings…", "settings"), ("Change Unlock Key…", "change-key"), ("Refresh", "refresh")],
-                        [("Import Database…", "import"), ("Save Copy…", "save-copy"), ("Merge Database…", "merge"),
+                        [("Import Database…", "import"), ("Save Copy…", "save-copy"), ("Merge Database…", "merge"), ("Remote Synchronization…", "remote-sync"),
                          ("Export Unencrypted Data…", "export"), ("Reports…", "reports")],
                         [("Passkeys…", "passkeys"), ("Lock Database", "lock")]]:
             section = Gio.Menu()

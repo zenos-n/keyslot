@@ -54,6 +54,7 @@ SPECS = [
     Shortcut("win.refresh", "Reload Database", "<Control>r", needs="vault"),
     Shortcut("win.import", "Import Database", "", "actionImport"),
     Shortcut("win.merge", "Merge Database", "", "actionDatabaseMerge", "vault"),
+    Shortcut("win.remote-sync", "Remote Synchronization", "", needs="vault"),
     Shortcut("win.export", "Export Unencrypted Data", "", needs="vault"),
     Shortcut("win.settings", "Database Settings", "<Control><Shift>comma", "actionDatabaseSettings", "vault"),
     Shortcut("win.change-key", "Change Unlock Key", "", "actionDatabaseSecurity", "vault"),
