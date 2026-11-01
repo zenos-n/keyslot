@@ -157,6 +157,14 @@ def show(session):
         quick.add_suffix(button("edit-delete-symbolic", "Disable Quick Unlock",
                                 lambda: (setattr(session, "quick_blob", None), dialog.close())))
     security.add(quick)
+    system = Adw.ActionRow(title="System Authentication", subtitle="Use Polkit and your system's authentication agent for this vault until Keyslot quits")
+    system_setup = button("document-edit-symbolic", "Set Up System Authentication", lambda: (dialog.force_close(), enroll(session, system=True)))
+    system_setup.set_sensitive(session.vault.unlocked)
+    system.add_suffix(system_setup)
+    if session.vault.path and session.vault.has_system_auth(session.vault.path):
+        system.add_suffix(button("edit-delete-symbolic", "Disable System Authentication",
+            lambda: session.run_job(session.vault.forget_system_auth, lambda _value: (dialog.close(), session.toast("System authentication disabled")))))
+    security.add(system)
     page.add(security)
     links = Adw.PreferencesGroup(title="Links")
     minimize = Adw.SwitchRow(title="Minimize After Opening Links", active=settings.minimize_on_url,
@@ -247,11 +255,11 @@ def show(session):
     session.present_dialog(dialog)
 
 
-def enroll(session, quick=False):
+def enroll(session, quick=False, system=False):
     if not session.vault.unlocked or session.busy:
         return
     path = session.vault.path
-    dialog = Adw.Dialog(title="Set Up Quick Unlock" if quick else "Unlock at Login", content_width=440)
+    dialog = Adw.Dialog(title="Set Up System Authentication" if system else "Set Up Quick Unlock" if quick else "Unlock at Login", content_width=440)
     toolbar = Adw.ToolbarView()
     toolbar.add_top_bar(Adw.HeaderBar())
     box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
@@ -260,6 +268,11 @@ def enroll(session, quick=False):
                    "Five failed attempts require the master password." if quick else
                    "Confirm this vault’s unlock credential to save it in your GNOME login keyring. "
                    "It will be used once when you sign in. Hardware keys may still require a touch.")
+    if system:
+        explanation = ("Confirm this vault's master credential to enable system authentication until Keyslot quits. "
+                       "The encrypted credential stays in a native broker; each unlock requires Polkit approval. "
+                       "Your system's authentication agent may offer a login password or configured biometrics. "
+                       "Hardware keys may still require a touch. Install Keyslot system-wide to register its Polkit action.")
     box.append(Gtk.Label(label=explanation, wrap=True))
     group = Adw.PreferencesGroup()
     password = Adw.PasswordEntryRow(title="Master Password")
@@ -292,12 +305,13 @@ def enroll(session, quick=False):
         box.append(short_group)
     status = Gtk.Label(wrap=True, xalign=0, visible=False, css_classes=["error"])
     box.append(status)
-    save = Gtk.Button(label="Enable Quick Unlock" if quick else "Enable Login Unlock", css_classes=["suggested-action", "pill"])
+    save = Gtk.Button(label="Enable System Authentication" if system else "Enable Quick Unlock" if quick else "Enable Login Unlock", css_classes=["suggested-action", "pill"])
     box.append(save)
-    state = {"closed": False}
+    state = {"closed": False, "working": False}
     def failed(message):
         if state["closed"]:
             return
+        state["working"] = False
         box.set_sensitive(True)
         status.set_label(message)
         status.set_visible(True)
@@ -310,6 +324,7 @@ def enroll(session, quick=False):
             return
         credentials = {"password": "" if key_only.get_active() else password.get_text(),
                        "keyfile": selected_key[0], "yubikey": hardware.get_text(), "no_password": key_only.get_active()}
+        state["working"] = True
         status.set_visible(False)
         box.set_sensitive(False)
         def configure(request):
@@ -325,7 +340,15 @@ def enroll(session, quick=False):
                 return
             dialog.close()
             session.toast("Vault will unlock from the login keyring when you sign in")
-        if quick:
+        if system:
+            def enrolled(_result):
+                if state["closed"]:
+                    return
+                state["working"] = False
+                dialog.close()
+                session.toast("System authentication is available until Keyslot quits")
+            session.run_job(lambda: session.vault.enroll_system_auth(session.application.system_auth(), credentials), enrolled, failed)
+        elif quick:
             def sealed(blob):
                 if state["closed"]:
                     return
@@ -339,6 +362,9 @@ def enroll(session, quick=False):
     password.connect("entry-activated", submit)
     def closed(*_):
         state["closed"] = True
+        if system and state["working"] and session.vault.unlocked:
+            session.lock()
+            session.jobs.run(session.vault.forget_system_auth, failed=lambda _message: None, interactive=False)
         password.set_text("")
         short.set_text("")
         repeat.set_text("")

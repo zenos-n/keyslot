@@ -235,6 +235,7 @@ class VaultSession:
         self.urls.clear()
         self.quick_blob = None
         self.jobs.close()
+        self.vault.forget_system_auth()
         self.icons.close()
 
     def deactivate(self):
@@ -395,6 +396,9 @@ class VaultSession:
             from .saving import offer_recovery
             if offer_recovery(self, path, lambda: self._unlock_dialog(path, use_quick=use_quick, keyfile=keyfile, recovery_checked=True)):
                 return
+        if not reopen and use_quick and not keyfile and not create and not import_options and self.vault.has_system_auth(path):
+            from .auth_views import unlock
+            return unlock(self, path, allow_recovery=recovery_checked)
         if not reopen and use_quick and not keyfile and not create and not import_options and self.quick_blob and Path(path).resolve() == self.quick_path:
             return self._quick_unlock_dialog(path, allow_recovery=recovery_checked)
         components = {"keyfile": "", "yubikey": ""}

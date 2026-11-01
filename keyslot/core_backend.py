@@ -74,6 +74,9 @@ class Vault:
         self.discard_on_stop = False
         self.recovery_warning = ""
         self.finishing = False
+        self.auth_manager = None
+        self.system_token = None
+        self.system_path = None
 
     @property
     def unlocked(self):
@@ -118,6 +121,11 @@ class Vault:
                 process.wait()
                 process.stdin.close()
                 process.stdout.close()
+                if self.auth_manager and self.auth_manager.process is not None:
+                    try:
+                        self.auth_manager.unregister(process.pid)
+                    except VaultError:
+                        self.auth_manager.close()
                 if self.ssh_manager:
                     if self.ssh_manager.process is not None:
                         try:
@@ -368,9 +376,12 @@ class Vault:
 
     def save_as(self, destination, revision, expected_hash="", overwrite=False):
         with self._mutex:
+            previous = self.path
             data = self._rpc("database.save_as", path=str(destination), revision=revision,
                              expected_hash=expected_hash, overwrite=overwrite)
             self.path = Path(data["path"])
+            if self.path != previous:
+                self.forget_system_auth()
             return self._set_snapshot(data["snapshot"])
 
     def save_policy(self, auto_save, on_exit):
@@ -390,8 +401,10 @@ class Vault:
         with self._mutex:
             if not self.unlocked:
                 raise VaultError("Unlock a database first.")
-            return self._snapshot_call("database.reopen", password=password, keyfile=keyfile,
+            result = self._snapshot_call("database.reopen", password=password, keyfile=keyfile,
                                        yubikey=yubikey, no_password=no_password, merge=merge, discard=discard, **(review or {}))
+            self.forget_system_auth()
+            return result
 
     def watch_file(self, reload=True):
         with self._mutex:
@@ -417,6 +430,80 @@ class Vault:
             if not self.unlocked:
                 raise VaultError("Unlock the vault before configuring quick unlock.")
             return self._rpc("quick.seal", **credentials, short_password=short_password)
+
+    def has_system_auth(self, path):
+        with self._process_mutex:
+            manager = self.auth_manager
+            process = manager.process if manager else None
+            return bool(self.system_token and self.system_path == Path(path).expanduser().resolve()
+                        and process and process.poll() is None)
+
+    def forget_system_auth(self):
+        with self._process_mutex:
+            manager, token = self.auth_manager, self.system_token
+            self.system_token = self.system_path = None
+        if token and manager and manager.process is not None:
+            try:
+                manager.forget(token)
+            except VaultError:
+                # A failed revocation must not leave an unreachable credential broker running.
+                manager.close()
+
+    def _configure_system_auth(self, manager):
+        if "polkit-unlock" not in self.capabilities:
+            raise VaultError("Update the native engine before using system authentication.")
+        if not self._process or self._process.poll() is not None:
+            raise VaultError("The native vault helper stopped.")
+        manager.register(self._process.pid)
+        process = manager.process
+        if process is None or process.poll() is not None:
+            raise VaultError("The system-authentication broker stopped.")
+        self._rpc("auth.configure", socket=str(manager.path), pid=process.pid)
+        self.auth_manager = manager
+
+    def enroll_system_auth(self, manager, credentials):
+        with self._mutex:
+            if not self.unlocked:
+                raise VaultError("Unlock this vault with its master credential first.")
+            generation = self.generation
+            old_manager, old_token = self.auth_manager, self.system_token
+            self._configure_system_auth(manager)
+            token = self._rpc("auth.enroll", **credentials)
+            if not isinstance(token, str) or len(token) != 36:
+                raise VaultError("The system-authentication enrollment response is invalid.")
+            try:
+                manager.commit(token)
+                with self._process_mutex:
+                    if self._cancelled.is_set() or generation != self._generation:
+                        raise VaultError("System-authentication enrollment was cancelled.")
+                    self.system_token, self.system_path = token, self.path
+            except Exception:
+                manager.forget(token)
+                raise
+            if old_token and old_manager and old_manager.process is not None:
+                try:
+                    old_manager.forget(old_token)
+                except VaultError:
+                    old_manager.close()
+            return True
+
+    def system_unlock(self, path, allow_recovery=False):
+        with self._mutex:
+            if not self.has_system_auth(path):
+                raise VaultError("System authentication is unavailable. Use the master password.")
+            manager, token = self.auth_manager, self.system_token
+            self._stop(); self.snapshot = None
+            self.path = Path(path).expanduser().resolve(strict=True)
+            self._start()
+            try:
+                self._configure_system_auth(manager)
+                return self._snapshot_call("auth.unlock", path=str(self.path), token=token,
+                                           allow_recovery=allow_recovery, _timeout=135)
+            except Exception as exc:
+                self.lock()
+                if isinstance(exc, EngineError) and exc.code in {"key_error", "auth_missing"}:
+                    self.forget_system_auth()
+                raise
 
     def quick_unlock(self, path, blob, short_password, allow_recovery=False):
         with self._mutex:
@@ -886,7 +973,11 @@ class Vault:
 
     def change_key(self, **changes):
         with self._mutex:
-            return self._snapshot_call("database.key.change", **changes) if changes else self.snapshot
+            if not changes:
+                return self.snapshot
+            result = self._snapshot_call("database.key.change", **changes)
+            self.forget_system_auth()
+            return result
 
     def merge(self, source, password="", keyfile="", yubikey="", no_password=False, same_credentials=False):
         with self._mutex:

@@ -19,6 +19,7 @@
 #include "KeyslotNetwork.h"
 #include "KeyslotRemote.h"
 #include "KeyslotProperties.h"
+#include "KeyslotAuth.h"
 #include <QKeySequence>
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
@@ -346,6 +347,7 @@ class Engine {
     KeyslotIcons iconTools;
     KeyslotRemote remote;
     KeyslotProperties properties;
+    KeyslotAuth systemAuth;
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash, diskHash;
@@ -792,7 +794,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -835,6 +837,30 @@ public:
         if (method.startsWith("secret.session.")) {
             try { return secretSessions.call(method, args); }
             catch (const SecretFailure& error) { throw Failure{error.code, error.message}; }
+        }
+        if (method.startsWith("auth.")) {
+            try {
+                if (method == "auth.configure") { systemAuth.configure(requestedPath(args, "socket"), integer(args, "pid", 2, 2147483647)); return true; }
+                if (method == "auth.enroll") {
+                    call("database.key.verify", args);
+                    const QJsonObject credentials{{"path", path}, {"password", text(args, "password")},
+                        {"keyfile", text(args, "keyfile")}, {"yubikey", text(args, "yubikey")}, {"no_password", boolean(args, "no_password")}};
+                    const auto response = systemAuth.request({{"method", "put"}, {"credentials", credentials}});
+                    return text(response, "token");
+                }
+                if (method == "auth.unlock") {
+                    if (db) fail("invalid_request", "Lock the vault before requesting system authentication.");
+                    const auto requested = QFileInfo(requestedPath(args)).canonicalFilePath();
+                    if (requested.isEmpty()) fail("file_error", "The vault file is unavailable.");
+                    const auto response = systemAuth.request({{"method", "get"}, {"token", text(args, "token")}, {"path", requested}}, 125000);
+                    if (!response.value("credentials").isObject()) fail("auth_error", "The native session credential is invalid.");
+                    auto credential = response.value("credentials").toObject();
+                    if (text(credential, "path") != requested) fail("auth_error", "This session credential belongs to another vault.");
+                    credential.insert("allow_recovery", boolean(args, "allow_recovery"));
+                    return call("open", credential);
+                }
+            } catch (const KeyslotAuth::Failure& error) { throw Failure{error.code, error.message}; }
+            fail("unsupported", "This system authentication operation is unavailable.");
         }
         if (method == "quick.seal") {
             call("database.key.verify", args);

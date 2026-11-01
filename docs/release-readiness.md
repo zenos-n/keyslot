@@ -407,10 +407,12 @@ backports retain the pinned 2.7.12/Qt5 API and do not implement all 2.8 features
 The [official 2.8 release](https://keepassxc.org/blog/2026-10-21-2.8.0-released/)
 adds features beyond the pinned baseline. Runtime candidates now include configurable
 shortcuts, SSH generation, additional Proton Pass types, passkey/TOTP statistics,
-attribute-name suggestions, and remote synchronization. Linux Polkit quick unlock
-remains an implementation gap; all implemented candidates still need manual
-acceptance. Remote sync now has compatible encrypted location settings, command
-review, download/two-way merge/durable local save/pre-upload check/upload and
+attribute-name suggestions, and remote synchronization. Linux Polkit session
+unlock now has an encrypted native broker/process-keyring adapter, explicit enrollment, per-release authorization, cancellation/revocation
+and a packaged system action. Its [requirements](../engine/PolkitUnlock.md) and
+real installed GNOME/agent/PAM/lifecycle behavior still require manual acceptance.
+All implemented candidates still need manual acceptance. Remote sync now has
+compatible encrypted location settings, command review, download/two-way merge/durable local save/pre-upload check/upload and
 cancellation. Its [limits](../engine/RemoteSynchronization.md), including remote
 write races and unknown failed-upload outcomes, require manual acceptance.
 Existing gaps such as broader field-reference and breach-report acceptance, advanced

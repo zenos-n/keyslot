@@ -832,3 +832,10 @@ Groups header show identity, timestamps, counts and plugin data. Plugin values
 are fetched only on explicit inspection/copy; selected plugin data can be removed
 after native revision-bound review. See [properties and limits](engine/Properties.md).
 This candidate has compilation evidence only; manual acceptance remains pending.
+
+**Preferences → Security → System Authentication** now offers session-only Linux
+Polkit unlock, using an encrypted native broker and private process keyring.
+The packaged action must be installed system-wide; `nix run` alone cannot install
+it. Read [requirements and limits](engine/PolkitUnlock.md). Native vault helpers
+still die on lock. This candidate has compilation evidence only and awaits
+manual GNOME authentication/lifecycle acceptance.

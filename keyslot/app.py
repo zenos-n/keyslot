@@ -4,6 +4,7 @@ import resource
 import shutil
 import sys
 import time
+import threading
 
 from .application import Adw, Gio, GLib, Gtk, Vault, VaultSession, VaultError, INTERFACE, OBJECT_PATH, DBUS_XML
 from . import APP_ID, ICON_NAME, database_views, preferences, passkey_views, autotype_views, command_line as gui_cli
@@ -17,6 +18,8 @@ class Keyslot(Adw.Application):
         launcher = shutil.which("keyslot") or (str(executable) if executable.is_file() else None)
         self.startup = Startup(launcher=launcher)
         self.keyring = None
+        self._system_auth = None
+        self._system_auth_mutex = threading.Lock()
         self.browser = None
         from .ssh_integration import SSHIntegration
         self.ssh = SSHIntegration(self, GLib.idle_add)
@@ -318,6 +321,17 @@ class Keyslot(Adw.Application):
             self.keyring = LoginKeyring()
         return self.keyring
 
+    def system_auth(self):
+        with self._system_auth_mutex:
+            manager = self._system_auth
+            process = manager.process if manager else None
+            if process is None or process.poll() is not None:
+                if self._system_auth is not None:
+                    self._system_auth.close()
+                from .system_auth import SystemAuthManager
+                self._system_auth = SystemAuthManager()
+            return self._system_auth
+
     def recover(self):
         from .saving import show_recoveries
         show_recoveries(self)
@@ -454,6 +468,9 @@ class Keyslot(Adw.Application):
             notification.set_body(message)
             self.send_notification("ssh-cleanup", notification)
             print(message, file=sys.stderr)
+        if self._system_auth is not None:
+            self._system_auth.close()
+            self._system_auth = None
         for session in list(self.sessions):
             session.shutdown()
         self.sessions.clear()

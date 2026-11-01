@@ -16,6 +16,7 @@ configure_file(input: 'data/com.neg-zero.keyslot.service.in',
     output: 'com.neg-zero.keyslot.service', configuration: conf,
     install: true, install_dir: get_option('datadir') / 'dbus-1/services')
 install_data('data/com.neg-zero.keyslot.metainfo.xml', install_dir: get_option('datadir') / 'metainfo')
+install_data('data/com.neg-zero.keyslot.unlock.policy', install_dir: get_option('datadir') / 'polkit-1/actions')
 install_data('LICENSE', install_dir: get_option('datadir') / 'licenses/keyslot')
 if get_option('tests')
   dbus = find_program('dbus-run-session')
