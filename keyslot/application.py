@@ -112,6 +112,8 @@ class VaultSession:
         self.files = FileChanges(self)
         self.urls = url_views.UrlController(self)
         self.totp = totp_views.TotpController(self)
+        from .privacy_views import Previews
+        self.previews = Previews(self)
         self.window = DatabaseView(self)
 
     @property
@@ -152,6 +154,7 @@ class VaultSession:
             self.window.show_locked()
         self.files.stop()
         self.totp.clear()
+        self.previews.clear()
         self.urls.clear()
         self.icons.cancel_downloads()
         self.icons.clear()
@@ -236,6 +239,7 @@ class VaultSession:
         save_as(self)
 
     def shutdown(self):
+        self.previews.close()
         self.files.stop()
         self.totp.clear()
         self.urls.clear()
@@ -653,7 +657,8 @@ class VaultSession:
         visual.add(background)
         box.append(visual)
         notes_group = Adw.PreferencesGroup(title="Notes")
-        notes = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, top_margin=12, bottom_margin=12,
+        notes = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, monospace=self.application.startup.monospace_notes,
+                             top_margin=12, bottom_margin=12,
                              left_margin=12, right_margin=12, height_request=120)
         notes.get_buffer().set_text(values.get("Notes", ""))
         notes_group.add(Gtk.ScrolledWindow(child=notes, css_classes=["card"], overflow=Gtk.Overflow.HIDDEN,
@@ -794,7 +799,7 @@ class VaultSession:
         for option in (tags, searching, expires, expiry):
             options.add(option)
         box.append(options)
-        notes = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, height_request=120,
+        notes = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, height_request=120, monospace=self.application.startup.monospace_notes,
                              left_margin=12, right_margin=12, top_margin=12, bottom_margin=12)
         notes.get_buffer().set_text(current.notes)
         notes_group = Adw.PreferencesGroup(title="Notes")
@@ -1191,6 +1196,7 @@ class DatabaseView(Gtk.Box):
             self.outer.set_show_sidebar(False)
 
     def render_entries(self, previous=None, selection=None):
+        self.app.previews.clear()
         if not self.snapshot:
             return
         previous = previous or (self.selected_entry.uuid if self.selected_entry else None)
@@ -1213,8 +1219,9 @@ class DatabaseView(Gtk.Box):
                     continue
             elif (entry.recycled and not selected_recycled) or (groups is not None and entry.group not in groups):
                 continue
-            row = Adw.ActionRow(title=GLib.markup_escape_text(entry.title or "Untitled Entry"),
-                subtitle=GLib.markup_escape_text(entry.username or entry.url or entry.group_path or entry.group))
+            subtitle = ("••••••" if self.app.application.startup.hide_usernames else entry.username) if entry.username else (
+                entry.url or entry.group_path or entry.group)
+            row = Adw.ActionRow(title=GLib.markup_escape_text(entry.title or "Untitled Entry"), subtitle=GLib.markup_escape_text(subtitle))
             row.entry = entry
             check = Gtk.CheckButton(valign=Gtk.Align.CENTER)
             check.update_property([Gtk.AccessibleProperty.LABEL], ["Select " + (entry.title or "Untitled Entry")])
@@ -1360,6 +1367,7 @@ class DatabaseView(Gtk.Box):
     def _selection_changed(self, *_):
         if not self.selection_mode or self.rendering_entries:
             return
+        self.app.previews.clear()
         entries = self.selected_entries()
         count = len(entries)
         self.selected_entry = None
@@ -1415,6 +1423,7 @@ class DatabaseView(Gtk.Box):
             self.app.application.shortcuts.refresh_state()
 
     def _empty_detail(self):
+        self.app.previews.clear()
         self.app.totp.clear()
         clear(self.detail)
         self.detail.append(Adw.StatusPage(title="Select an Entry", icon_name="dialog-password-symbolic",
@@ -1422,6 +1431,7 @@ class DatabaseView(Gtk.Box):
         self.app.application.shortcuts.refresh_state()
 
     def render_detail(self, entry):
+        self.app.previews.clear()
         self.app.totp.clear()
         clear(self.detail)
         hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, halign=Gtk.Align.CENTER)
@@ -1430,14 +1440,8 @@ class DatabaseView(Gtk.Box):
         hero.append(Gtk.Label(label=entry.group_path or entry.group, wrap=True, css_classes=["dim-label"]))
         self.detail.append(hero)
         fields = Adw.PreferencesGroup()
-        username = Adw.ActionRow(title="Username", subtitle=GLib.markup_escape_text(entry.username or "—"))
-        username.add_suffix(button("edit-copy-symbolic", "Copy Username", lambda: self.app.run_job(
-            lambda: self.app.vault.attribute(entry, "UserName"), self.app.copy)))
-        fields.add(username)
-        password = Adw.ActionRow(title="Password", subtitle="••••••••••••")
-        password.add_suffix(button("edit-copy-symbolic", "Copy Password", lambda: self.app.run_job(
-            lambda: self.app.vault.attribute(entry), self.app.copy)))
-        fields.add(password)
+        fields.add(self.app.previews.field(entry, "UserName", "Username"))
+        fields.add(self.app.previews.field(entry, "Password", "Password"))
         if entry.url:
             website = Adw.ActionRow(title="Website", subtitle=GLib.markup_escape_text(entry.url))
             website.add_suffix(button("adw-external-link-symbolic", "Open Entry URL", lambda: self.app.open_entry_url(entry)))
@@ -1490,9 +1494,7 @@ class DatabaseView(Gtk.Box):
         browser.add(websites)
         self.detail.append(browser)
         if entry.notes:
-            group = Adw.PreferencesGroup(title="Notes")
-            group.add(margins(Gtk.Label(label=entry.notes, wrap=True, selectable=True, xalign=0), 12))
-            self.detail.append(group)
+            self.detail.append(self.app.previews.field(entry, "Notes", "Notes", notes=True))
         custom = Adw.PreferencesGroup(title="Custom Attributes")
         for name in entry.attributes:
             row = Adw.ActionRow(title=GLib.markup_escape_text(name), subtitle="Copy or edit this attribute")

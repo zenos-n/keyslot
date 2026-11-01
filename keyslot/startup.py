@@ -10,6 +10,8 @@ from . import APP_ID
 AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False, delay=25, start_delay=500)
 SECRET_SERVICE_DEFAULTS = dict(enabled=False, confirm_access=True, confirm_delete=True, notify=True, unlock_before_search=True)
 LOCK_DEFAULTS = dict(lock_on_screen=True, lock_on_user_switch=True, lock_on_minimize=False)
+PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_preview=True,
+                        monospace_notes=False, password_empty_placeholder=False)
 
 
 def _autotype_options(value):
@@ -84,6 +86,8 @@ class Startup:
         self.auto_save = self.auto_save_on_exit = True
         for name, value in LOCK_DEFAULTS.items():
             setattr(self, name, value)
+        for name, value in PRIVACY_DEFAULTS.items():
+            setattr(self, name, value)
         self.ssh = False
         self.ssh_socket = self.ssh_provider = ""
         self.autotype = dict(AUTO_TYPE_DEFAULTS)
@@ -104,6 +108,10 @@ class Startup:
             self.auto_save = data.get("auto_save", True) is True
             self.auto_save_on_exit = data.get("auto_save_on_exit", True) is True
             for name, default in LOCK_DEFAULTS.items():
+                value = data.get(name, default)
+                if type(value) is bool:
+                    setattr(self, name, value)
+            for name, default in PRIVACY_DEFAULTS.items():
                 value = data.get(name, default)
                 if type(value) is bool:
                     setattr(self, name, value)
@@ -178,12 +186,18 @@ class Startup:
     def save(self, remember, login, vault=None, background=None, lock_minutes=None, browser=None,
              ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
              minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None,
-             auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None):
+             auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None,
+             hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None):
         with self.mutex:
             locks = {name: getattr(self, name) if value is None else value for name, value in (
                 ("lock_on_screen", lock_on_screen), ("lock_on_user_switch", lock_on_user_switch), ("lock_on_minimize", lock_on_minimize))}
             if any(type(value) is not bool for value in locks.values()):
                 raise ValueError("Choose supported automatic locking switches.")
+            privacy = {name: getattr(self, name) if value is None else value for name, value in (
+                ("hide_usernames", hide_usernames), ("hide_notes", hide_notes), ("hide_password_preview", hide_password_preview),
+                ("monospace_notes", monospace_notes), ("password_empty_placeholder", password_empty_placeholder))}
+            if any(type(value) is not bool for value in privacy.values()):
+                raise ValueError("Choose supported entry privacy switches.")
             background = self.background if background is None else bool(background)
             autotype = _autotype_options(self.autotype if autotype is None else autotype)
             keeshare = _keeshare_options(self.keeshare if keeshare is None else keeshare)
@@ -245,6 +259,7 @@ class Startup:
                        "minimize_on_url": minimize_on_url,
                        "vault": str(vault) if vault else None}
                 data.update(locks)
+                data.update(privacy)
                 if seconds != timeout * 60:
                     data["lock_seconds"] = seconds
                 if clipboard_seconds != 20:
@@ -272,6 +287,8 @@ class Startup:
             self.auto_reload = auto_reload
             self.auto_save, self.auto_save_on_exit = auto_save, auto_save_on_exit
             for name, value in locks.items():
+                setattr(self, name, value)
+            for name, value in privacy.items():
                 setattr(self, name, value)
             self.ssh, self.ssh_socket, self.ssh_provider = ssh, ssh_socket, ssh_provider
             self.autotype = autotype

@@ -1112,6 +1112,13 @@ class Vault:
             self._entry(entry)
             return self._rpc("attribute", entry=entry.uuid, name=name, totp=totp)
 
+    def preview_fields(self, entry, fields=()):
+        with self._mutex:
+            self._entry(entry)
+            if "entry-preview" not in self.capabilities:
+                raise VaultError("Update the native engine before loading entry previews.")
+            return self._rpc("entry.preview", entry=entry.uuid, fields=list(fields))
+
     def editable_fields(self, entry):
         with self._mutex:
             self._entry(entry)

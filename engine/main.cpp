@@ -801,7 +801,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1749,6 +1749,35 @@ public:
             QJsonArray result;
             for (const auto* e : searcher.searchEntries(text(args, "query"), candidates)) result.append(uid(e->uuid()));
             return result;
+        }
+        if (method == "entry.preview") {
+            auto* item = entry(args);
+            int matches = 0;
+            for (const auto* current : db->rootGroup()->entriesRecursive()) if (current->uuid() == item->uuid()) ++matches;
+            if (matches != 1) fail("invalid_request", "This entry identifier is ambiguous. Select an entry with a unique identifier.");
+            const auto requested = args.value("fields");
+            if (!requested.isArray() || requested.toArray().size() > 3)
+                fail("invalid_request", "Choose supported preview fields.");
+            QSet<QString> fields;
+            for (const auto& value : requested.toArray()) {
+                const auto name = value.toString();
+                if (!value.isString() || !QStringList{"UserName", "Password", "Notes"}.contains(name) || fields.contains(name))
+                    fail("invalid_request", "Choose each supported preview field once.");
+                fields.insert(name);
+            }
+            const auto password = item->resolveMultiplePlaceholders(item->password());
+            QJsonObject values;
+            QJsonArray truncated;
+            for (const auto& name : fields) {
+                auto value = name == "Password" ? password : item->resolveMultiplePlaceholders(item->attribute(name));
+                if (value.size() > 32768) {
+                    value.truncate(32768);
+                    if (!value.isEmpty() && value.at(value.size() - 1).isHighSurrogate()) value.chop(1);
+                    truncated.append(name);
+                }
+                values.insert(name, value);
+            }
+            return QJsonObject{{"values", values}, {"password_empty", password.isEmpty()}, {"truncated", truncated}};
         }
         if (method == "attribute") {
             auto* e = entry(args);

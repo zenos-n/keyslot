@@ -189,6 +189,8 @@ def show(session):
             lambda: session.run_job(session.vault.forget_system_auth, lambda _value: (dialog.close(), session.toast("System authentication disabled")))))
     security.add(system)
     page.add(security)
+    from .privacy_views import preferences as privacy_preferences
+    privacy_preferences(session, page)
     links = Adw.PreferencesGroup(title="Links")
     minimize = Adw.SwitchRow(title="Minimize After Opening Links", active=settings.minimize_on_url,
         subtitle="Hide this window when background mode is enabled")

@@ -450,3 +450,12 @@ grace are implemented. [Desktop-lock policy](desktop-locking.md) documents
 requirements and incomplete evidence. Package/Python compilation is the only
 validation for this revision; actual session/login/clipboard/lock/save lifecycle
 and preferences migration remain for user manual acceptance.
+
+Entry Privacy now maps stock username/notes/password-preview visibility, empty
+password placeholders and monospace notes. A selected-entry native batch returns
+only requested display fields and password-empty metadata, with explicit bounded
+preview truncation and unchanged full Copy. Lifecycle/cancellation guards and
+passive queue behavior are documented in [Entry privacy](entry-privacy.md).
+Native/package/Python compilation is the only validation for this revision;
+actual privacy, reference, focus/selection/lock, config and clipboard behavior
+remains user-manual. Copy/minimize/background preferences are still open work.

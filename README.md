@@ -878,3 +878,12 @@ to KeePassXC INI profiles and private preferences. Minimize/hide locking uses
 the remaining owned clipboard lifetime with a 1–20 second grace, then locks all
 vaults. Screen/suspend and user-switch default on; minimize/hide defaults off.
 [Monitoring and manual-acceptance limits](docs/desktop-locking.md).
+
+## Entry preview privacy
+
+Preferences → Entry Privacy can hide usernames and notes, configure password
+preview visibility, mask empty passwords and use monospace notes. Hidden detail
+fields have individual reveal controls. Password fields stay masked by default;
+only requested preview fields leave the native helper. Notes have a rounded,
+scrollable read-only view. Long previews show a truncation notice; Copy retrieves
+the complete native field. [Details and manual acceptance](docs/entry-privacy.md).
