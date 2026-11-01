@@ -37,8 +37,10 @@ and focus leases retain their existing expiry and validation.
 This adds the selection-memory workflow, not a complete Auto-Type parity claim.
 [Chooser Search](autotype-search.md) now preserves native query syntax and association
 variants. [Locked-vault resumption](autotype-unlock.md) and immediate temporary-vault
-relocking and a locked-vault chooser are implemented. Sort preferences, portal
-persistence/clipboard typing and broader platform behavior remain separate gaps.
+relocking and a locked-vault chooser are implemented. [Sort controls](autotype-search.md)
+and [portal permission lifetimes](autotype-permissions.md) are implemented;
+protected/reference display ordering, persistent portal connections/clipboard
+typing and broader platform behavior remain separate gaps.
 Confirmation preferences follow the linked policy.
 
 References: KeePassXC Team/Felix Geyer GPL2-or-3 source; this independent adapter

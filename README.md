@@ -390,6 +390,12 @@ parity gaps and manual acceptance; this workflow has not been exercised here.
 
 The desktop, window and welcome screen temporarily use the themed `keepassxc` icon.
 
+Wayland Auto-Type can remember keyboard permission until Keyslot quits or across
+restarts, with a Forget action. The desktop controls whether persistence is
+granted; vault, destination and sequence approval remain per invocation. See
+[Keyboard permission](docs/autotype-permissions.md) for profile/token handling,
+older-portal fallback and manual acceptance limits.
+
 Encrypted vault files are monitored for external changes, including atomic
 replacements by sync clients. Asynchronous metadata polling also covers missed
 filesystem notifications. The native core checks the ciphertext against its

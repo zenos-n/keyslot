@@ -602,7 +602,7 @@ def _execute(session, target, data, picks, choice, flow):
 def add_preferences(session, page):
     config = session.application.startup
     group = Adw.PreferencesGroup(title="Auto-Type",
-        description="GNOME companion shortcut: Ctrl+Alt+K. Wayland uses a temporary keyboard portal permission.")
+        description="GNOME companion shortcut: Ctrl+Alt+K. Wayland asks the desktop for keyboard permission.")
     values = config.autotype
     widgets = {}
     for key, title in (("match_title", "Match Entry Titles"), ("match_url", "Match Websites"),
@@ -643,3 +643,54 @@ def add_preferences(session, page):
         row.connect("notify::active" if isinstance(row, Adw.SwitchRow) else "notify::value", changed)
         group.add(row)
     page.add(group)
+    permission_group = Adw.PreferencesGroup(title="Wayland Keyboard Permission",
+        description="Your desktop controls permission requests. Each Auto-Type invocation still checks its destination.")
+    policy = Adw.ComboRow(title="Remember Access", model=Gtk.StringList.new(
+        ["Ask Every Time", "Until Keyslot Quits", "Until I Forget"]), selected=config.autotype["portal_mode"])
+    forget = Adw.ActionRow(title="Forget Remembered Access", activatable=True,
+        subtitle="Clear remembered access; the desktop controls future prompts")
+    forget.add_suffix(Gtk.Image(icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER))
+    permission_group.add(policy)
+    permission_group.add(forget)
+    page.add(permission_group)
+    permission_state = {"updating": False, "busy": False}
+    def restore_permission():
+        permission_state["updating"] = True
+        policy.set_selected(config.autotype["portal_mode"])
+        permission_state["updating"] = False
+        permission_state["busy"] = False
+        permission_group.set_sensitive(True)
+    def permission_changed(*_, clear_only=False):
+        if permission_state["updating"] or permission_state["busy"]:
+            return
+        selected_mode = policy.get_selected()
+        if not clear_only and selected_mode == config.autotype["portal_mode"]:
+            return
+        if session.busy or session.jobs.closed:
+            restore_permission()
+            session.toast("Wait for the current operation to finish")
+            return
+        permissions = session.application.portal_permissions
+        permissions.invalidate()
+        permission_state["busy"] = True
+        permission_group.set_sensitive(False)
+        def apply_permission():
+            permissions.forget(config)
+            if not clear_only:
+                with config.mutex:
+                    if session.application.startup is not config:
+                        raise VaultError("The configuration changed. Open Preferences again.")
+                    config.save(config.remember, config.login, config.vault,
+                                autotype=dict(config.autotype, portal_mode=selected_mode))
+        def saved(_result):
+            restore_permission()
+            if permission_group.get_root():
+                session.toast("Remembered keyboard access cleared" if clear_only else "Keyboard permission preference saved")
+        def failed(message):
+            restore_permission()
+            if permission_group.get_root():
+                session.error(message)
+        if not session.run_job(apply_permission, saved, failed):
+            restore_permission()
+    policy.connect("notify::selected", permission_changed)
+    forget.connect("activated", lambda *_: permission_changed(clear_only=True))

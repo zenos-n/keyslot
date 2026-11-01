@@ -45,6 +45,8 @@ class Keyslot(Adw.Application):
         self.clipboards = Clipboards(self)
         from .autotype_recent import RecentChoice
         self.autotype_recent = RecentChoice(self)
+        from .portal_permissions import PortalPermissions
+        self.portal_permissions = PortalPermissions(self)
         self.autotype_flow = None
         self.autotype_unlock = None
         self.last_activity = time.monotonic()
@@ -455,6 +457,7 @@ class Keyslot(Adw.Application):
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        self.portal_permissions.close()
         if self.autotype_unlock:
             self.autotype_unlock.cancel()
         if self.autotype_flow:

@@ -32,7 +32,7 @@ def capture_target():
 
 
 class PortalKeyboard:
-    def __init__(self, valid):
+    def __init__(self, valid, permissions=None):
         self.valid = valid
         self.connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         self.session = None
@@ -40,9 +40,15 @@ class PortalKeyboard:
         self.closed = False
         self.pressed = []
         self.subscription = 0
+        self.permissions = permissions
+        self.ticket = None
+        self.persist_mode = 0
+        self.persistence_supported = False
+        self.restore_token = ""
 
     def _check(self):
-        if not self.valid() or self.closed:
+        if (not self.valid() or self.closed
+                or (self.ticket is not None and not self.permissions.valid(self.ticket))):
             raise VaultError("Auto-type was cancelled.")
 
     def _call(self, method, parameters):
@@ -70,7 +76,10 @@ class PortalKeyboard:
             parameters = GLib.Variant("(a{sv})", (options,))
         elif method == "SelectDevices":
             options["types"] = GLib.Variant("u", 1)
-            options["persist_mode"] = GLib.Variant("u", 0)
+            if self.ticket is not None and self.persistence_supported:
+                options["persist_mode"] = GLib.Variant("u", self.persist_mode)
+                if self.restore_token:
+                    options["restore_token"] = GLib.Variant("s", self.restore_token)
             parameters = GLib.Variant("(oa{sv})", (self.session, options))
         else:
             parameters = GLib.Variant("(osa{sv})", (self.session, "", options))
@@ -92,16 +101,34 @@ class PortalKeyboard:
             self.connection.signal_unsubscribe(subscription)
             self._close_path(path, "org.freedesktop.portal.Request")
             self.request_path = None
+            if method == "SelectDevices":
+                self.restore_token = ""
 
     def open(self):
+        self._check()
+        try:
+            version = self.connection.call_sync(PORTAL_NAME, PORTAL_PATH, "org.freedesktop.DBus.Properties", "Get",
+                GLib.Variant("(ss)", (PORTAL_INTERFACE, "version")), GLib.VariantType.new("(v)"),
+                Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+        except GLib.Error:
+            version = 0
         returned = self._request("CreateSession").get("session_handle")
         if returned != self.session:
             raise VaultError("The keyboard portal returned an invalid session.")
         self.subscription = self.connection.signal_subscribe(PORTAL_NAME, "org.freedesktop.portal.Session",
             "Closed", self.session, None, Gio.DBusSignalFlags.NONE, lambda *_: setattr(self, "closed", True))
+        self.persistence_supported = type(version) is int and version >= 2
+        if self.permissions:
+            self.ticket, self.restore_token = self.permissions.begin(self.persistence_supported)
+            self.persist_mode = self.ticket[2]
         self._request("SelectDevices")
-        if self._request("Start").get("devices", 0) & 1 == 0:
+        result = self._request("Start")
+        devices = result.get("devices", 0)
+        if type(devices) is not int or devices < 0 or devices & 1 == 0:
             raise VaultError("The portal did not grant keyboard access.")
+        if self.ticket is not None and self.persistence_supported:
+            self.permissions.granted(self.ticket, result.get("restore_token", ""))
+        self._check()
 
     def _close_path(self, path, interface):
         try:
@@ -111,6 +138,8 @@ class PortalKeyboard:
             pass
 
     def close(self):
+        self.restore_token = ""
+        self.ticket = None
         for key in reversed(self.pressed):
             try:
                 self._notify(key, False, cleanup=True)
@@ -160,11 +189,12 @@ class PortalKeyboard:
 def execute_portal(session, target, token, pick, epoch, flow_valid=None):
     valid = lambda: (session.epoch == epoch and session.vault.unlocked and not session.jobs.closed
                      and (flow_valid is None or flow_valid()))
-    keyboard = PortalKeyboard(valid)
+    keyboard = PortalKeyboard(valid, session.application.portal_permissions)
     plan = collections.deque()
     focus_token = GLib.Variant("(s)", (target["target"],))
     deadline = time.monotonic() + 120
     def guard():
+        keyboard._check()
         if not valid() or time.monotonic() > deadline:
             raise VaultError("Auto-type was cancelled or took too long.")
         if not shell_call("Check", focus_token, "(b)")[0]:
@@ -176,9 +206,11 @@ def execute_portal(session, target, token, pick, epoch, flow_valid=None):
             time.sleep(min(0.05, max(0, end - time.monotonic())))
     try:
         keyboard.open()
+        keyboard._check()
         if not shell_call("Focus", focus_token, "(b)")[0]:
             raise VaultError("The auto-type destination is no longer available.")
         # Resolve TOTP/placeholders after portal approval, immediately before typing.
+        guard()
         result = session.vault.autotype_finish(token, pick, approved=True)
         plan.extend(result["plan"])
         wait(result["start_delay"])

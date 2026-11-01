@@ -581,3 +581,13 @@ differences, saved profiles, failed writes, keyboard/pointer/accessibility,
 multi-vault duplicates, async search and lock/cancel races require user manual
 acceptance. See [Chooser search](autotype-search.md); no exact-order/full-parity
 or production claim is made.
+
+Wayland keyboard permission lifetimes now map stock persistence mode0/1/2 and
+the profile-local restore-token key. Version2 negotiation, old-version transient
+fallback, one-use consumption/rotation, empty-slot CAS and immediate policy/
+Forget/shutdown invalidation are implemented; tokens never replace per-invocation
+vault/focus/sequence checks. Persistent portal connections and clipboard typing
+remain separate gaps. Runtime/Python compilation only; no tests/harnesses or
+portal/input/profile/token/vault behavior runs. All desktop permission, rotation,
+revocation, profile/error/cancellation and accessibility acceptance remains
+manual. See [Keyboard permission](autotype-permissions.md).

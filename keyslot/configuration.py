@@ -43,7 +43,8 @@ AUTOTYPE_KEYS = {"match_title": "AutoTypeEntryTitleMatch", "match_url": "AutoTyp
     "hide_expired": "AutoTypeHideExpiredEntry", "relock": "Security/RelockAutoType",
     "delay": "AutoTypeDelay", "start_delay": "AutoTypeStartDelay", "retype_seconds": "GlobalAutoTypeRetypeTime",
     "always_ask": "Security/AutotypeAsk", "skip_main_confirmation": "Security/AutoTypeSkipMainWindowConfirmation",
-    "sort_column": "AutoTypeDialogSortColumn", "sort_order": "AutoTypeDialogSortOrder"}
+    "sort_column": "AutoTypeDialogSortColumn", "sort_order": "AutoTypeDialogSortOrder",
+    "portal_mode": "AutoTypeDesktopPortalPersistMode"}
 SECRET_KEYS = {"enabled": "Enabled", "notify": "ShowNotification", "confirm_delete": "ConfirmDeleteItem",
     "confirm_access": "ConfirmAccessItem", "unlock_before_search": "UnlockBeforeSearch"}
 GENERATOR_KEYS = {"lowercase": ("LowerCase", True), "uppercase": ("UpperCase", True),

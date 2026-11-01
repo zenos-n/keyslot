@@ -57,7 +57,9 @@ used to validate this implementation.
 [Chooser Search](autotype-search.md) now includes native search scopes and association variants.
 The unlock form now offers a [vault chooser](autotype-unlock.md) across existing
 locked vault windows without changing the destination or restarting expiry.
-Remaining Auto-Type work includes sort preferences, portal persistence/clipboard typing,
+Saved [sort controls](autotype-search.md) and [portal permission lifetimes](autotype-permissions.md)
+are implemented. Remaining Auto-Type work includes protected/reference display
+ordering, persistent portal connections/clipboard typing,
 global shortcut preferences and broader backend/accessibility acceptance.
 Runtime/Python compilation only; no tests/harnesses or automated GTK, typing,
 keyboard, portal, settings or vault behavior runs were added or performed.
