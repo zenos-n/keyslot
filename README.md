@@ -786,6 +786,22 @@ metadata behind an unlock prompt. Password copying/autofill before manual input
 was not established, and no live startup reproduction was performed. These
 changes have runtime compilation only, with manual acceptance pending.
 
+## Proton Pass imports and attribute suggestions
+
+Proton Pass JSON import also supports Wi-Fi and SSH-key records. Unknown record
+content is retained as protected attributes, with structured values represented
+as JSON. Extra-field TOTP seeds stay protected; duplicate or unnamed fields
+receive distinct names. Existing login, card, note, vault and timestamp handling
+is retained. Import these through Import Database and its normal review flow.
+
+Custom Attribute → Name now offers a suggestion menu with names used by other
+non-recycled entries. It searches names without reading their values and
+excludes names already on the current entry. Free-form entry remains available.
+Preferences → Editing → Suggest Attribute Names controls it and shares
+KeePassXC's `AutocompleteSuggestions` setting for selected profiles. These
+changes have runtime compilation only; manual import and desktop acceptance
+remain pending.
+
 ## Generate SSH keys
 
 Open an entry's SSH Key Settings and choose Generate New SSH Key. Select

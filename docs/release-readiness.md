@@ -6,6 +6,21 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+The Proton Pass reader now includes upstream 2.8 Wi-Fi and SSH-key handling,
+with protected private-key attributes and annotated unknown record content.
+Keyslot additionally protects unknown content and extra-field TOTP URIs,
+retains structured/scalar/empty values, and assigns collision-free extra-field
+names. Existing import review and encrypted save/recovery paths are used.
+Custom-attribute names now have an explicit GTK suggestion menu, with paged,
+case-insensitive numeric ordering and current-entry/recycle/passkey filtering.
+The native RPC returns names only, never values. The shared
+`AutocompleteSuggestions` preference is read/written separately so unrelated
+settings saves cannot overwrite it. Private profiles keep a dedicated boolean.
+Configuration failure leaves free-form editing available. Runtime compilation
+only: real Proton exports, field protections, import/save/recovery, large-vault
+suggestions, settings, keyboard and lock cancellation await user manual
+acceptance. No tests/harnesses or automated behavior runs were added/performed.
+
 A user reported vault metadata behind an Unlock Database prompt after boot.
 Inspection found the normal-launch/manual-prompt plus login-keyring completion
 handoff could leave a stale manual prompt on an already unlocked view. Login
@@ -382,9 +397,11 @@ user's open vaults or desktop session to perform acceptance tests.
 The [coverage matrix](parity.md) remains the full replacement checklist. Security
 backports retain the pinned 2.7.12/Qt5 API and do not implement all 2.8 features.
 The [official 2.8 release](https://keepassxc.org/blog/2026-10-21-2.8.0-released/)
-also requires review of remote database synchronization, configurable shortcuts,
-SSH key generation, Linux Polkit quick unlock, additional
-Proton Pass record types, passkey/TOTP statistics and custom-attribute suggestions.
+adds features beyond the pinned baseline. Runtime candidates now include configurable
+shortcuts, SSH generation, additional Proton Pass types, passkey/TOTP statistics
+and attribute-name suggestions. Remote synchronization and Linux Polkit quick
+unlock remain implementation gaps; the implemented candidates still need manual
+acceptance.
 Existing gaps such as broader field-reference and breach-report acceptance, advanced
 preferences, import/export coverage and accessibility remain open.
 

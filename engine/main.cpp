@@ -58,6 +58,8 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
+#include <QCollator>
+#include <QSet>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -786,7 +788,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1686,6 +1688,33 @@ public:
             const auto name = text(args, "name", "Password");
             if (!e->attributes()->hasKey(name)) fail("not_found", "This attribute does not exist.");
             return boolean(args, "resolve", true) ? e->resolveMultiplePlaceholders(e->attribute(name)) : e->attribute(name);
+        }
+        if (method == "attribute.suggestions") {
+            auto* current = entry(args);
+            const auto query = text(args, "query");
+            if (query.size() > 1024) fail("invalid_request", "Use a shorter attribute-name search.");
+            const int offset = integer(args, "offset", 0, std::numeric_limits<int>::max());
+            QSet<QString> names;
+            int omitted = 0;
+            for (const auto* item : db->rootGroup()->entriesRecursive()) {
+                if (item->isRecycled()) continue;
+                for (const auto& name : item->attributes()->customKeys()) {
+                    if (current->attributes()->hasKey(name) || EntryAttributes::isPasskeyAttribute(name)
+                        || !name.contains(query, Qt::CaseInsensitive)) continue;
+                    if (name.size() > 1024 || name.contains(QChar('\0'))) { ++omitted; continue; }
+                    names.insert(name);
+                }
+            }
+            auto sorted = names.values();
+            QCollator collator; collator.setNumericMode(true); collator.setCaseSensitivity(Qt::CaseInsensitive);
+            std::sort(sorted.begin(), sorted.end(), [&](const QString& left, const QString& right) {
+                const auto compared = collator.compare(left, right);
+                return compared ? compared < 0 : left < right;
+            });
+            QJsonArray page;
+            const auto count = std::min(100, std::max(0, sorted.size() - offset));
+            for (int i = 0; i < count; ++i) page.append(sorted[offset + i]);
+            return QJsonObject{{"names", page}, {"total", sorted.size()}, {"offset", offset}, {"omitted", omitted}};
         }
         if (method == "attribute.info") {
             auto* e = entry(args);

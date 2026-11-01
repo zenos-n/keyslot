@@ -180,6 +180,8 @@ def show(session):
     shortcuts.connect("activated", configure_shortcuts)
     keyboard.add(shortcuts)
     page.add(keyboard)
+    from .attribute_views import preferences as attribute_preferences
+    attribute_preferences(session, page, dialog)
     add_preferences(session, page, dialog)
     ssh_preferences(session, page, dialog)
     autotype_preferences(session, page)

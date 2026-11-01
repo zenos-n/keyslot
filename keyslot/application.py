@@ -859,6 +859,8 @@ class VaultSession:
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         fields = Adw.PreferencesGroup()
         key = Adw.EntryRow(title="Name", text=name or "")
+        from .attribute_views import suggestions
+        suggestions(self, dialog, entry, key)
         value = Adw.PasswordEntryRow(title="Value", text=info.get("value", ""))
         protected = Adw.SwitchRow(title="Protect Value", active=info.get("protected", True))
         for row in (key, value, protected):

@@ -978,6 +978,13 @@ class Vault:
             self._entry(entry)
             return self._rpc("attribute.info", entry=entry.uuid, name=name, **({"review": True} if review else {}))
 
+    def attribute_suggestions(self, entry, query="", offset=0):
+        with self._mutex:
+            self._entry(entry)
+            if "attribute-suggestions" not in self.capabilities:
+                raise VaultError("Update the native engine before using attribute-name suggestions.")
+            return self._rpc("attribute.suggestions", entry=entry.uuid, query=query, offset=offset)
+
     def totp_settings(self, entry, revision=None):
         with self._mutex:
             self._entry(entry)

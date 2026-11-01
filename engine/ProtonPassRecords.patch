@@ -1,0 +1,70 @@
+--- a/src/format/ProtonPassReader.cpp
++++ b/src/format/ProtonPassReader.cpp
+@@ -36,6 +36,14 @@
+ 
+ namespace
+ {
++    QString uniqueAttributeName(const Entry* entry, QString name)
++    {
++        if (name.isEmpty()) name = QStringLiteral("Field");
++        const auto base = name;
++        for (int suffix = 2; entry->attributes()->hasKey(name); ++suffix) name = base + "_" + QString::number(suffix);
++        return name;
++    }
++
+     Entry* readItem(const QJsonObject& item)
+     {
+         const auto itemMap = item.toVariantMap();
+@@ -111,15 +119,38 @@
+                 }
+             }
+         }
++        // Wifi
++        else if (type.compare("wifi", Qt::CaseInsensitive) == 0) {
++            const auto wifiMap = dataMap.value("content").toMap();
++            entry->setUsername(wifiMap.value("ssid").toString());
++            entry->setPassword(wifiMap.value("password").toString());
++            entry->attributes()->set("wifi_security", wifiMap.value("security").toString());
++        }
++        // SSH Key
++        else if (type.compare("sshKey", Qt::CaseInsensitive) == 0) {
++            const auto sshMap = dataMap.value("content").toMap();
++            entry->attributes()->set("ssh_public_key", sshMap.value("publicKey").toString());
++            entry->attributes()->set("ssh_private_key", sshMap.value("privateKey").toString(), true);
++        }
++        // Unknown Type (not custom or note)
++        else if (type.compare("custom", Qt::CaseInsensitive) != 0 && type.compare("note", Qt::CaseInsensitive) != 0) {
++            entry->setNotes(QString("Unknown entry type '%1'. Content data fields have been added as protected attributes (structured values use JSON).\n\n%2")
++                                .arg(type, entry->notes()));
++            // Place all content fields as attributes
++            const auto contentMap = dataMap.value("content").toMap();
++            for (const auto& key : contentMap.keys()) {
++                const auto json = QJsonValue::fromVariant(contentMap.value(key));
++                const auto encoded = QJsonDocument(QJsonArray{json}).toJson(QJsonDocument::Compact);
++                const auto value = json.isString() ? json.toString() : QString::fromUtf8(encoded.mid(1, encoded.size() - 2));
++                entry->attributes()->set(uniqueAttributeName(entry.data(), "content_" + key), value, true);
++            }
++        }
+ 
+         // Parse extra fields
+         for (const auto& field : dataMap.value("extraFields").toList()) {
+             // Derive a prefix for attribute names using the title or uuid if missing
+             const auto fieldMap = field.toMap();
+-            auto name = fieldMap.value("fieldName").toString();
+-            if (entry->attributes()->hasKey(name)) {
+-                name = QString("%1_%2").arg(name, QUuid::createUuid().toString().mid(1, 5));
+-            }
++            const auto name = uniqueAttributeName(entry.data(), fieldMap.value("fieldName").toString());
+ 
+             QString value;
+             const auto fieldType = fieldMap.value("type").toString();
+@@ -129,7 +160,8 @@
+                 value = fieldMap.value("data").toJsonObject().value("content").toString();
+             }
+ 
+-            entry->attributes()->set(name, value, fieldType.compare("hidden", Qt::CaseInsensitive) == 0);
++            entry->attributes()->set(name, value, fieldType.compare("hidden", Qt::CaseInsensitive) == 0
++                                    || fieldType.compare("totp", Qt::CaseInsensitive) == 0);
+         }
+ 
+         // Checked expired/deleted state

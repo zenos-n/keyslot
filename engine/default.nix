@@ -53,6 +53,7 @@ pkgs.keepassxc.overrideAttrs (old: {
     substituteInPlace src/fdosecrets/objects/Item.cpp \
       --replace-fail '    static DBusResult setEntrySecret(' '    DBusResult setEntrySecret(' \
       --replace-fail '    static Secret getEntrySecret(' '    Secret getEntrySecret('
+    patch -p1 < ${./ProtonPassRecords.patch}
     patch -p1 < ${./TotpBounds.patch}
     patch -p1 < ${./XmlInnerStream.patch}
     patch -p1 < ${./AutoTypeHeadless.patch}
