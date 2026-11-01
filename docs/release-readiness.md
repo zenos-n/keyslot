@@ -6,6 +6,19 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Configuration discovery now supports KeePassXC2.8's XDG state layout with an
+existing2.7 cache fallback, explicit CLI/environment overrides and single-file
+mode. Invalid XDG base directories use standard defaults. Automatically selected
+local layouts and symlink targets are checked around settings I/O; a detected
+change requires reopening, and a late write is reported as possibly committed.
+Default-selected login launchers preserve discovery; explicit local choices
+stay fixed. Existing files are not migrated by discovery. See
+[Configuration Layouts](configuration-layouts.md) for precedence, older launcher
+limitations and non-atomic race handling. Package/Python compilation only;
+no tests/harnesses or automated config/path/login/vault/GTK behavior runs.
+Real2.7/2.8 profiles, encodings, override/permission/symlink/race cases, startup
+and login behavior require user manual acceptance.
+
 Group icon propagation now supports child groups, entries or both from Edit
 Group. Native counts and a revision/group/icon/scope-bound, two-minute single-use
 review precede one encrypted group-and-children transaction. Recycled descendants

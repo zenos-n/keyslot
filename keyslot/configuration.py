@@ -9,7 +9,7 @@ import threading
 
 from .backend import VaultError
 from .core_backend import Vault, EngineError
-from .startup import _autotype_options, _secret_service_options
+from .startup import _autotype_options, _secret_service_options, _xdg_directory
 
 
 STARTUP_KEYS = {
@@ -78,12 +78,25 @@ for _key, _default in SEARCH_KEYS.values():
     GLOBAL[_key] = _default
 
 
-def default_paths():
-    home = Path.home()
-    config = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
-    cache = Path(os.environ.get("XDG_CACHE_HOME", home / ".cache"))
-    return (os.environ.get("KPXC_CONFIG") or config / "keepassxc/keepassxc.ini",
-            os.environ.get("KPXC_CONFIG_LOCAL") or cache / "keepassxc/keepassxc.ini")
+def default_paths(*, global_override=None, local_override=None):
+    global_path = global_override if global_override is not None else os.environ.get(
+        "KPXC_CONFIG", _xdg_directory("XDG_CONFIG_HOME", ".config") / "keepassxc/keepassxc.ini")
+    if not global_path:
+        raise VaultError("Choose a nonempty global configuration file path.")
+    if local_override is not None:
+        return global_path, local_override or global_path
+    if "KPXC_CONFIG_LOCAL" in os.environ:
+        return global_path, os.environ["KPXC_CONFIG_LOCAL"] or global_path
+    state = _xdg_directory("XDG_STATE_HOME", ".local/state") / "keepassxc/keepassxc.ini"
+    cache = _xdg_directory("XDG_CACHE_HOME", ".cache") / "keepassxc/keepassxc.ini"
+    def present(path):
+        try:
+            path.lstat()
+            return True
+        except FileNotFoundError:
+            return False
+    # Keep legacy installations in place; modern state is authoritative when both exist.
+    return global_path, state if present(state) or not present(cache) else cache
 
 
 def _local_path(name):
@@ -96,13 +109,14 @@ def _local_path(name):
 
 
 class IniProfile:
-    def __init__(self, global_path, local_path):
+    def __init__(self, global_path, local_path, *, automatic_local=False):
+        self.automatic_local = automatic_local
         self.arguments = [("--config", os.path.abspath(global_path)),
                           ("--localconfig", os.path.abspath(local_path))]
         self.paths = {role: str(Path(path).resolve()) for role, (_option, path) in
                       zip(("global", "local"), self.arguments)}
         self.identity = hashlib.sha256(json.dumps(self.paths, sort_keys=True).encode()).hexdigest()
-        self.directory = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "keyslot/profiles" / self.identity
+        self.directory = _xdg_directory("XDG_CONFIG_HOME", ".config") / "keyslot/profiles" / self.identity
         self.schemas = {}
         for role, schema in (("global", GLOBAL), ("local", LOCAL)):
             self.schemas.setdefault(self.paths[role], {}).update(schema)
@@ -111,13 +125,37 @@ class IniProfile:
         self.startup = self.generator = None
         self._read()
 
+    @property
+    def launch_arguments(self):
+        return [item for item in self.arguments if item[0] != "--localconfig" or not self.automatic_local]
+
+    def _check_paths(self, after_write=False):
+        reason = None
+        try:
+            for role, (_option, path) in zip(("global", "local"), self.arguments):
+                original = Path(path)
+                if original.is_symlink() and not original.exists():
+                    reason = "A configuration link is broken or unreadable."
+                    break
+                if str(original.resolve()) != self.paths[role]:
+                    reason = "The configuration link changed."
+                    break
+            if reason is None and self.automatic_local and str(Path(default_paths()[1]).resolve()) != self.paths["local"]:
+                reason = "KeePassXC's default local settings location changed."
+        except OSError:
+            reason = "The configuration paths could not be checked."
+        if reason:
+            if after_write:
+                reason += " This change may already have been saved to the previous location."
+            raise VaultError(reason + " Quit and reopen Keyslot before changing settings.")
+
     def _request(self, write, files, timeout=None):
-        for role, (_option, path) in zip(("global", "local"), self.arguments):
-            if str(Path(path).resolve()) != self.paths[role]:
-                raise VaultError("The configuration link changed. Reopen Keyslot before saving settings.")
+        self._check_paths()
         client = Vault() if timeout is None else Vault(timeout=timeout)
         try:
-            return client.configuration(write, files)["files"]
+            result = client.configuration(write, files)["files"]
+            self._check_paths(after_write=write)
+            return result
         except EngineError as exc:
             recovery = exc.details.get("recovery_path") if isinstance(exc.details, dict) else None
             if recovery:

@@ -16,6 +16,11 @@ WINDOW_DEFAULTS = dict(hide_window_on_copy=False, minimize_on_copy=True, drop_to
                        minimize_after_unlock=False, minimize_to_background=False)
 
 
+def _xdg_directory(name, fallback):
+    value = os.environ.get(name, "")
+    return Path(value) if value and Path(value).is_absolute() else Path.home() / fallback
+
+
 def _autotype_options(value):
     if not isinstance(value, dict) or set(value) != set(AUTO_TYPE_DEFAULTS):
         raise ValueError("The auto-type settings are invalid.")
@@ -71,7 +76,7 @@ class Startup:
         self.lock_seconds = value * 60
 
     def __init__(self, config_home=None, launcher=None, storage=None):
-        self.directory = Path(config_home or os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        self.directory = Path(config_home) if config_home else _xdg_directory("XDG_CONFIG_HOME", ".config")
         self.autostart = self.directory / "autostart" / (APP_ID + ".desktop")
         self.storage = storage
         if storage:
@@ -258,7 +263,7 @@ class Startup:
             if login:
                 command = _desktop_argument(self.launcher)
                 if self.storage:
-                    for option, value in self.storage.arguments:
+                    for option, value in self.storage.launch_arguments:
                         command += " " + option + " " + _desktop_argument(value)
                 _write(self.autostart, '[Desktop Entry]\nType=Application\nName=Keyslot\n'
                        f'Exec={command} --login\nIcon=keepassxc\nTerminal=false\n'

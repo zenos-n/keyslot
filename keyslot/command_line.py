@@ -55,21 +55,34 @@ def select_configuration(app, options, bus):
     from .startup import Startup
     profiles = {name: options.lookup_value(name, None) for name in ("config", "localconfig")}
     explicit = (any(value is not None for value in profiles.values())
-                or bool(os.environ.get("KPXC_CONFIG") or os.environ.get("KPXC_CONFIG_LOCAL")))
-    defaults = default_paths()
-    if not explicit:
-        running = bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
-            "NameHasOwner", GLib.Variant("(s)", (APP_ID,)), GLib.VariantType.new("(b)"),
-            Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
-        private = app.startup.path.parent
-        if (running or not Path(defaults[0]).is_file()
-                or (private.exists() and any(path.name != "profiles" for path in private.iterdir()))):
-            return
+                or any(name in os.environ for name in ("KPXC_CONFIG", "KPXC_CONFIG_LOCAL")))
     try:
+        if not explicit:
+            running = bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+                "NameHasOwner", GLib.Variant("(s)", (APP_ID,)), GLib.VariantType.new("(b)"),
+                Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+            private = app.startup.path.parent
+            if running or (private.exists() and any(path.name != "profiles" for path in private.iterdir())):
+                return
+        chosen = {}
+        for name, value in profiles.items():
+            if value is None:
+                continue
+            argument = value.unpack()
+            if not argument and name == "localconfig":
+                chosen[name] = ""
+                continue
+            if not argument:
+                raise VaultError("Choose a nonempty global configuration file path.")
+            chosen[name] = Gio.File.new_for_commandline_arg(argument).get_path()
+            if chosen[name] is None:
+                raise VaultError("Choose local files for --config and --localconfig.")
+        paths = default_paths(global_override=chosen.get("config"), local_override=chosen.get("localconfig"))
+        if not explicit and not Path(paths[0]).is_file():
+            return
         existing = primary_profile(bus)
-        paths = [Gio.File.new_for_commandline_arg(profiles[name].unpack()).get_path()
-                 if profiles[name] is not None else defaults[index] for index, name in enumerate(profiles)]
-        storage = IniProfile(*paths)
+        automatic_local = profiles["localconfig"] is None and "KPXC_CONFIG_LOCAL" not in os.environ
+        storage = IniProfile(*paths, automatic_local=automatic_local)
         if existing is not None and existing != storage.identity:
             raise VaultError("Keyslot is already running with a different configuration. Quit it before switching profiles.")
         selected = Startup(launcher=app.startup.launcher, storage=storage)

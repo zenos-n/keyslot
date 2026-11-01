@@ -318,7 +318,10 @@ Relative database and key-file paths use the invoking process’s directory. Gen
 stdin credentials are never saved in application settings.
 `--config PATH` and `--localconfig PATH` select KeePassXC global and local INI
 files; `KPXC_CONFIG` and `KPXC_CONFIG_LOCAL` supply their defaults. Unspecified
-paths use KeePassXC's XDG config/cache locations. Existing Keyslot private
+global settings use the XDG config location; local state prefers KeePassXC2.8's
+XDG state file, retaining an existing2.7 cache file when modern state is absent.
+Explicitly empty local overrides use the global file for both roles.
+See [Configuration Layouts](docs/configuration-layouts.md). Existing Keyslot private
 preferences stay in use. On first launch, before private preferences have been
 saved, Keyslot reuses an existing stock global/local INI profile automatically.
 An unreadable stock profile produces a notice and private defaults, leaving the
@@ -331,7 +334,8 @@ remembered-vault, browser, idle/clipboard, auto-type, SSH, Secret Service and
 generator options with KeePassXC. Keyslot-specific options use a separate INI
 namespace. Unknown options are preserved by Qt; conflicting concurrent edits,
 Qt decoding warnings and unsupported timeout ranges stop the operation without
-replacing the original files. Profile arguments are included in login launchers.
+replacing the original files. Login launchers retain explicit profile choices;
+default-selected local paths are discovered again on launch.
 INI profiles also restore `LastOpenedDatabases` as separate windows, with the
 previously active vault selected and missing files skipped. Background startup
 restores hidden windows; login-keyring unlock applies only to the enrolled vault.
