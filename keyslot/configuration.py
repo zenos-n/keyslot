@@ -9,7 +9,7 @@ import threading
 
 from .backend import VaultError
 from .core_backend import Vault, EngineError
-from .startup import _autotype_options, _secret_service_options, _xdg_directory
+from .startup import AUTO_TYPE_DEFAULTS, _autotype_options, _secret_service_options, _xdg_directory
 
 
 STARTUP_KEYS = {
@@ -41,7 +41,7 @@ STARTUP_KEYS = {
 }
 AUTOTYPE_KEYS = {"match_title": "AutoTypeEntryTitleMatch", "match_url": "AutoTypeEntryURLMatch",
     "hide_expired": "AutoTypeHideExpiredEntry", "relock": "Security/RelockAutoType",
-    "delay": "AutoTypeDelay", "start_delay": "AutoTypeStartDelay"}
+    "delay": "AutoTypeDelay", "start_delay": "AutoTypeStartDelay", "retype_seconds": "GlobalAutoTypeRetypeTime"}
 SECRET_KEYS = {"enabled": "Enabled", "notify": "ShowNotification", "confirm_delete": "ConfirmDeleteItem",
     "confirm_access": "ConfirmAccessItem", "unlock_before_search": "UnlockBeforeSearch"}
 GENERATOR_KEYS = {"lowercase": ("LowerCase", True), "uppercase": ("UpperCase", True),
@@ -68,8 +68,7 @@ LOCAL = {"LastActiveDatabase": "", "LastDatabases": [], "LastOpenedDatabases": [
 for _role, _key, _default in STARTUP_KEYS.values():
     (GLOBAL if _role == "global" else LOCAL)[_key] = _default
 for _name, _key in AUTOTYPE_KEYS.items():
-    GLOBAL[_key] = {"match_title": True, "match_url": True, "hide_expired": False,
-                   "relock": False, "delay": 25, "start_delay": 500}[_name]
+    GLOBAL[_key] = AUTO_TYPE_DEFAULTS[_name]
 for _name, _key in SECRET_KEYS.items():
     GLOBAL["FdoSecrets/" + _key] = _name != "enabled"
 for _key, _default in GENERATOR_KEYS.values():

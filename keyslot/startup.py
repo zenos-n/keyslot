@@ -7,7 +7,8 @@ import threading
 
 from . import APP_ID
 
-AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False, delay=25, start_delay=500)
+AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False,
+                          delay=25, start_delay=500, retype_seconds=15)
 SECRET_SERVICE_DEFAULTS = dict(enabled=False, confirm_access=True, confirm_delete=True, notify=True, unlock_before_search=True)
 LOCK_DEFAULTS = dict(lock_on_screen=True, lock_on_user_switch=True, lock_on_minimize=False)
 PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_preview=True,
@@ -23,12 +24,14 @@ def _xdg_directory(name, fallback):
 
 
 def _autotype_options(value):
+    if isinstance(value, dict) and set(value) == set(AUTO_TYPE_DEFAULTS) - {"retype_seconds"}:
+        value = {**AUTO_TYPE_DEFAULTS, **value}
     if not isinstance(value, dict) or set(value) != set(AUTO_TYPE_DEFAULTS):
         raise ValueError("The auto-type settings are invalid.")
     for key in ("match_title", "match_url", "hide_expired", "relock"):
         if type(value[key]) is not bool:
             raise ValueError("The auto-type switches are invalid.")
-    for key, low, high in (("delay", 0, 500), ("start_delay", 100, 10000)):
+    for key, low, high in (("delay", 0, 500), ("start_delay", 100, 10000), ("retype_seconds", 0, 60)):
         if type(value[key]) is not int or not low <= value[key] <= high:
             raise ValueError("Choose supported auto-type delays.")
     return dict(value)

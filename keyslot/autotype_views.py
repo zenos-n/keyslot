@@ -1,10 +1,29 @@
 """Auto-type settings, destination review and character picking."""
 import os
 import re
+import weakref
 from .database_views import Adw, Gtk, _dialog, _save, _spin
 from .passkey_views import _lifetime
 from .backend import VaultError
 from . import autotype
+
+
+def _guarded_lifetime(session, dialog, clearer=None):
+    alive = _lifetime(session, dialog)
+    state = {"closing": False}
+    def clear_sensitive(*_):
+        state["closing"] = True
+        if clearer:
+            clearer()
+    dialog._clear_sensitive_fields = clear_sensitive
+    dialog.connect("closed", clear_sensitive)
+    def close_attempt(*_):
+        from .application import clear_dialog_fields
+        clear_dialog_fields(dialog)
+        dialog.force_close()
+    dialog.set_can_close(False)
+    dialog.connect("close-attempt", close_attempt)
+    return lambda: not state["closing"] and alive() and session.active
 
 
 def settings(session, entry=None, group=None, data=None):
@@ -100,6 +119,10 @@ def choose(session, entry=None, target=None, windows=None):
     candidates = [session] if entry else list(session.application.sessions)
     captured = [(owner, owner.epoch, owner.vault.identity, owner.vault.generation, owner.vault.snapshot)
                 for owner in candidates if owner.vault.unlocked and not owner.jobs.closed]
+    recent = session.application.autotype_recent
+    previous = recent.current()
+    previous_owner = previous["owner"]() if previous else None
+    previous_uuid = previous["uuid"] if previous else None
     def collect():
         records = []
         for owner, epoch, identity, generation, snapshot in captured:
@@ -108,53 +131,83 @@ def choose(session, entry=None, target=None, windows=None):
             with owner.vault.operation(generation):
                 values = owner.vault.autotype_matches(target["title"], options["match_title"],
                                                       options["match_url"], options["hide_expired"])
-            records.append((owner, epoch, identity, snapshot, values))
+                default_digest = None
+                if owner is previous_owner:
+                    remembered = next((item for item in snapshot.entries if item.uuid == previous_uuid and not item.recycled), None)
+                    if remembered:
+                        try:
+                            settings = owner.vault.autotype_settings(remembered)
+                            if settings["enabled"] and settings["group_enabled"]:
+                                default_digest = recent.digest(settings["effective_sequence"])
+                        except (VaultError, OSError, ValueError):
+                            pass
+            records.append((owner, epoch, identity, snapshot, values, default_digest))
         return records
     def matched(records):
         available, matches = [], []
-        for owner, epoch, identity, snapshot, values in records:
+        defaults = {}
+        for owner, epoch, identity, snapshot, values, default_digest in records:
             if owner.epoch != epoch or owner.vault.identity is not identity or owner.vault.snapshot is not snapshot:
                 continue
             entries = {item.uuid: item for item in snapshot.entries if not item.recycled}
             available.extend((owner, item, "") for item in entries.values())
             matches.extend((owner, entries[item["entry"]], item["sequence"]) for item in values if item["entry"] in entries)
-        _choose_match(session, entry, target, matches, available)
+            if default_digest is not None:
+                defaults[owner, previous_uuid] = default_digest
+        _choose_match(session, entry, target, matches, available, defaults)
     session.run_job(collect, matched)
 
 
-def _choose_match(session, selected, target, matches, available):
+def _choose_match(session, selected, target, matches, available, defaults=None):
     if selected:
         matches = [(session, selected, "")]
     dialog, header, box = _dialog("Auto-Type", height=520)
-    current = _lifetime(session, dialog)
+    current = _guarded_lifetime(session, dialog)
+    state = {"query": None}
     destination = Adw.PreferencesGroup(title="Destination")
     destination.add(Adw.ActionRow(title=target["title"], use_markup=False, title_lines=3))
     box.append(destination)
     search = Gtk.SearchEntry(placeholder_text="Search entries")
     box.append(search)
-    rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"], valign=Gtk.Align.START)
+    rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["boxed-list"], valign=Gtk.Align.START)
     box.append(rows)
     status = Gtk.Label(label="No matching entries. Search to choose another entry.", wrap=True)
     box.append(status)
     def prepare(owner, entry, sequence):
         if not current():
             return
+        epoch, identity, snapshot = owner.epoch, owner.vault.identity, owner.vault.snapshot
         dialog.close()
         if owner.jobs.closed or not owner.vault.unlocked:
             session.error("This vault was locked. Choose an unlocked entry again.")
             return
         session.application.select_session(owner)
         options = session.application.startup.autotype
+        def prepared(value):
+            if (owner.epoch == epoch and owner.vault.identity is identity and owner.vault.snapshot is snapshot
+                    and owner.vault.unlocked and not owner.jobs.closed and owner.active):
+                review(owner, target, value, choice=(entry.uuid, weakref.ref(snapshot)))
         owner.run_job(lambda: owner.vault.autotype_prepare(entry, target, sequence,
-            options["delay"], options["start_delay"]), lambda value: review(owner, target, value))
+            options["delay"], options["start_delay"]), prepared)
+    def continue_selected(*_):
+        row = rows.get_selected_row()
+        if current() and row:
+            row.emit("activated")
+    proceed = _save(header, continue_selected, "Continue")
+    proceed.set_sensitive(False)
+    rows.connect("row-selected", lambda _rows, row: proceed.set_sensitive(row is not None))
     def render(*_):
+        if not current():
+            return
         while rows.get_first_child():
             rows.remove(rows.get_first_child())
         query = search.get_text().casefold()
+        state["query"] = query
         choices = matches if not query else [(owner, entry, "") for owner, entry, _ in available
             if query in " ".join((entry.title, entry.username, entry.group_path)).casefold()
             and (not session.application.startup.autotype["hide_expired"] or not entry.expired)]
         count = 0
+        remembered_row = None
         for owner, entry, sequence in choices:
             if not owner.vault.unlocked or owner.jobs.closed:
                 continue
@@ -163,17 +216,29 @@ def _choose_match(session, selected, target, matches, available):
                 subtitle_lines=2, activatable=True)
             row.connect("activated", lambda _row, owner=owner, entry=entry, sequence=sequence: prepare(owner, entry, sequence))
             rows.append(row)
+            if session.application.autotype_recent.matches(owner, entry, sequence, (defaults or {}).get((owner, entry.uuid))):
+                remembered_row = row
             count += 1
+        if remembered_row:
+            rows.select_row(remembered_row)
+        elif query:
+            rows.select_row(rows.get_row_at_index(0))
         status.set_visible(not count)
     search.connect("search-changed", render)
-    render()
+    def entered(*_):
+        if state["query"] != search.get_text().casefold():
+            render()
+        continue_selected()
+    search.connect("activate", entered)
     session.application.select_session(session)
-    session.present_dialog(dialog)
+    if session.present_dialog(dialog):
+        render()
+        search.grab_focus()
 
 
-def review(session, target, data):
+def review(session, target, data, choice=None):
     dialog, header, box = _dialog("Confirm Auto-Type", height=460 if not data["pick"] else 600)
-    current = _lifetime(session, dialog)
+    current = _guarded_lifetime(session, dialog, data.clear)
     destination = Adw.PreferencesGroup(title="Destination")
     destination.add(Adw.ActionRow(title=target["title"], use_markup=False, title_lines=3))
     destination.add(Adw.ActionRow(title="Sequence", subtitle=data["sequence"], use_markup=False, subtitle_lines=4))
@@ -203,17 +268,22 @@ def review(session, target, data):
                 return
             picks.append(dict(positions=[int(value) for value in values], tab=tab.get_active()))
         epoch = session.epoch
+        token = data["token"]
+        sequence_digest = session.application.autotype_recent.digest(data["sequence"]) if choice else None
         dialog.close()
         def execute():
             if target["backend"] == "portal":
-                return autotype.execute_portal(session, target, data["token"], picks, epoch)
-            return session.vault.autotype_finish(data["token"], picks, approved=True)
+                return autotype.execute_portal(session, target, token, picks, epoch)
+            return session.vault.autotype_finish(token, picks, approved=True)
         def done(_result):
             if session.application.startup.autotype["relock"]:
                 session.lock()
             else:
+                if choice:
+                    session.application.autotype_recent.remember(session, choice[0], sequence_digest, choice[1]())
                 session.toast("Auto-type completed")
         def failed(message):
+            session.application.autotype_recent.clear(session)
             if session.application.startup.autotype["relock"]:
                 session.lock()
             session.error(message)
@@ -233,12 +303,26 @@ def add_preferences(session, page):
         widgets[key] = Adw.SwitchRow(title=title, active=values[key])
     widgets["delay"] = _spin("Delay Between Keys (Milliseconds)", values["delay"], 0, 500)
     widgets["start_delay"] = _spin("Delay Before Typing (Milliseconds)", values["start_delay"], 100, 10000)
+    widgets["retype_seconds"] = _spin("Remember Last Typed Entry (Seconds)", values["retype_seconds"], 0, 60)
+    widgets["retype_seconds"].set_subtitle("Preselect the previous choice; 0 disables remembering")
+    updating = False
     def changed(*_):
+        nonlocal updating
+        if updating:
+            return
         try:
             options = {key: row.get_active() if isinstance(row, Adw.SwitchRow) else int(row.get_value())
                        for key, row in widgets.items()}
             config.save(config.remember, config.login, config.vault, autotype=options)
+            session.application.autotype_recent.clear()
         except (OSError, ValueError, VaultError) as exc:
+            updating = True
+            for key, row in widgets.items():
+                if isinstance(row, Adw.SwitchRow):
+                    row.set_active(config.autotype[key])
+                else:
+                    row.set_value(config.autotype[key])
+            updating = False
             session.error(str(exc))
     for row in widgets.values():
         row.connect("notify::active" if isinstance(row, Adw.SwitchRow) else "notify::value", changed)

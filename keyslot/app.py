@@ -43,6 +43,8 @@ class Keyslot(Adw.Application):
         self.active_session = None
         from .clipboard import Clipboards
         self.clipboards = Clipboards(self)
+        from .autotype_recent import RecentChoice
+        self.autotype_recent = RecentChoice(self)
         self.last_activity = time.monotonic()
         self.desktop_lock = None
         self.connect("startup", self._startup)
@@ -444,6 +446,7 @@ class Keyslot(Adw.Application):
         return GLib.SOURCE_CONTINUE
 
     def _shutdown(self, *_):
+        self.autotype_recent.clear()
         if self.desktop_lock:
             self.desktop_lock.close()
         if self.sessions:

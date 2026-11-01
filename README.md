@@ -357,6 +357,12 @@ settings; its dropdown opens the full options without discarding the draft.
 See [New-entry Defaults](docs/new-entry-defaults.md). These workflows await
 manual acceptance; no new automated runs were performed.
 
+Auto-Type can remember its last successful entry/sequence selection for0–60
+seconds, with keyboard selection and Continue/Enter support. The setting uses
+the stock INI key, and existing private Auto-Type settings retain their values.
+See [Auto-Type Selection](docs/autotype-selection.md) for lifecycle, remaining
+parity gaps and manual acceptance; this workflow has not been exercised here.
+
 The desktop, window and welcome screen temporarily use the themed `keepassxc` icon.
 
 Encrypted vault files are monitored for external changes, including atomic

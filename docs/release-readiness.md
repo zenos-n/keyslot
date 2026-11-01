@@ -6,6 +6,16 @@ only the runtime; existing development checks are opt-in. Automated runs were
 stopped at the user's request. The historical results below apply to their frozen
 checkpoints and do not establish production readiness of the current candidate.
 
+Auto-Type now supports a0–60-second remembered selection using the stock
+GlobalAutoTypeRetypeTime preference and a legacy-private-settings default.
+Only UUID/sequence-digest/session metadata is retained; matching/default
+metadata and destination/confirmation checks remain fresh. Keyboard selection,
+Continue and Enter are available, and Enter refreshes pending search results.
+Close-animation and prepared-response guards prevent stale UI delivery.
+See [Auto-Type Selection](autotype-selection.md) for lifecycle and remaining
+Auto-Type gaps. Runtime/Python compilation only; no tests/harnesses or automated
+typing/GTK/portal/config/vault runs. User manual acceptance remains open.
+
 CLI compatibility now includes the upstream2.8 `db-info` passkey/TOTP-entry
 statistics, stdio-open guards and failed clipboard-tool diagnostics on the
 pinned2.7.12 engine. GUI empty CLI config values now use configured defaults;

@@ -149,6 +149,7 @@ class VaultSession:
         self.emit_state()
 
     def _clear(self):
+        self.application.autotype_recent.clear(self)
         self.windows.cancel()
         self.pending_unlock = None
         if self.window:
@@ -607,6 +608,7 @@ class VaultSession:
             self.files.reload()
 
     def apply_refreshed(self, snapshot):
+        self.application.autotype_recent.clear(self)
         self.view_epoch += 1
         self.totp.clear()
         self.urls.clear()
