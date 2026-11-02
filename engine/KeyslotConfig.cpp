@@ -21,6 +21,7 @@
 namespace {
 [[noreturn]] void reject(const QString& code, const QString& message) { throw KeyslotConfig::Failure{code, message, {}}; }
 constexpr qint64 MaxIni = 16 * 1024 * 1024;
+constexpr int UrlDoubleClickMigrationVersion = 2; // Pinned KeePassXC2.8 Config::CONFIG_VERSION.
 std::atomic_bool iniWarning{false};
 class IniWarnings {
     QtMessageHandler previous;
@@ -106,8 +107,15 @@ QJsonObject values(QSettings& settings, const QJsonObject& schema)
     settings.allKeys();
     if (settings.status() != QSettings::NoError) reject("file_error", "The configuration is unreadable or is not a valid Qt INI file.");
     QJsonObject result;
-    for (auto it = schema.begin(); it != schema.end(); ++it)
-        result.insert(it.key(), QJsonValue::fromVariant(converted(settings.value(it.key(), it.value().toVariant()), it.value())));
+    for (auto it = schema.begin(); it != schema.end(); ++it) {
+        auto value = settings.value(it.key(), it.value().toVariant());
+        // Match Config::migrate without rewriting the user's file during a read.
+        if (it.key() == QStringLiteral("URLDoubleClickAction") && it.value().isDouble()
+            && settings.value(QStringLiteral("ConfigVersion")).toInt() < UrlDoubleClickMigrationVersion
+            && !settings.contains(it.key()) && settings.contains(QStringLiteral("OpenURLOnDoubleClick")))
+            value = settings.value(QStringLiteral("OpenURLOnDoubleClick")).toBool() ? 0 : 2;
+        result.insert(it.key(), QJsonValue::fromVariant(converted(value, it.value())));
+    }
     return result;
 }
 bool atomicWrite(const QString& path, const QByteArray& data, QFile::Permissions permissions)

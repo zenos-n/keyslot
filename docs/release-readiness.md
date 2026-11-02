@@ -7,8 +7,8 @@ Romanian only; other languages are deferred by the user.
 
 Backup enable/path-pattern preferences now map the stock keys and native
 substitution rules across normal, manual-recovery and Save As replacement
-saves. [Backups](backups.md) documents the stricter failure policy and pending
-manual acceptance; full upstream failure-path compatibility is not claimed.
+saves. [Backups](backups.md) documents stock best-effort optional-backup failure
+behavior with primary save guards and pending manual acceptance.
 
 The user-requested Shell password-access popup and per-connection encrypted
 browser trust are implemented in [Browser approvals](browser-approval.md).
@@ -691,3 +691,14 @@ restart. No tests or runtime acceptance runs; only ordinary native/runtime/
 Python/gettext compilation and static review. [Behavior preferences](behavior-preferences.md)
 and [Localization](localization.md) record implementation/strict-error adaptations;
 R08 review and manual workflow/security/platform acceptance remain incomplete.
+
+R08 compatibility follow-up fixes the deprecated OpenURLOnDoubleClick migration
+at the shared native INI decode/comparison boundary without automatic file writes:
+pre-version-2 profiles convert false→Edit/2 or true→Open/0; current/future
+ConfigVersion profiles are not remigrated and explicit URLDoubleClickAction wins. Optional
+backup failures now match stock best-effort saving, revalidating the primary
+source/recovery revision after backup errors and retaining primary atomic/conflict
+guards; older private fixed-backup clients keep their prior contract. This
+supersedes earlier strict optional-backup failure descriptions. Native/runtime
+compilation and static inspection only; no tests or behavior probes. Manual
+legacy/modern-key/read-write/backup-failure/concurrent-writer acceptance remains.

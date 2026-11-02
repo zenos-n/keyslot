@@ -741,12 +741,14 @@ not an audited secure-memory implementation.
 Locking kills the helper, closes dialogs, clears visible metadata, and clears
 the owned clipboard. Copied data expires after 20 seconds if the application
 still owns the clipboard; clipboard managers may retain copies independently.
-The extension receives only Locked/Busy/Background booleans and can request
-Show, Lock or Quit. It never receives filenames or credentials.
+The main extension status interface carries Locked/Busy/Background booleans and
+Show/Lock/Quit requests. Separate Auto-Type and [browser approval](docs/browser-approval.md)
+interfaces carry the metadata needed for those surfaces, with no passwords or keys.
 
 The helper saves through upstream serialization into an encrypted staging file,
-checks the original file for external changes, saves an encrypted mode-0600
-`.keyslot.bak`, and commits with QSaveFile. Failed edits reload the original
+checks the original file for external changes, attempts a configured encrypted
+mode-0600 backup when enabled, and commits the primary file with QSaveFile.
+Failed edits reload the original
 before accepting another request. Creation uses a no-clobber link. Conflict
 checks are optimistic; do not edit one file concurrently in multiple clients.
 Killing a helper mid-save may leave encrypted staging directories behind.
@@ -1002,3 +1004,8 @@ select System, English, Polish or Romanian after restart; the companion has its
 own Polish/Romanian catalogs. See [behavior preferences](docs/behavior-preferences.md)
 and [localization](docs/localization.md) for defaults, profile keys and limits.
 Compilation and manual acceptance are separate; full replacement is not claimed.
+
+Compatibility follow-up: pre-version-2 OpenURLOnDoubleClick profiles retain their
+Open/Edit behavior unless an explicit modern URLDoubleClickAction overrides it. Optional
+backup write failures use stock best-effort semantics; primary atomic writes and
+revision conflict checks remain enforced. See [backup behavior](docs/backups.md).

@@ -204,3 +204,20 @@ Security/EnableCopyOnDoubleClick, URLDoubleClickAction and GUI/Language.
 See [behavior preferences](behavior-preferences.md) and [localization](localization.md).
 These six old “no direct reference” rows now have implementation evidence;
 manual acceptance and the rest of the finite R08 review remain open.
+
+R08 read-path follow-up: the deprecated OpenURLOnDoubleClick boolean now supplies
+the effective URLDoubleClickAction for pre-version-2 profiles only when that
+modern key is absent (true→0 Open, false→2 Edit), as in stock Config::migrate. The Qt INI helper applies the
+same conversion for reads and write comparisons; unrelated writes preserve the
+original keys and do not silently insert a modern default. An explicit modern
+value always wins. This is an implementation fix, not manual acceptance.
+Optional backup failure behavior now also matches stock best-effort primary save;
+[backup constraints](backups.md) preserve the main-file conflict/atomic guards.
+
+The read-only review also confirmed that native browser lookup accepts best_match,
+allow_expired, match_scheme and custom_fields parameters, while the GTK request
+path currently invokes the defaults. The corresponding stock global browser
+preferences still need explicit profile/control/forwarding review; per-entry
+rules and per-browser trust do not prove those global settings are honored.
+This is a concrete follow-up, not a claim that all remaining frozen rows are
+missing features or that the 166-row compatibility review is complete.

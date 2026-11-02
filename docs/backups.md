@@ -38,11 +38,14 @@ Checks run before staging and before the backup commit, alongside existing
 database revision checks. These filesystem checks do not provide an atomic
 compare-and-swap against a noncooperating writer.
 
-An enabled backup that cannot be written blocks replacement of the database.
-This retains Keyslot's previous fail-closed behavior; upstream2.8's backup copy
-attempt is best-effort. Choose another location or disable backups explicitly
-before retrying. This is an acknowledged save-failure behavior difference,
-not a claim of byte-for-byte compatibility with every upstream failure path.
+As in upstream2.8, an optional backup that cannot be written does not block the
+primary save. The backup writer still refuses unsafe destinations and writes
+private atomic copies, but its failure is best-effort. The caller revalidates the
+primary source/recovery revision before proceeding; conflict checks and the
+primary atomic save can still fail normally. No direct-write fallback is enabled
+for the database. This applies to normal saves, manual/recovery commits and Save
+As replacement. The older private client's mandatory fixed-backup contract is
+retained when it has not configured the new optional policy.
 Transaction rollback snapshots and encrypted unsaved recovery storage remain
 independent of this optional backup setting.
 

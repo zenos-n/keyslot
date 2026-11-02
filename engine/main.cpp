@@ -217,8 +217,8 @@ struct BackupPolicy {
     // A null pattern retains the fixed name for older private clients.
     QString pattern;
 };
-void backupBeforeSave(const QString& source, const BackupPolicy& policy,
-                      const std::function<void()>& verify, const QString& otherSource = {})
+void writeBackupBeforeSave(const QString& source, const BackupPolicy& policy,
+                           const std::function<void()>& verify, const QString& otherSource)
 {
     if (!policy.enabled) return;
     const QFileInfo file(otherSource.isEmpty() ? source : otherSource);
@@ -255,6 +255,17 @@ void backupBeforeSave(const QString& source, const BackupPolicy& policy,
     };
     check();
     copyToSaveFile(source, target, QFile::ReadOwner | QFile::WriteOwner, check);
+}
+void backupBeforeSave(const QString& source, const BackupPolicy& policy,
+                      const std::function<void()>& verify, const QString& otherSource = {})
+{
+    try {
+        writeBackupBeforeSave(source, policy, verify, otherSource);
+    } catch (const Failure&) {
+        // Stock backups are best-effort; older private clients keep their fixed-backup contract.
+        if (policy.pattern.isNull()) throw;
+        verify();
+    }
 }
 QJsonObject manualInfo(const QString& manifest, const QString& source = {})
 {
