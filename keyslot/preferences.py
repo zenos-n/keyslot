@@ -129,7 +129,7 @@ def show(session):
             pattern.set_sensitive(settings.backup_before_save)
             changing_backup[0] = False
             backups.set_sensitive(True)
-        if session.busy:
+        if session.application.busy:
             restore()
             return
         sessions = list(session.application.sessions)

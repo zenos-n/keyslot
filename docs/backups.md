@@ -22,6 +22,8 @@ version to back up. The keyless recovery helper inherits the owning vault's
 policy, including close-time recovery commits. Preference changes update
 existing helpers without triggering a save or changing the autosave setting;
 a failed preference write attempts to restore the previous helper policies.
+Each helper also refreshes the committed shared policy before subsequent
+commands, including helpers opened while the preference change is in progress.
 
 This replaces the new client's previously mandatory `.keyslot.bak` behavior
 with the stock configuration controls/defaults. Native private clients that

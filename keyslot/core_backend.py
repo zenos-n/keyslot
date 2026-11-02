@@ -75,6 +75,7 @@ class Vault:
         self.auto_save = self.auto_save_on_exit = True
         self.backup_before_save = False
         self.backup_path_pattern = "{DB_FILENAME}.old.kdbx"
+        self.backup_settings = None
         self.discard_on_stop = False
         self.recovery_warning = ""
         self.finishing = False
@@ -174,6 +175,7 @@ class Vault:
         client = Vault(executable=self.executable, timeout=self.timeout)
         client.backup_before_save = self.backup_before_save
         client.backup_path_pattern = self.backup_path_pattern
+        client.backup_settings = self.backup_settings
         try:
             client._start()
             return client._rpc("recovery." + action, source=str(source or self.path),
@@ -235,6 +237,11 @@ class Vault:
     def _rpc(self, method, _timeout=None, **params):
         if self._cancelled.is_set() or self._process is None:
             raise VaultError("The database is locked.")
+        if method not in ("hello", "backup.policy") and "backup-policy" in self.capabilities and self.backup_settings is not None:
+            # Read one committed pair even when a window opens during a preference update.
+            chosen = self.backup_settings.backup_policy_value
+            if chosen != (self.backup_before_save, self.backup_path_pattern):
+                self.backup_policy(*chosen)
         self._request_id += 1
         identifier = self._request_id
         request = (json.dumps({"id": identifier, "method": method, "params": params},

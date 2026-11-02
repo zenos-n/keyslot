@@ -192,6 +192,7 @@ class Startup:
             self.login = self.remember and self.vault is not None and data.get("login") is True
         except (OSError, ValueError, AttributeError):
             pass
+        self.backup_policy_value = self.backup_before_save, self.backup_path_pattern
 
     def browser_listing_allowed(self):
         with self.mutex:
@@ -348,6 +349,7 @@ class Startup:
             self.auto_reload = auto_reload
             self.auto_save, self.auto_save_on_exit = auto_save, auto_save_on_exit
             self.backup_before_save, self.backup_path_pattern = backup_before_save, backup_path_pattern
+            self.backup_policy_value = backup_before_save, backup_path_pattern
             for name, value in locks.items():
                 setattr(self, name, value)
             for name, value in privacy.items():
