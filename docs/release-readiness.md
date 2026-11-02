@@ -5,6 +5,11 @@ for the bounded remaining work and acceptance status. Historical notes below are
 not additional feature requirements. GTK language scope is English, Polish and
 Romanian only; other languages are deferred by the user.
 
+The user-requested Shell password-access popup and per-connection encrypted
+browser trust are implemented in [Browser approvals](browser-approval.md).
+Compilation/static review only; actual GNOME50/browser/DND/trust/cancellation
+acceptance remains manual. This does not establish production readiness.
+
 Keyslot is still a development build. Manual saving, interrupted-save recovery
 and Save As are implemented for user stress testing. Normal Nix builds compile
 only the runtime; existing development checks are opt-in. Automated runs were

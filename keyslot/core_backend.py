@@ -970,6 +970,10 @@ class Vault:
         with self._mutex:
             return self._snapshot_call("browser.revoke", id=identifier)
 
+    def browser_trust(self, identifier, revision, trusted):
+        with self._mutex:
+            return self._snapshot_call("browser.trust", id=identifier, revision=revision, trusted=trusted)
+
     def browser_prepare_save(self, identifier, key, url, login, password, submit_url="", entry="", group_uuid=""):
         with self._mutex:
             return self._rpc("browser.prepare_save", id=identifier, key=key, url=url, login=login, password=password,
@@ -995,10 +999,12 @@ class Vault:
         with self._mutex:
             return self._rpc("browser.lookup", id=identifier, key=key, url=url, submit_url=submit_url, **options)
 
-    def browser_release(self, token, entries, approved=False, remember=False):
+    def browser_release(self, token, entries, approved=False, remember=False, trust=False):
         with self._mutex:
-            result = self._rpc("browser.release", token=token, entries=entries, approved=approved, remember=remember)
-            if remember:
+            if trust and "browser-trust" not in self.capabilities:
+                raise VaultError("Update the native engine before trusting a browser connection.")
+            result = self._rpc("browser.release", token=token, entries=entries, approved=approved, remember=remember, trust=trust)
+            if remember or trust:
                 self._snapshot_call("snapshot")
             return result
 

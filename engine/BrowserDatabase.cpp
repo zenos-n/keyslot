@@ -12,6 +12,7 @@
 #include "core/Metadata.h"
 #include "core/Tools.h"
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QMap>
 #include <QSet>
@@ -39,6 +40,15 @@ void authenticate(const QSharedPointer<Database>& db, const QString& id, const Q
     const auto expected = db->metadata()->customData()->value(CustomData::BrowserKeyPrefix + id);
     if (key.isEmpty() || expected.isEmpty() || expected != key)
         reject("association_failed", "The browser is not connected to this database.");
+}
+QString trustKey(const QString& id) { return QStringLiteral("Keyslot/TrustedBrowser/") + id; }
+QString connectionRevision(const QString& key) {
+    return QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha256).toHex());
+}
+bool trusted(const QSharedPointer<Database>& db, const QString& id, const QString& key) {
+    const auto* data = db->metadata()->customData();
+    return !key.isEmpty() && data->value(CustomData::BrowserKeyPrefix + id) == key
+        && data->value(trustKey(id)) == connectionRevision(key);
 }
 QString groupPath(QString path) {
     if (path.startsWith('/')) path.remove(0, 1);
@@ -438,6 +448,7 @@ QJsonObject KeyslotBrowserDatabase::lookup(const QSharedPointer<Database>& db, c
         flag(args, "best_match"), flag(args, "allow_expired"), flag(args, "custom_fields", true), {}, now + 30000};
     auto candidates = service.searchEntries(db, site, form, QStringList{id});
     candidates = service.sortEntries(candidates, site, form);
+    const bool connectionTrusted = trusted(db, id, key);
     QJsonArray entries;
     for (auto* entry : candidates) {
         const auto* data = entry->customData();
@@ -447,7 +458,7 @@ QJsonObject KeyslotBrowserDatabase::lookup(const QSharedPointer<Database>& db, c
                          || entry->group()->resolveCustomDataTriState(BrowserService::OPTION_NOT_HTTP_AUTH) == Group::Enable))) continue;
         const auto access = service.checkAccess(entry, request.siteHost, request.formHost, realm);
         if (access == BrowserService::Denied) continue;
-        const bool allowed = access == BrowserService::Allowed && !httpAuth;
+        const bool allowed = connectionTrusted || (access == BrowserService::Allowed && !httpAuth);
         request.entries.insert(entry->uuidToHex(), allowed);
         // Raw display fields cannot expand a password reference before consent.
         entries.append(QJsonObject{{"uuid", entry->uuidToHex()}, {"title", entry->title()},
@@ -472,7 +483,9 @@ QJsonArray KeyslotBrowserDatabase::release(const QSharedPointer<Database>& db, c
     browserSettings()->setSupportKphFields(request.customFields);
     if (!args.value("entries").isArray()) reject("invalid_request", "Select browser entries explicitly.");
     const bool approved = flag(args, "approved"), remember = flag(args, "remember"), denied = flag(args, "deny");
+    const bool trust = flag(args, "trust");
     if (approved && denied) reject("invalid_request", "Choose one browser access decision.");
+    if (trust && (!approved || denied)) reject("denied", "Trusting a browser requires explicit approval.");
     QSet<QString> selected;
     QList<Entry*> entries;
     for (const auto& value : args.value("entries").toArray()) {
@@ -488,10 +501,13 @@ QJsonArray KeyslotBrowserDatabase::release(const QSharedPointer<Database>& db, c
         selected.insert(uuid);
         entries.append(entry);
     }
-    if (remember && !entries.isEmpty()) {
+    if (trust && entries.isEmpty()) reject("denied", "Select an entry before trusting this browser.");
+    if ((remember || trust) && !entries.isEmpty()) {
         if (!approved && !denied) reject("denied", "Saving browser permissions requires confirmation.");
         commit([&] {
+            if (trust) db->metadata()->customData()->set(trustKey(request.id), connectionRevision(request.key));
             for (auto* entry : entries) {
+                if (!remember) continue;
                 if (denied) service.denyEntry(entry, request.siteHost, request.formHost, request.realm);
                 else service.allowEntry(entry, request.siteHost, request.formHost, request.realm);
             }

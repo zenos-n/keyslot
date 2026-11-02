@@ -640,6 +640,18 @@ def browser_connections(app, data=None):
         for connection in connections:
             identifier = connection["id"]
             row = Adw.ActionRow(title=identifier, subtitle=connection.get("created", ""), use_markup=False)
+            if connection.get("trusted"):
+                row.set_subtitle("Fully trusted · " + connection.get("created", ""))
+                stop = Gtk.Button(label="Stop Trusting", valign=Gtk.Align.CENTER)
+                def untrust(_button, identifier=identifier, revision=connection["revision"]):
+                    if state["closed"] or app.busy:
+                        return
+                    def save():
+                        app.vault.browser_trust(identifier, revision, False)
+                        return app.vault.browser_associations()
+                    app.run_job(save, render)
+                stop.connect("clicked", untrust)
+                row.add_suffix(stop)
             remove = Gtk.Button(icon_name="edit-delete-symbolic", tooltip_text="Revoke Browser Connection", valign=Gtk.Align.CENTER)
             remove.connect("clicked", lambda *_args, identifier=identifier: confirm(identifier))
             row.add_suffix(remove)

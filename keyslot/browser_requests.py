@@ -1,4 +1,4 @@
-"""Browser requests stay on private pipes; GTK is the only source of consent."""
+"""Browser requests stay on private pipes; consent comes from GTK or the companion."""
 from dataclasses import dataclass
 import base64
 
@@ -118,14 +118,16 @@ class BrowserRequests:
         if not request.session.jobs.run(perform, complete, lambda _message: self._finish(request, error=6), interactive=False):
             self._finish(request, error=6)
 
-    def _prompt(self, request, prompt, data, done):
+    def _prompt(self, request, prompt, data, done, foreground=True):
         if not self._valid(request):
             self._finish(request, error=1)
             return
-        if request.session.dialogs or request.session.busy:
+        if (request.session.dialogs or request.session.busy
+                or any(item is not request and item.dismiss for item in self.pending.values())):
             self._finish(request, error=6)
             return
-        self.app.select_session(request.session)
+        if foreground:
+            self.app.select_session(request.session)
         dismiss = prompt(request.session, data, lambda value: done(value) if self._valid(request) else None)
         if self._valid(request):
             request.dismiss = dismiss
@@ -508,7 +510,9 @@ class BrowserRequests:
                     if choice is None:
                         self._finish(request, error=6)
                         return
-                    if not isinstance(choice, dict) or type(choice.get("allow")) is not bool or type(choice.get("remember")) is not bool:
+                    if (not isinstance(choice, dict) or type(choice.get("allow")) is not bool
+                            or type(choice.get("remember")) is not bool or type(choice.get("trust", False)) is not bool
+                            or (choice.get("trust", False) and not choice["allow"])):
                         self._finish(request, error=6)
                         return
                     selected = choice.get("selected")
@@ -517,10 +521,13 @@ class BrowserRequests:
                         return
                     request.session.touch()
                     if choice["allow"]:
-                        self._job(request, lambda: vault.browser_release(token, selected, approved=True, remember=choice["remember"]), send)
+                        self._job(request, lambda: vault.browser_release(token, selected, approved=True,
+                            remember=choice["remember"], trust=choice.get("trust", False)), send)
                     else:
                         self._job(request, lambda: vault.browser_deny(token, [e["uuid"] for e in entries], remember=choice["remember"]), send)
                 self._prompt(request, self.ui.access, {"url": url, "submit_url": form, "entries": entries,
-                    "http_auth": body.get("httpAuth") == "true"}, chosen)
+                    "connection": association.identifier, "database": info["name"],
+                    "http_auth": body.get("httpAuth") == "true"},
+                    chosen, foreground=False)
         self._job(request, lambda: (vault.browser_info(), vault.browser_lookup(association.identifier, association.key,
             url, form, http_auth=body.get("httpAuth") == "true")), found)

@@ -801,7 +801,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
@@ -1584,7 +1584,10 @@ public:
                 for (const auto& key : data->keys()) {
                     if (!key.startsWith(CustomData::BrowserKeyPrefix)) continue;
                     const auto id = key.mid(CustomData::BrowserKeyPrefix.size());
-                    connections.append(QJsonObject{{"id", id}, {"created", data->value(CustomData::Created + id)}});
+                    const auto connectionKey = data->value(CustomData::BrowserKeyPrefix + id);
+                    connections.append(QJsonObject{{"id", id}, {"created", data->value(CustomData::Created + id)},
+                        {"trusted", KeyslotBrowser::trusted(db, id, connectionKey)},
+                        {"revision", KeyslotBrowser::connectionRevision(connectionKey)}});
                 }
                 return connections;
             }
@@ -1592,9 +1595,20 @@ public:
             if (id.isEmpty() || id.size() > 1024 || id.contains(QChar('\0')))
                 fail("invalid_request", "Choose a nonempty browser connection name.");
             const auto name = CustomData::BrowserKeyPrefix + id;
+            if (method == "browser.trust") {
+                if (!data->contains(name)) fail("not_found", "The browser connection no longer exists.");
+                if (text(args, "revision") != KeyslotBrowser::connectionRevision(data->value(name)))
+                    fail("conflict", "The browser connection changed. Open the connection list again.");
+                const bool trust = boolean(args, "trusted");
+                return transaction([&] {
+                    if (trust) data->set(KeyslotBrowser::trustKey(id), KeyslotBrowser::connectionRevision(data->value(name)));
+                    else data->remove(KeyslotBrowser::trustKey(id));
+                });
+            }
             if (method == "browser.revoke") {
                 if (!data->contains(name)) fail("not_found", "The browser connection no longer exists.");
-                return transaction([&] { data->remove(name); data->remove(CustomData::Created + id); });
+                return transaction([&] { data->remove(name); data->remove(CustomData::Created + id);
+                    data->remove(KeyslotBrowser::trustKey(id)); });
             }
             const auto key = text(args, "key");
             const auto decoded = QByteArray::fromBase64(key.toLatin1());
@@ -1606,6 +1620,7 @@ public:
                 if (data->contains(name) && !boolean(args, "replace"))
                     fail("already_exists", "That browser connection name is already in use.");
                 return transaction([&] {
+                    data->remove(KeyslotBrowser::trustKey(id));
                     data->set(name, key);
                     data->set(CustomData::Created + id, QLocale::system().toString(Clock::currentDateTime(), QLocale::ShortFormat));
                 });

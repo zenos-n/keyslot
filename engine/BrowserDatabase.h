@@ -18,6 +18,9 @@ namespace KeyslotBrowser {
 QString text(const QJsonObject& args, const char* name, bool required = false);
 bool flag(const QJsonObject& args, const char* name, bool fallback = false);
 void authenticate(const QSharedPointer<Database>& db, const QString& id, const QString& key);
+QString trustKey(const QString& id);
+QString connectionRevision(const QString& key);
+bool trusted(const QSharedPointer<Database>& db, const QString& id, const QString& key);
 QString groupPath(QString path);
 }
 

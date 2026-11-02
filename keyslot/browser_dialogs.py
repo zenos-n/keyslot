@@ -549,12 +549,21 @@ class BrowserDialogs:
         return dismiss
 
     def access(self, session, data, done):
+        from .browser_shell import approve
+        def fallback():
+            self.app.select_session(session)
+            return self._access_dialog(session, data, done)
+        return approve(session, data, done, fallback)
+
+    def _access_dialog(self, session, data, done):
         dialog, _header, box = _dialog("Browser Access", width=520, height=520)
         box.append(Gtk.Label(label="A browser wants credentials for this website. Choose which entries to share.", wrap=True, xalign=0))
         website = Adw.PreferencesGroup(title="Website")
         origin = website_origin(data["url"])
-        website.add(Adw.ActionRow(title=origin, subtitle="HTTP authentication requires confirmation each time"
+        website.add(Adw.ActionRow(title=origin, subtitle="HTTP authentication request"
                                  if data.get("http_auth") else "Website requesting access", use_markup=False))
+        website.add(Adw.ActionRow(title=data["connection"], subtitle="Browser connection", use_markup=False))
+        website.add(Adw.ActionRow(title=data["database"] or "Password Database", subtitle="Database", use_markup=False))
         form = website_origin(data["submit_url"]) if data["submit_url"] else origin
         if form != origin:
             website.add(Adw.ActionRow(title=form, subtitle="Sign-in form destination", use_markup=False))
@@ -574,6 +583,11 @@ class BrowserDialogs:
         remember = Adw.SwitchRow(title="Remember This Decision", subtitle="Save access rules in this encrypted database")
         permissions.add(remember)
         box.append(permissions)
+        trust = Gtk.Button(label="Fully Trust This Browser")
+        box.append(trust)
+        box.append(Gtk.Label(label="Automatically share matching logins with this browser in this database. "
+            "Hidden entries and denied websites stay blocked. Manage trust in Database Settings → Browser Connections.",
+            wrap=True, xalign=0, css_classes=["dim-label"]))
         buttons = Gtk.Box(spacing=12, homogeneous=True)
         deny = Gtk.Button(label="Deny All")
         allow = Gtk.Button(label="Allow Selected", css_classes=["suggested-action"])
@@ -584,17 +598,20 @@ class BrowserDialogs:
 
         def update(*_):
             allow.set_sensitive(not state["answered"] and any(check.get_active() for check in selected.values()))
+            trust.set_sensitive(allow.get_sensitive())
 
-        def submit(approved):
+        def submit(approved, trusted=False):
             if state["closed"] or state["answered"]:
                 return
             allow.set_sensitive(False)
             deny.set_sensitive(False)
+            trust.set_sensitive(False)
             choose({"allow": approved, "selected": [uuid for uuid, check in selected.items() if check.get_active()],
-                    "remember": remember.get_active()})
+                    "remember": remember.get_active(), "trust": trusted})
         for check in selected.values():
             check.connect("toggled", update)
         deny.connect("clicked", lambda *_: submit(False))
         allow.connect("clicked", lambda *_: submit(True))
+        trust.connect("clicked", lambda *_: submit(True, True))
         update()
         return dismiss

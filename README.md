@@ -3,6 +3,11 @@
 Current finish list and exact candidate: [Replacement checklist](docs/replacement-checklist.md).
 GTK language work is limited to English, Polish and Romanian for now.
 
+Browser password-access approvals can use a compact GNOME Shell popup with
+companion0.4.0 enabled. Fully Trust This Browser remembers one paired connection
+inside the encrypted database; Browser Connections can remove that trust.
+See [Browser approvals](docs/browser-approval.md) for scope and manual-acceptance limits.
+
 GTK4/libadwaita client for KeePassXC databases, with a separate GNOME Shell 50
 Quick Settings companion. Application and ZenPkgs identity:
 `com.neg-zero.keyslot`. AppStream uses the normalized `com.neg_zero.keyslot`.
