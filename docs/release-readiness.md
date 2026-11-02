@@ -1,5 +1,10 @@
 # Production release requirements
 
+Use the current [replacement checklist and fixed candidate](replacement-checklist.md)
+for the bounded remaining work and acceptance status. Historical notes below are
+not additional feature requirements. GTK language scope is English, Polish and
+Romanian only; other languages are deferred by the user.
+
 Keyslot is still a development build. Manual saving, interrupted-save recovery
 and Save As are implemented for user stress testing. Normal Nix builds compile
 only the runtime; existing development checks are opt-in. Automated runs were

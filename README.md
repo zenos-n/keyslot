@@ -1,5 +1,8 @@
 # Keyslot
 
+Current finish list and exact candidate: [Replacement checklist](docs/replacement-checklist.md).
+GTK language work is limited to English, Polish and Romanian for now.
+
 GTK4/libadwaita client for KeePassXC databases, with a separate GNOME Shell 50
 Quick Settings companion. Application and ZenPkgs identity:
 `com.neg-zero.keyslot`. AppStream uses the normalized `com.neg_zero.keyslot`.
