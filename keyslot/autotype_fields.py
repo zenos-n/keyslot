@@ -1,5 +1,23 @@
 """Fixed field actions and secret-free, stale-guarded availability metadata."""
 import weakref
+from .i18n import mark as _mark
+
+TYPE_LABELS = {
+    'username': _mark('Type Username'),
+    'username-enter': _mark('Type Username, Then Enter'),
+    'password': _mark('Type Password'),
+    'password-enter': _mark('Type Password, Then Enter'),
+    'totp': _mark('Type One-Time Password'),
+    'url': _mark('Type Website'),
+    'url-enter': _mark('Type Website, Then Enter'),
+}
+COPY_LABELS = {
+    'username': _mark('Copy Username'),
+    'password': _mark('Copy Password'),
+    'totp': _mark('Copy One-Time Password'),
+    'url': _mark('Copy Website'),
+}
+
 from gi.repository import GLib
 
 TYPES = {

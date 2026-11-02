@@ -1,4 +1,5 @@
 """Vault-owned icon previews and GNOME icon/appearance editors."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
@@ -142,11 +143,11 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
         return
     if dialog:
         dialog.close()
-    dialog, header, box = _dialog("Choose Icon", width=540, height=600)
+    dialog, header, box = _dialog(_tr("Choose Icon"), width=540, height=600)
     def choose(values):
         callback(values)
         dialog.close()
-    standard = Adw.PreferencesGroup(title="Standard Icons", description="KeePass icon IDs shown with Adwaita equivalents")
+    standard = Adw.PreferencesGroup(title=_tr("Standard Icons"), description=_tr("KeePass icon IDs shown with Adwaita equivalents"))
     grid = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=8,
                        min_children_per_line=4, row_spacing=4, column_spacing=4, homogeneous=True)
     for icon in value["standard"]:
@@ -157,25 +158,25 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
         grid.append(button)
     standard.add(grid)
     box.append(standard)
-    custom = Adw.PreferencesGroup(title="Custom Icons")
+    custom = Adw.PreferencesGroup(title=_tr("Custom Icons"))
     for icon in value["custom"]:
         identifier = icon["custom_icon"]
         item = SimpleNamespace(icon=0, custom_icon=identifier)
         row = Adw.ActionRow(title=GLib.markup_escape_text(icon["name"] or "Custom Icon"),
-                            subtitle=f"{icon['uses']} entries, groups or saved versions", activatable=True)
+                            subtitle=_trf('{arg0} entries, groups or saved versions', arg0=icon['uses']), activatable=True)
         row.add_prefix(session.icons.image(item, 32))
         row.connect("activated", lambda *_args, identifier=identifier: choose({"custom_icon": identifier}))
-        export = Gtk.Button(icon_name="document-save-symbolic", tooltip_text="Export Icon", valign=Gtk.Align.CENTER)
+        export = Gtk.Button(icon_name="document-save-symbolic", tooltip_text=_tr("Export Icon"), valign=Gtk.Align.CENTER)
         export.connect("clicked", lambda *_args, identifier=identifier:
             session.choose_file(lambda path: session.run_job(lambda: session.vault.export_icon(identifier, path),
-                                                            lambda _: session.toast("Icon exported")), save=True, name="Icon.png"))
+                                                            lambda _: session.toast(_tr("Icon exported"))), save=True, name="Icon.png"))
         row.add_suffix(export)
-        remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text="Delete Icon", valign=Gtk.Align.CENTER)
+        remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_tr("Delete Icon"), valign=Gtk.Align.CENTER)
         def delete(_button, identifier=identifier):
-            alert = Adw.AlertDialog(heading="Delete Custom Icon?",
-                body="Entries, groups and saved versions using this icon will use their default icons.")
-            alert.add_response("cancel", "Cancel")
-            alert.add_response("delete", "Delete")
+            alert = Adw.AlertDialog(heading=_tr("Delete Custom Icon?"),
+                body=_tr("Entries, groups and saved versions using this icon will use their default icons."))
+            alert.add_response("cancel", _tr("Cancel"))
+            alert.add_response("delete", _tr("Delete"))
             alert.set_close_response("cancel")
             alert.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
             def response(_alert, choice):
@@ -195,8 +196,8 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
     box.append(custom)
     if value["total"] > 100:
         page = Gtk.Box(spacing=12, homogeneous=True)
-        for label, target in (("Previous", max(0, offset - 100)), ("Next", offset + 100)):
-            button = Gtk.Button(label=label, sensitive=target != offset and target < value["total"])
+        for label, target in ((_mark("Previous"), max(0, offset - 100)), (_mark("Next"), offset + 100)):
+            button = Gtk.Button(label=_tr(label), sensitive=target != offset and target < value["total"])
             button.connect("clicked", lambda *_args, target=target: choose_icon(session, callback, offset=target, dialog=dialog, website=website, current=current))
             page.append(button)
         box.append(page)
@@ -204,21 +205,21 @@ def choose_icon(session, callback, value=None, offset=0, dialog=None, website=No
         session.icons.clear()
         session.window.show_vault(session.vault.snapshot)
         choose({"custom_icon": identifier})
-    button = Gtk.Button(label="Import Icon…", valign=Gtk.Align.CENTER)
+    button = Gtk.Button(label=_tr("Import Icon…"), valign=Gtk.Align.CENTER)
     button.connect("clicked", lambda *_: session.choose_file(lambda path:
         session.run_job(lambda: session.vault.import_icon(path), imported)))
     header.pack_start(button)
-    adwaita = Gtk.Button(label="Adwaita Icons…", valign=Gtk.Align.CENTER)
+    adwaita = Gtk.Button(label=_tr("Adwaita Icons…"), valign=Gtk.Align.CENTER)
     adwaita.connect("clicked", lambda *_: themed_icons.choose(session, choose))
     box.prepend(adwaita)
     from . import icon_views
-    download = Gtk.Button(label="Download Website Icon…", valign=Gtk.Align.CENTER)
+    download = Gtk.Button(label=_tr("Download Website Icon…"), valign=Gtk.Align.CENTER)
     download.connect("clicked", lambda *_: icon_views.download(session, imported, website() if website else ""))
     def cleaned(snapshot):
         session.icons.clear()
         session.window.show_vault(snapshot)
         choose_icon(session, callback, dialog=dialog, website=website, current=current)
-    clean = Gtk.Button(label="Remove Unused Icons…", valign=Gtk.Align.CENTER)
+    clean = Gtk.Button(label=_tr("Remove Unused Icons…"), valign=Gtk.Align.CENTER)
     def cleanup(*_):
         keep = {values["custom_icon"] for values in session.icons.drafts.values() if values["custom_icon"]}
         if current and current():
@@ -238,7 +239,7 @@ def icon_row(session, item, website=None, dialog=None):
         token = object()
         session.icons.drafts[token] = values
         dialog.connect("closed", lambda *_: session.icons.drafts.pop(token, None))
-    row = Adw.ActionRow(title="Icon", activatable=True)
+    row = Adw.ActionRow(title=_tr("Icon"), activatable=True)
     row.target = item
     row.user_selected_icon = False
     preview = session.icons.image(item, 32)
@@ -273,7 +274,7 @@ def rgba(value):
 
 
 def color_row(title, value):
-    row = Adw.EntryRow(title=title, text=value)
+    row = Adw.EntryRow(title=_tr(title), text=value)
     picker = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(with_alpha=True), valign=Gtk.Align.CENTER)
     updating = [False]
     def refresh(*_):
@@ -296,7 +297,7 @@ def color_row(title, value):
     row.connect("changed", refresh)
     refresh()
     row.add_suffix(picker)
-    clear = Gtk.Button(icon_name="edit-clear-symbolic", tooltip_text="Use Default Color", valign=Gtk.Align.CENTER)
+    clear = Gtk.Button(icon_name="edit-clear-symbolic", tooltip_text=_tr("Use Default Color"), valign=Gtk.Align.CENTER)
     clear.connect("clicked", lambda *_: row.set_text(""))
     row.add_suffix(clear)
     return row

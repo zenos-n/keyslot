@@ -1,4 +1,5 @@
 """Database report browsing and revision-bound changes, without retrieving passwords."""
+from .i18n import ntrf as _ntrf, mark as _mark, tr as _tr, trf as _trf
 from gi.repository import Adw, GLib, Gtk
 from .database_views import _dialog
 
@@ -27,20 +28,20 @@ class Reports:
     def __init__(self, session, data):
         from .breach_views import BreachReport
         self.session, self.data, self.closed = session, data, False
-        self.dialog, header, box = _dialog("Database Reports", width=660, height=700)
-        self.refresh = _button("view-refresh-symbolic", "Refresh Reports", self.reload)
+        self.dialog, header, box = _dialog(_tr("Database Reports"), width=660, height=700)
+        self.refresh = _button("view-refresh-symbolic", _tr("Refresh Reports"), self.reload)
         header.pack_start(self.refresh)
         options = Adw.PreferencesGroup()
-        self.page = Adw.ComboRow(title="Report", model=Gtk.StringList.new(
-            ["Statistics", "Password Health", "Reused Passwords", "Browser Access", "Exposed Passwords"]))
-        self.excluded = Adw.SwitchRow(title="Show Excluded Entries")
-        self.expired = Adw.SwitchRow(title="Show Expired Entries", active=True)
-        self.urls_only = Adw.SwitchRow(title="Only Entries with URLs", active=True)
-        self.settings_only = Adw.SwitchRow(title="Only Entries with Saved Browser Permissions")
+        self.page = Adw.ComboRow(title=_tr("Report"), model=Gtk.StringList.new(
+            [_tr("Statistics"), _tr("Password Health"), _tr("Reused Passwords"), _tr("Browser Access"), _tr("Exposed Passwords")]))
+        self.excluded = Adw.SwitchRow(title=_tr("Show Excluded Entries"))
+        self.expired = Adw.SwitchRow(title=_tr("Show Expired Entries"), active=True)
+        self.urls_only = Adw.SwitchRow(title=_tr("Only Entries with URLs"), active=True)
+        self.settings_only = Adw.SwitchRow(title=_tr("Only Entries with Saved Browser Permissions"))
         for row in (self.page, self.excluded, self.expired, self.urls_only, self.settings_only):
             options.add(row)
         box.append(options)
-        box.append(Gtk.Label(label="Reports describe the vault at the last refresh. Refresh after editing entries.",
+        box.append(Gtk.Label(label=_tr("Reports describe the vault at the last refresh. Refresh after editing entries."),
                              wrap=True, xalign=0, css_classes=["dim-label"]))
         self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
         box.append(self.content)
@@ -118,7 +119,7 @@ class Reports:
             body += "\n\nThe changes will remain unsaved until you save the vault."
         revision = self.data["revision"]
         alert = Adw.AlertDialog(heading=heading, body=body, body_use_markup=False)
-        alert.add_response("cancel", "Cancel")
+        alert.add_response("cancel", _tr("Cancel"))
         alert.add_response("apply", label)
         alert.set_default_response("cancel")
         alert.set_close_response("cancel")
@@ -138,12 +139,12 @@ class Reports:
         suffix = " · Excluded" if item.get("excluded") else ""
         if item.get("expired"):
             suffix += " · Expired"
-        row = Adw.ActionRow(title=item["title"] or "Untitled Entry", subtitle=(subtitle or item["group"]) + suffix,
+        row = Adw.ActionRow(title=item["title"] or _tr("Untitled Entry"), subtitle=(subtitle or item["group"]) + suffix,
                             use_markup=False, activatable=True)
         row.connect("activated", lambda *_: self.open_entry(item))
         excluded = item.get("excluded", False)
         row.add_suffix(_button("list-add-symbolic" if excluded else "list-remove-symbolic",
-            "Include in Reports…" if excluded else "Exclude from Reports…",
+            _tr("Include in Reports…") if excluded else _tr("Exclude from Reports…"),
             lambda: self.change([item], "include" if excluded else "exclude")))
         return row
 
@@ -163,18 +164,18 @@ class Reports:
         if page == 4:
             return
         if page == 0:
-            group = Adw.PreferencesGroup(title="Statistics", description="Active database entries; recycled items are excluded.")
-            for title, key in [("Groups", "groups"), ("Entries", "entries"), ("Expired Entries", "expired"),
-                ("Excluded Entries", "excluded"), ("Weak Passwords", "weak"), ("Short Passwords", "short"),
-                ("Reused Passwords", "reused"), ("Unique Passwords", "unique"), ("Average Password Length", "average_length"),
-                ("Passkeys", "passkeys"), ("One-Time Passwords", "totp")]:
-                row = Adw.ActionRow(title=title)
+            group = Adw.PreferencesGroup(title=_tr("Statistics"), description=_tr("Active database entries; recycled items are excluded."))
+            for title, key in [(_mark("Groups"), "groups"), (_mark("Entries"), "entries"), (_mark("Expired Entries"), "expired"),
+                (_mark("Excluded Entries"), "excluded"), (_mark("Weak Passwords"), "weak"), (_mark("Short Passwords"), "short"),
+                (_mark("Reused Passwords"), "reused"), (_mark("Unique Passwords"), "unique"), (_mark("Average Password Length"), "average_length"),
+                (_mark("Passkeys"), "passkeys"), (_mark("One-Time Passwords"), "totp")]:
+                row = Adw.ActionRow(title=_tr(title))
                 row.add_suffix(Gtk.Label(label=str(self.data.get(key, 0)), css_classes=["numeric"]))
                 group.add(row)
             self.content.append(group)
             return
         if page == 1:
-            group = Adw.PreferencesGroup(title="Password Health")
+            group = Adw.PreferencesGroup(title=_tr("Password Health"))
             self.content.append(group)
             qualities = ["Bad", "Poor", "Weak", "Good", "Excellent"]
             items = [item for item in sorted(self.data["health"], key=lambda value: value["score"]) if self.visible(item)]
@@ -184,14 +185,14 @@ class Reports:
                 subtitle = f"{name} · {item['entropy']:.0f} bits · Score {item['score']}\n{item['group']}"
                 row = self.row(item, subtitle)
                 def details(item=item):
-                    alert = Adw.AlertDialog(heading=item["title"] or "Untitled Entry", body_use_markup=False,
-                        body="\n\n".join(value for value in (item.get("reason"), item.get("details")) if value) or "No problems detected.")
-                    alert.add_response("close", "Close")
+                    alert = Adw.AlertDialog(heading=item["title"] or _tr("Untitled Entry"), body_use_markup=False,
+                        body="\n\n".join(value for value in (item.get("reason"), item.get("details")) if value) or _tr("No problems detected."))
+                    alert.add_response("close", _tr("Close"))
                     self.session.present_dialog(alert)
-                row.add_suffix(_button("dialog-information-symbolic", "Health Details", details))
+                row.add_suffix(_button("dialog-information-symbolic", _tr("Health Details"), details))
                 group.add(row)
             if not items:
-                group.add(Adw.ActionRow(title="No Entries Match These Filters"))
+                group.add(Adw.ActionRow(title=_tr("No Entries Match These Filters")))
         elif page == 2:
             count = 0
             for reused in sorted(self.data["duplicates"], key=len, reverse=True):
@@ -199,40 +200,40 @@ class Reports:
                 if not items:
                     continue
                 count += 1
-                group = Adw.PreferencesGroup(title=f"Password Used by {len(reused)} Entries")
+                group = Adw.PreferencesGroup(title=_ntrf('Password Used by {count} Entry', 'Password Used by {count} Entries', len(reused)))
                 for item in items:
                     group.add(self.row(item))
                 self.content.append(group)
             if not count:
-                self.content.append(Adw.StatusPage(title="No Reused Passwords Shown", icon_name="dialog-information-symbolic"))
+                self.content.append(Adw.StatusPage(title=_tr("No Reused Passwords Shown"), icon_name="dialog-information-symbolic"))
         elif page == 3:
-            group = Adw.PreferencesGroup(title="Browser Access", description="Stored URL fields and saved browser decisions. Protected URL values remain hidden.")
+            group = Adw.PreferencesGroup(title=_tr("Browser Access"), description=_tr("Stored URL fields and saved browser decisions. Protected URL values remain hidden."))
             self.content.append(group)
             items = [item for item in self.data["browser"] if self.visible(item)
                 and (not self.urls_only.get_active() or item["urls"] or item["hidden_urls"])
                 and (not self.settings_only.get_active() or item["has_settings"])]
             for item in sorted(items, key=lambda value: value["title"].casefold()):
-                row = Adw.ExpanderRow(title=item["title"] or "Untitled Entry", subtitle=item["group"], use_markup=False)
-                row.add_suffix(_button("document-open-symbolic", "Open Entry", lambda item=item: self.open_entry(item)))
-                for title, values in (("URLs", item["urls"]), ("Allowed URLs", item["Allow"]), ("Denied URLs", item["Deny"])):
-                    row.add_row(Adw.ActionRow(title=title, subtitle="\n".join(values) or "None", use_markup=False))
+                row = Adw.ExpanderRow(title=item["title"] or _tr("Untitled Entry"), subtitle=item["group"], use_markup=False)
+                row.add_suffix(_button("document-open-symbolic", _tr("Open Entry"), lambda item=item: self.open_entry(item)))
+                for title, values in ((_mark("URLs"), item["urls"]), (_mark("Allowed URLs"), item["Allow"]), (_mark("Denied URLs"), item["Deny"])):
+                    row.add_row(Adw.ActionRow(title=_tr(title), subtitle="\n".join(values) or _tr("None"), use_markup=False))
                 if item["hidden_urls"]:
-                    row.add_row(Adw.ActionRow(title="Protected URLs", subtitle=f"{item['hidden_urls']} values hidden"))
+                    row.add_row(Adw.ActionRow(title=_tr("Protected URLs"), subtitle=_ntrf('{count} value hidden', '{count} values hidden', item['hidden_urls'])))
                 if item["invalid_settings"]:
-                    row.add_row(Adw.ActionRow(title="Invalid Saved Browser Permissions", css_classes=["warning"]))
+                    row.add_row(Adw.ActionRow(title=_tr("Invalid Saved Browser Permissions"), css_classes=["warning"]))
                 if item["has_settings"]:
-                    reset = Adw.ActionRow(title="Clear Saved Permissions…", activatable=True)
+                    reset = Adw.ActionRow(title=_tr("Clear Saved Permissions…"), activatable=True)
                     reset.connect("activated", lambda *_args, item=item: self.change([item], "browser_reset"))
                     row.add_row(reset)
                 excluded = item["excluded"]
-                inclusion = Adw.ActionRow(title="Include in Reports…" if excluded else "Exclude from Reports…", activatable=True)
+                inclusion = Adw.ActionRow(title=_tr("Include in Reports…") if excluded else _tr("Exclude from Reports…"), activatable=True)
                 inclusion.connect("activated", lambda *_args, item=item, excluded=excluded: self.change([item], "include" if excluded else "exclude"))
                 row.add_row(inclusion)
                 group.add(row)
             if not items:
-                group.add(Adw.ActionRow(title="No Entries Match These Filters"))
+                group.add(Adw.ActionRow(title=_tr("No Entries Match These Filters")))
             saved = [item for item in items if item["has_settings"]]
             if saved:
-                clear = Gtk.Button(label=f"Clear Permissions for {len(saved)} Shown Entries…", css_classes=["destructive-action"])
+                clear = Gtk.Button(label=_ntrf('Clear Permissions for {count} Shown Entry…', 'Clear Permissions for {count} Shown Entries…', len(saved)), css_classes=["destructive-action"])
                 clear.connect("clicked", lambda *_: self.change(saved, "browser_reset"))
                 self.content.append(clear)

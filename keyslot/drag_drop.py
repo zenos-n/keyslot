@@ -1,4 +1,5 @@
 """App-local object drags and reviewed local-file drops; no secret field provider."""
+from .i18n import tr as _tr, trf as _trf
 from pathlib import Path
 import weakref
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
@@ -47,12 +48,12 @@ def _source(session, row, entries=None, group=None):
             chosen = selected if any(item.uuid == entries.uuid for item in selected) else [entries]
             ids = {item.uuid for item in chosen}
             if len(ids) != len(chosen) or any(sum(item.uuid == identifier for item in snapshot.entries) != 1 for identifier in ids):
-                session.toast("Ambiguous entry identifiers cannot be dragged")
+                session.toast(_tr("Ambiguous entry identifiers cannot be dragged"))
                 return None
             payload = Items(session, chosen)
         return Gdk.ContentProvider.new_for_value(payload)
     def begin(_source, drag):
-        label = Gtk.Label(label="Move or Copy Group" if group is not None else "Move or Copy Entries",
+        label = Gtk.Label(label=_tr("Move or Copy Group") if group is not None else _tr("Move or Copy Entries"),
                           margin_start=12, margin_end=12, margin_top=8, margin_bottom=8, css_classes=["card"])
         Gtk.DragIcon.get_for_drag(drag).set_child(label)
     source.connect("prepare", prepare)
@@ -64,7 +65,7 @@ def _source(session, row, entries=None, group=None):
 
 
 def entry_row(session, row, entry):
-    grip = Gtk.Image(icon_name="list-drag-handle-symbolic", tooltip_text="Drag Entry or Selected Entries; Hold Ctrl to Copy",
+    grip = Gtk.Image(icon_name="list-drag-handle-symbolic", tooltip_text=_tr("Drag Entry or Selected Entries; Hold Ctrl to Copy"),
                      valign=Gtk.Align.CENTER, css_classes=["dim-label"])
     grip.keyslot_drag_handle = True
     row.add_suffix(grip)
@@ -89,7 +90,7 @@ def _target(session, widget, group):
         provider.load_from_string("row.keyslot-drop-before {box-shadow: inset 0 3px @accent_color;} "
                                   "row.keyslot-drop-after {box-shadow: inset 0 -3px @accent_color;}")
         widget.get_style_context().add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        widget.set_tooltip_text("Drop entries or groups here; hold Ctrl to copy. Drop groups near an edge to reorder.")
+        widget.set_tooltip_text(_tr("Drop entries or groups here; hold Ctrl to copy. Drop groups near an edge to reorder."))
     def clear_marker(*_):
         widget.remove_css_class("keyslot-drop-before")
         widget.remove_css_class("keyslot-drop-after")
@@ -147,7 +148,7 @@ def _target(session, widget, group):
         contains_bin = bool(payload.group and source.vault.snapshot.recycle_bin in transfer_views.descendants(
             source.vault.snapshot, payload.group))
         if (recycled or item.recycled or contains_bin) and ("transfer-recycled" not in source.vault.capabilities or "transfer-recycled" not in session.vault.capabilities):
-            session.toast("Update the native engine before transferring recycled items")
+            session.toast(_tr("Update the native engine before transferring recycled items"))
             return False
         # A local move into the bin root keeps upstream recycling and original-location bookkeeping.
         if source is session and move and not recycled and not contains_bin and identifier == session.vault.snapshot.recycle_bin and position < 0:
@@ -159,10 +160,10 @@ def _target(session, widget, group):
                                bulk=bool(entries), destination=identifier)
             return True
         if move and source is session and entries and all(entry.group == identifier for entry in entries):
-            session.toast("These entries are already in that group")
+            session.toast(_tr("These entries are already in that group"))
             return False
         if position >= 0 and ("transfer-position" not in source.vault.capabilities or "transfer-position" not in session.vault.capabilities):
-            session.toast("Update the native engine before positioning groups")
+            session.toast(_tr("Update the native engine before positioning groups"))
             return False
         _transfer(payload, session, entries, identifier, position, move)
         return True
@@ -179,9 +180,9 @@ def _transfer(payload, destination, entries, group, position, move):
     destination_epoch, destination_snapshot = destination.epoch, destination.vault.snapshot
     transfer = EntryTransfer(source.vault, destination.vault, entries, group, move, payload.group, position)
     state = {"phase": "preparing", "transfer": transfer}
-    dialog, header, box = _dialog("Preparing Transfer", width=380, height=200)
+    dialog, header, box = _dialog(_tr("Preparing Transfer"), width=380, height=200)
     box.append(Gtk.Spinner(spinning=True, halign=Gtk.Align.CENTER))
-    box.append(Gtk.Label(label="Preparing an encrypted review…", wrap=True))
+    box.append(Gtk.Label(label=_tr("Preparing an encrypted review…"), wrap=True))
     def cancel(*_):
         if state["phase"] == "preparing":
             state["phase"] = "cancelled"
@@ -212,7 +213,7 @@ def _transfer(payload, destination, entries, group, position, move):
     if not destination.present_dialog(dialog):
         cancel(); return
     if not source.run_job(transfer.prepare, prepared, failed):
-        cancel(); dialog.close(); destination.toast("Finish the current source operation before dragging again")
+        cancel(); dialog.close(); destination.toast(_tr("Finish the current source operation before dragging again"))
         return
     def watch():
         if state["phase"] != "preparing":
@@ -251,8 +252,8 @@ def window_files(session, window):
         if len(vaults) == 1:
             opened()
         else:
-            dialog = Adw.AlertDialog(heading="Open Dropped Vaults?", body="\n".join(Path(path).name for path in vaults), body_use_markup=False)
-            dialog.add_response("cancel", "Cancel"); dialog.add_response("open", "Open Vaults")
+            dialog = Adw.AlertDialog(heading=_tr("Open Dropped Vaults?"), body="\n".join(Path(path).name for path in vaults), body_use_markup=False)
+            dialog.add_response("cancel", _tr("Cancel")); dialog.add_response("open", _tr("Open Vaults"))
             dialog.set_default_response("cancel"); dialog.set_close_response("cancel")
             dialog.connect("response", lambda _dialog, response: opened() if response == "open" and not session.jobs.closed else None)
             session.present_dialog(dialog)
@@ -271,19 +272,19 @@ def attachments(session, widget, entry):
         def inspected(review):
             if session.epoch != epoch or not session.vault.unlocked or not session.active:
                 return
-            dialog = Adw.AlertDialog(heading="Add Dropped Attachments?", body_use_markup=False,
-                body=f'Entry: {entry.title}\nTotal: {review["size"]:,} bytes. All files are added in one encrypted transaction.')
+            dialog = Adw.AlertDialog(heading=_tr("Add Dropped Attachments?"), body_use_markup=False,
+                body=_trf('Entry: {arg0}\nTotal: {arg1:,} bytes. All files are added in one encrypted transaction.', arg0=entry.title, arg1=review['size']))
             extra = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             listing = Gtk.TextView(editable=False, cursor_visible=False, wrap_mode=Gtk.WrapMode.WORD_CHAR,
                                    left_margin=12, right_margin=12, top_margin=12, bottom_margin=12)
             listing.get_buffer().set_text("\n\n".join(f'{item["name"]} — {item["size"]:,} bytes\n{item["path"]}' for item in review["files"]))
             extra.append(Gtk.ScrolledWindow(child=listing, min_content_height=80, max_content_height=240,
                 propagate_natural_height=True, hscrollbar_policy=Gtk.PolicyType.NEVER, css_classes=["card"], overflow=Gtk.Overflow.HIDDEN))
-            replace = Gtk.CheckButton(label=f'Replace {review["replacements"]} existing attachments with matching names')
+            replace = Gtk.CheckButton(label=_trf('Replace {arg0} existing attachments with matching names', arg0=review['replacements']))
             if review["replacements"]:
                 extra.append(replace)
             dialog.set_extra_child(extra)
-            dialog.add_response("cancel", "Cancel"); dialog.add_response("add", "Add Attachments")
+            dialog.add_response("cancel", _tr("Cancel")); dialog.add_response("add", _tr("Add Attachments"))
             dialog.set_default_response("cancel"); dialog.set_close_response("cancel")
             dialog.set_response_appearance("add", Adw.ResponseAppearance.SUGGESTED)
             dialog.set_response_enabled("add", not review["replacements"])

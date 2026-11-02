@@ -1,4 +1,5 @@
 """GNOME presentation of KeePass icon IDs, with portable custom-icon fallback."""
+from .i18n import ntrf as _ntrf, tr as _tr, trf as _trf
 import os
 from gi.repository import Gtk
 from .database_views import _dialog
@@ -44,10 +45,10 @@ def choose(session, callback):
         return
     icon_theme = session.icons.theme
     names = sorted(name for name in icon_theme.get_icon_names() if name.endswith("-symbolic"))
-    dialog, _header, box = _dialog("Choose Adwaita Icon", width=540, height=560)
+    dialog, _header, box = _dialog(_tr("Choose Adwaita Icon"), width=540, height=560)
     current = _lifetime(session, dialog)
-    box.append(Gtk.Label(label="Standard equivalents keep their KeePass icon ID. Other icons are embedded in the vault for compatibility with other clients.", wrap=True, xalign=0))
-    search = Gtk.SearchEntry(placeholder_text="Search Adwaita icons")
+    box.append(Gtk.Label(label=_tr("Standard equivalents keep their KeePass icon ID. Other icons are embedded in the vault for compatibility with other clients."), wrap=True, xalign=0))
+    search = Gtk.SearchEntry(placeholder_text=_tr("Search Adwaita icons"))
     box.append(search)
     grid = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=3, max_children_per_line=7,
                        row_spacing=4, column_spacing=4, homogeneous=True, valign=Gtk.Align.START)
@@ -56,7 +57,7 @@ def choose(session, callback):
     count = Gtk.Label(xalign=0, css_classes=["dim-label"])
     box.append(count)
     navigation = Gtk.Box(spacing=12, homogeneous=True)
-    previous, following = Gtk.Button(label="Previous"), Gtk.Button(label="Next")
+    previous, following = Gtk.Button(label=_tr("Previous")), Gtk.Button(label=_tr("Next"))
     navigation.append(previous); navigation.append(following)
     box.append(navigation)
     def selected(name):
@@ -68,7 +69,7 @@ def choose(session, callback):
             return
         file = paintable(icon_theme, name, 128).get_file()
         if file is None:
-            session.error("This theme icon has no embeddable image. Choose another icon.")
+            session.error(_tr("This theme icon has no embeddable image. Choose another icon."))
             return
         def import_icon():
             stream = file.read(None)
@@ -99,7 +100,7 @@ def choose(session, callback):
             button = Gtk.Button(child=image, tooltip_text=name.removesuffix("-symbolic").replace("-", " "), css_classes=["flat"])
             button.connect("clicked", lambda _button, name=name: selected(name))
             grid.append(button)
-        count.set_label(f"{len(matches)} icons" if matches else "No matching icons")
+        count.set_label(_ntrf('{count} icon', '{count} icons', len(matches)) if matches else _tr("No matching icons"))
         previous.set_sensitive(page[0] > 0)
         following.set_sensitive(start + 70 < len(matches))
     def move(delta):

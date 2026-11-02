@@ -1,4 +1,5 @@
 """One cancellable worker queue per database, independent of the visible tab."""
+from .i18n import tr as _tr
 from concurrent.futures import ThreadPoolExecutor
 import sys
 
@@ -61,7 +62,7 @@ class SessionJobs:
                     self.error(str(exc))
             except Exception:
                 self.lock()
-                self.error("An unexpected error occurred. Lock and reopen this database before continuing.")
+                self.error(_tr("An unexpected error occurred. Lock and reopen this database before continuing."))
             return False
 
         future.add_done_callback(lambda _future: self.dispatch(complete))

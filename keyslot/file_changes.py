@@ -1,4 +1,5 @@
 """Monitor the encrypted file without replacing modal drafts or extending idle time."""
+from .i18n import mark as _mark, mark as _mark, tr as _tr
 from gi.repository import Adw, Gio, GLib
 
 from .core_backend import EngineError
@@ -119,27 +120,27 @@ class FileChanges:
                 self._dismiss()
                 if state == "reloaded":
                     session.apply_refreshed(data["snapshot"])
-                    session.toast("Vault updated")
+                    session.toast(_tr("Vault updated"))
             elif state == "changed":
                 self.waiting = True
                 if not session.application.startup.auto_reload:
-                    self._show("Vault changed elsewhere", "Reload", self.reload)
+                    self._show(_mark('Vault changed elsewhere'), _mark('Reload'), self.reload)
             elif state == "conflict":
                 self.failed_serial = serial
                 self.review_data = {key: data[key] for key in ("revision", "source_revision")}
-                self._show("Unsaved changes and changes on disk", "Review", self.review)
+                self._show(_mark('Unsaved changes and changes on disk'), _mark('Review'), self.review)
             else:
                 self.failed_serial = serial
                 if data.get("code") == "key_error":
-                    self._show("Vault could not be unlocked after changing", "Unlock", self.unlock_changed)
+                    self._show(_mark('Vault could not be unlocked after changing'), _mark('Unlock'), self.unlock_changed)
                 else:
-                    self._show("Vault file is unavailable" if state == "unavailable" else "Vault could not be reloaded",
-                               "Save Copy", self.save_copy)
+                    self._show(_mark('Vault file is unavailable') if state == "unavailable" else _mark('Vault could not be reloaded'),
+                               _mark('Save Copy'), self.save_copy)
             self.resume()
         def failed(_message):
             self.running = self.force = False
             self.failed_serial = serial
-            self._show("Vault could not be reloaded", "Save Copy", self.save_copy)
+            self._show(_mark('Vault could not be reloaded'), _mark('Save Copy'), self.save_copy)
         # Checks are passive; only an actual reload reserves the foreground slot
         # so a form cannot open halfway through it. Neither operation touches idle time.
         if not session.jobs.run(perform, checked, failed, interactive=reload):
@@ -172,21 +173,21 @@ class FileChanges:
                 self.review_data = {key: data[key] for key in ("revision", "source_revision")}
                 self._review_dialog()
             elif data["state"] == "unavailable":
-                self._show("Vault file is unavailable", "Save Copy", self.save_copy)
+                self._show(_mark('Vault file is unavailable'), _mark('Save Copy'), self.save_copy)
             else:
                 self.refreshed()
         session.run_job(lambda: session.vault.watch_file(reload=False), checked)
 
     def _review_dialog(self):
         session = self.session
-        dialog = Adw.AlertDialog(heading="Vault Changed Elsewhere",
-            body="This vault has unsaved changes and another application changed the file. Merge both versions, reload the saved version, save a separate copy, or overwrite the changes on disk with your version.")
+        dialog = Adw.AlertDialog(heading=_tr("Vault Changed Elsewhere"),
+            body=_tr("This vault has unsaved changes and another application changed the file. Merge both versions, reload the saved version, save a separate copy, or overwrite the changes on disk with your version."))
         review = dict(self.review_data or {})
-        for name, label in (("cancel", "Cancel"), ("copy", "Save Copy…"),
-                            ("discard", "Discard and Reload"), ("merge", "Merge Changes")):
-            dialog.add_response(name, label)
+        for name, label in (("cancel", _mark("Cancel")), ("copy", _mark("Save Copy…")),
+                            ("discard", _mark("Discard and Reload")), ("merge", _mark("Merge Changes"))):
+            dialog.add_response(name, _tr(label))
         if review:
-            dialog.add_response("overwrite", "Overwrite Disk Changes")
+            dialog.add_response("overwrite", _tr("Overwrite Disk Changes"))
             dialog.set_response_appearance("overwrite", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("merge")
         dialog.set_close_response("cancel")
@@ -214,7 +215,7 @@ class FileChanges:
                         self.refreshed()
                 session.run_job(perform, reconciled)
             else:
-                self._show("Unsaved changes and changes on disk", "Review", self.review)
+                self._show(_mark('Unsaved changes and changes on disk'), _mark('Review'), self.review)
         dialog.connect("response", selected)
         session.present_dialog(dialog)
 
@@ -233,6 +234,7 @@ class FileChanges:
             self.notice = None
 
     def _show(self, title, label, action):
+        title, label = _tr(title), _tr(label)
         if self.notice and self.notice.get_title() == title:
             return
         self._dismiss()

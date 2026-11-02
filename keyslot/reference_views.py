@@ -1,4 +1,5 @@
 """Insert standard KeePass field references using entry metadata only."""
+from .i18n import mark as _mark, tr as _tr
 from uuid import UUID
 
 import gi
@@ -9,8 +10,8 @@ from gi.repository import Adw, Gtk
 from .database_views import _dialog, _save
 
 
-FIELDS = [("T", "Title"), ("U", "Username"), ("P", "Password"),
-          ("A", "Website"), ("N", "Notes"), ("I", "Entry ID")]
+FIELDS = [("T", _mark('Title')), ("U", _mark('Username')), ("P", _mark('Password')),
+          ("A", _mark('Website')), ("N", _mark('Notes')), ("I", _mark('Entry ID'))]
 
 
 def insert_text(row, text):
@@ -23,7 +24,7 @@ def insert_text(row, text):
 
 
 def menu(session, parent, header, targets, current_entry=None):
-    button = Gtk.MenuButton(icon_name="insert-link-symbolic", tooltip_text="Insert Field Reference",
+    button = Gtk.MenuButton(icon_name="insert-link-symbolic", tooltip_text=_tr("Insert Field Reference"),
                             valign=Gtk.Align.CENTER)
     popover = Gtk.Popover()
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
@@ -44,21 +45,21 @@ def show(session, parent, apply, destination="P", current_entry=None):
     if not session.active or not session.vault.unlocked:
         return
     epoch, generation = session.epoch, session.vault.generation
-    dialog, header, box = _dialog("Insert Field Reference", width=520, height=580)
+    dialog, header, box = _dialog(_tr("Insert Field Reference"), width=520, height=580)
     state = {"closed": False, "matches": [], "shown": 0}
-    group = Adw.PreferencesGroup(description="Use a field from another entry in this database. The reference follows its entry even if it is renamed or moved.")
-    field = Adw.ComboRow(title="Reference Field", model=Gtk.StringList.new([label for _, label in FIELDS]))
+    group = Adw.PreferencesGroup(description=_tr("Use a field from another entry in this database. The reference follows its entry even if it is renamed or moved."))
+    field = Adw.ComboRow(title=_tr("Reference Field"), model=Gtk.StringList.new([_tr(label) for _, label in FIELDS]))
     field.set_selected(next((i for i, (code, _) in enumerate(FIELDS) if code == destination), 2))
     group.add(field)
     box.append(group)
-    search = Gtk.SearchEntry(placeholder_text="Search entries")
+    search = Gtk.SearchEntry(placeholder_text=_tr("Search entries"))
     box.append(search)
     rows = Gtk.ListBox(css_classes=["boxed-list"], selection_mode=Gtk.SelectionMode.SINGLE,
                       valign=Gtk.Align.START, vexpand=False)
     box.append(rows)
-    more = Gtk.Button(label="Show More Entries")
+    more = Gtk.Button(label=_tr("Show More Entries"))
     box.append(more)
-    empty = Gtk.Label(label="No matching entries", css_classes=["dim-label"])
+    empty = Gtk.Label(label=_tr("No matching entries"), css_classes=["dim-label"])
     box.append(empty)
     preview = Gtk.Label(wrap=True, selectable=True, css_classes=["monospace"])
     box.append(preview)
@@ -80,7 +81,7 @@ def show(session, parent, apply, destination="P", current_entry=None):
 
     def update(*_):
         text = expression()
-        preview.set_label(text or ("Choose a different entry or field" if rows.get_selected_row() else "Select an entry"))
+        preview.set_label(text or (_tr("Choose a different entry or field") if rows.get_selected_row() else _tr("Select an entry")))
         insert.set_sensitive(bool(text))
 
     def submit(*_):
@@ -89,7 +90,7 @@ def show(session, parent, apply, destination="P", current_entry=None):
             dialog.close()
             apply(text)
 
-    insert = _save(header, submit, "Insert")
+    insert = _save(header, submit, _tr('Insert'))
     insert.set_sensitive(False)
     rows.connect("row-selected", update)
     field.connect("notify::selected", update)
@@ -98,7 +99,7 @@ def show(session, parent, apply, destination="P", current_entry=None):
         end = min(len(state["matches"]), state["shown"] + 100)
         for entry in state["matches"][state["shown"]:end]:
             subtitle = " · ".join(value for value in (entry.username, entry.group_path) if value)
-            row = Adw.ActionRow(title=entry.title or "Untitled Entry", subtitle=subtitle,
+            row = Adw.ActionRow(title=entry.title or _tr("Untitled Entry"), subtitle=subtitle,
                                 use_markup=False, activatable=True)
             row.entry_uuid = entry.uuid
             rows.append(row)

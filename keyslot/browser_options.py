@@ -1,12 +1,13 @@
 """Entry/group browser rules using upstream custom-data inheritance."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 from .database_views import Adw, Gtk, _dialog, _save
 from .passkey_views import _lifetime
 from .backend import VaultError
 
 
-OPTIONS = [("hide", "Hide from Browsers"), ("skip_submit", "Prevent Automatic Form Submission"),
-           ("only_http", "Only Match HTTP Authentication"), ("not_http", "Exclude HTTP Authentication"),
-           ("omit_www", "Ignore www in Website Matching")]
+OPTIONS = [("hide", _mark('Hide from Browsers')), ("skip_submit", _mark('Prevent Automatic Form Submission')),
+           ("only_http", _mark('Only Match HTTP Authentication')), ("not_http", _mark('Exclude HTTP Authentication')),
+           ("omit_www", _mark('Ignore www in Website Matching'))]
 
 
 def settings(session, entry=None, group=None, data=None):
@@ -16,27 +17,27 @@ def settings(session, entry=None, group=None, data=None):
         session.run_job(lambda: session.vault.browser_options(entry, group),
                         lambda value: settings(session, entry, group, value))
         return
-    dialog, header, box = _dialog("Browser Integration", width=520, height=600)
+    dialog, header, box = _dialog(_tr("Browser Integration"), width=520, height=600)
     current = _lifetime(session, dialog)
-    rules = Adw.PreferencesGroup(title="Entry Rules" if entry else "Group Rules",
-        description="Group rules take precedence where shown." if entry else
-                    "Rules apply to this group and its descendants. Subgroups can override inherited rules.")
+    rules = Adw.PreferencesGroup(title=_tr("Entry Rules") if entry else _tr("Group Rules"),
+        description=_tr("Group rules take precedence where shown.") if entry else
+                    _tr("Rules apply to this group and its descendants. Subgroups can override inherited rules."))
     rows = {}
     for code, title in OPTIONS:
         if code not in data["values"]:
             continue
-        parent = "Enabled" if data["inherited"][code] == 1 else "Disabled"
-        row = Adw.ComboRow(title=title, model=Gtk.StringList.new([f"Inherit ({parent})", "Enabled", "Disabled"]))
+        parent = _tr("Enabled") if data["inherited"][code] == 1 else _tr("Disabled")
+        row = Adw.ComboRow(title=_tr(title), model=Gtk.StringList.new([_trf('Inherit ({arg0})', arg0=parent), _tr("Enabled"), _tr("Disabled")]))
         if data["forced"][code]:
             row.set_selected(1 if data["effective"][code] else 2)
-            row.set_subtitle("Controlled by this entry’s group")
+            row.set_subtitle(_tr("Controlled by this entry’s group"))
             row.set_sensitive(False)
         else:
             row.set_selected(data["values"][code])
         rules.add(row)
         rows[code] = row
     box.append(rules)
-    warning = Gtk.Label(label="These rules exclude both website forms and HTTP authentication. Entries will not match login requests.",
+    warning = Gtk.Label(label=_tr("These rules exclude both website forms and HTTP authentication. Entries will not match login requests."),
                         xalign=0, wrap=True, css_classes=["warning"])
     def enabled(code):
         selected = rows[code].get_selected()
@@ -51,26 +52,26 @@ def settings(session, entry=None, group=None, data=None):
     connections = set(restriction["connections"])
     def label(identifier):
         if not identifier:
-            return "All Connections"
-        return identifier if identifier in connections else f"{identifier} (Disconnected)"
-    section = Adw.PreferencesGroup(title="Browser Connections")
+            return _tr("All Connections")
+        return identifier if identifier in connections else _trf("{connection} (Disconnected)", connection=identifier)
+    section = Adw.PreferencesGroup(title=_tr("Browser Connections"))
     key_row = None
     key_choices = []
     if entry:
-        section.add(Adw.ActionRow(title="Allowed Connection", subtitle=label(restriction["inherited"]),
+        section.add(Adw.ActionRow(title=_tr("Allowed Connection"), subtitle=label(restriction["inherited"]),
                                  use_markup=False, subtitle_lines=2))
-        section.set_description("Connection restrictions are set in the group’s browser settings.")
+        section.set_description(_tr("Connection restrictions are set in the group’s browser settings."))
     else:
         ids = sorted(connections | ({restriction["id"]} if restriction["id"] else set()), key=str.casefold)
         key_choices = [("inherit", ""), ("all", "")] + [("connection", identifier) for identifier in ids]
-        key_row = Adw.ComboRow(title="Allowed Connection", model=Gtk.StringList.new(
-            [f'Inherit ({label(restriction["inherited"])})', "All Connections"] + [label(identifier) for identifier in ids]))
+        key_row = Adw.ComboRow(title=_tr("Allowed Connection"), model=Gtk.StringList.new(
+            [_trf('Inherit ({arg0})', arg0=label(restriction['inherited'])), _tr("All Connections")] + [label(identifier) for identifier in ids]))
         key_row.set_selected(key_choices.index((restriction["mode"], restriction["id"])))
-        section.set_description("Restrict matching to one paired browser connection, or inherit the parent group’s restriction.")
+        section.set_description(_tr("Restrict matching to one paired browser connection, or inherit the parent group’s restriction."))
         section.add(key_row)
     box.append(section)
     if not session.application.startup.browser:
-        box.append(Gtk.Label(label="Enable Browser Integration in Preferences to use these rules with your browser.",
+        box.append(Gtk.Label(label=_tr("Enable Browser Integration in Preferences to use these rules with your browser."),
                              xalign=0, wrap=True, css_classes=["dim-label"]))
     def save(*_):
         if not current() or session.busy:
@@ -89,7 +90,7 @@ def settings(session, entry=None, group=None, data=None):
             if current():
                 dialog.close()
                 session.window.show_vault(snapshot)
-                session.toast("Browser settings saved")
+                session.toast(_tr("Browser settings saved"))
         session.run_job(lambda: session.vault.save_browser_options(entry, group, revision=data["revision"],
                         values=values, restriction=changed_key), saved)
     _save(header, save)
@@ -115,12 +116,12 @@ def websites(session, entry, data=None):
             return {"revision": revision, "items": items}
         session.run_job(read, lambda value: websites(session, entry, value))
         return
-    dialog, header, box = _dialog("Additional Websites", height=420)
+    dialog, header, box = _dialog(_tr("Additional Websites"), height=420)
     current = _lifetime(session, dialog)
-    group = Adw.PreferencesGroup(description="These websites use the same login as this entry. Edit the primary website in Edit Entry.")
+    group = Adw.PreferencesGroup(description=_tr("These websites use the same login as this entry. Edit the primary website in Edit Entry."))
     for index, item in enumerate(data["items"], 1):
-        row = Adw.ActionRow(title="Protected Website" if item["protected"] else item["value"] or "Empty Website",
-                            subtitle=f"Additional Website {index}", title_lines=2, use_markup=False, activatable=True)
+        row = Adw.ActionRow(title=_tr("Protected Website") if item["protected"] else item["value"] or _tr("Empty Website"),
+                            subtitle=_trf('Additional Website {arg0}', arg0=index), title_lines=2, use_markup=False, activatable=True)
         row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
         def edit(_row, name=item["name"]):
             if current():
@@ -129,9 +130,9 @@ def websites(session, entry, data=None):
         row.connect("activated", edit)
         group.add(row)
     if not data["items"]:
-        group.add(Adw.ActionRow(title="No Additional Websites"))
+        group.add(Adw.ActionRow(title=_tr("No Additional Websites")))
     box.append(group)
-    add = Gtk.Button(label="Add Website", valign=Gtk.Align.CENTER, css_classes=["suggested-action"])
+    add = Gtk.Button(label=_tr("Add Website"), valign=Gtk.Align.CENTER, css_classes=["suggested-action"])
     def create(*_):
         if not current():
             return
@@ -157,18 +158,18 @@ def _website(session, entry, name, info=None, *, creating=False):
         session.run_job(lambda: session.vault.attribute_info(entry, name, review=True),
                         lambda value: _website(session, entry, name, value))
         return
-    dialog, header, box = _dialog("Add Website" if creating else "Edit Website", height=300)
+    dialog, header, box = _dialog(_tr("Add Website") if creating else _tr("Edit Website"), height=300)
     current = _lifetime(session, dialog)
-    fields = Adw.PreferencesGroup(description="Placeholders and field references are kept as entered.")
-    value = Adw.PasswordEntryRow(title="Website", text=info["value"])
-    protected = Adw.SwitchRow(title="Protect Website", active=info["protected"],
-                             subtitle="Hide its address in the website list")
+    fields = Adw.PreferencesGroup(description=_tr("Placeholders and field references are kept as entered."))
+    value = Adw.PasswordEntryRow(title=_tr("Website"), text=info["value"])
+    protected = Adw.SwitchRow(title=_tr("Protect Website"), active=info["protected"],
+                             subtitle=_tr("Hide its address in the website list"))
     fields.add(value)
     fields.add(protected)
     box.append(fields)
     from . import reference_views
     reference_views.menu(session, dialog, header, [
-        ("Website", "A", lambda text: reference_views.insert_text(value, text)),
+        (_tr('Website'), "A", lambda text: reference_views.insert_text(value, text)),
     ], entry)
     def saved(snapshot):
         if current():
@@ -184,7 +185,7 @@ def _website(session, entry, name, info=None, *, creating=False):
                 original_name="" if creating else name, revision=info["revision"]), saved)
     _save(header, save)
     if not creating:
-        remove = Gtk.Button(label="Remove Website…", css_classes=["destructive-action"])
+        remove = Gtk.Button(label=_tr("Remove Website…"), css_classes=["destructive-action"])
         def confirm(*_):
             from .passkey_views import _confirm
             _confirm(session, "Remove Website?", "This website will no longer match the entry’s login.", "Remove",

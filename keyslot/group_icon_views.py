@@ -1,4 +1,5 @@
 """Reviewed child icon updates share the group editor's single encrypted save."""
+from .i18n import tr as _tr
 from gi.repository import Adw
 
 
@@ -79,9 +80,9 @@ class Changes:
             if data["recycled_groups"] or data["recycled_entries"]:
                 body += (f'\n\nIncludes {data["recycled_groups"]} recycled groups and '
                          f'{data["recycled_entries"]} recycled entries.')
-            alert = Adw.AlertDialog(heading="Apply Group Icon to Its Contents?", body=body)
-            alert.add_response("cancel", "Cancel")
-            alert.add_response("apply", "Save and Apply")
+            alert = Adw.AlertDialog(heading=_tr("Apply Group Icon to Its Contents?"), body=body)
+            alert.add_response("cancel", _tr("Cancel"))
+            alert.add_response("apply", _tr("Save and Apply"))
             alert.set_response_appearance("apply", Adw.ResponseAppearance.SUGGESTED)
             def closed(*_):
                 if self.review_dialog is not alert:

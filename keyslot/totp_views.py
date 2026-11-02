@@ -1,4 +1,5 @@
 """Native TOTP setup, short-lived QR export and live views that do not reset idle lock."""
+from .i18n import ntrf as _ntrf, mark as _mark, tr as _tr, trf as _trf
 import math
 import time
 
@@ -45,7 +46,7 @@ class LiveCode:
         now = time.monotonic()
         left = max(0, self.deadline - now)
         self.progress.set_fraction(min(1, left / self.period))
-        self.remaining.set_label(f"{math.ceil(left)} seconds remaining" if left else "Refreshing…")
+        self.remaining.set_label(_ntrf('{count} second remaining', '{count} seconds remaining', math.ceil(left)) if left else _tr("Refreshing…"))
         if not left:
             self.label.set_label("—")
         if not self.pending and now >= self.next_poll and not self.session.jobs.busy:
@@ -112,7 +113,7 @@ class TotpController:
             self.session.run_job(lambda: self.session.vault.copy_totp(entry, combined), self.session.copy_entry)
 
     def row(self, entry):
-        row = Adw.ActionRow(title="One-Time Password", subtitle="Reveal or copy the current verification code", activatable=True)
+        row = Adw.ActionRow(title=_tr("One-Time Password"), subtitle=_tr("Reveal or copy the current verification code"), activatable=True)
         row.connect("activated", lambda *_: self.show_code(entry))
         preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, valign=Gtk.Align.CENTER, visible=False)
         code = Gtk.Label(css_classes=["monospace", "title-4"])
@@ -121,13 +122,13 @@ class TotpController:
         for widget in (code, progress, remaining):
             preview.append(widget)
         row.add_suffix(preview)
-        reveal = Gtk.Button(icon_name="view-reveal-symbolic", tooltip_text="Reveal One-Time Password", valign=Gtk.Align.CENTER)
+        reveal = Gtk.Button(icon_name="view-reveal-symbolic", tooltip_text=_tr("Reveal One-Time Password"), valign=Gtk.Align.CENTER)
         state = {"view": None}
         def hide():
             preview.set_visible(False)
             reveal.set_icon_name("view-reveal-symbolic")
-            reveal.set_tooltip_text("Reveal One-Time Password")
-            row.set_subtitle("Reveal or copy the current verification code")
+            reveal.set_tooltip_text(_tr("Reveal One-Time Password"))
+            row.set_subtitle(_tr("Reveal or copy the current verification code"))
             state["view"] = None
         def toggle(*_):
             if state["view"]:
@@ -139,11 +140,11 @@ class TotpController:
             preview.set_visible(True)
             row.set_subtitle("")
             reveal.set_icon_name("view-conceal-symbolic")
-            reveal.set_tooltip_text("Hide One-Time Password")
+            reveal.set_tooltip_text(_tr("Hide One-Time Password"))
             state["view"] = LiveCode(self, entry, code, progress, remaining, hide)
         reveal.connect("clicked", toggle)
         row.add_suffix(reveal)
-        copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Copy One-Time Password", valign=Gtk.Align.CENTER)
+        copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text=_tr("Copy One-Time Password"), valign=Gtk.Align.CENTER)
         copy.connect("clicked", lambda *_: self.copy(entry))
         row.add_suffix(copy)
         row.connect("unmap", lambda *_: state["view"].close() if state["view"] else None)
@@ -154,7 +155,7 @@ class TotpController:
         if session.busy or not session.vault.unlocked:
             return
         session.touch()
-        dialog, header, box = _dialog("One-Time Password", width=440, height=360)
+        dialog, header, box = _dialog(_tr("One-Time Password"), width=440, height=360)
         box.append(Gtk.Label(label=entry.title, wrap=True, css_classes=["title-2"]))
         code = Gtk.Label(label="—", selectable=True, css_classes=["title-1", "numeric"])
         progress = Gtk.ProgressBar()
@@ -162,8 +163,8 @@ class TotpController:
         for widget in (code, progress, remaining):
             box.append(widget)
         actions = Gtk.Box(spacing=12, homogeneous=True)
-        for label, combined in (("Copy Code", False), ("Copy Password and Code", True)):
-            copy = Gtk.Button(label=label, valign=Gtk.Align.CENTER,
+        for label, combined in ((_mark("Copy Code"), False), (_mark("Copy Password and Code"), True)):
+            copy = Gtk.Button(label=_tr(label), valign=Gtk.Align.CENTER,
                               css_classes=["suggested-action"] if not combined else [])
             copy.connect("clicked", lambda _button, include=combined: self.copy(entry, include) if current() else None)
             actions.append(copy)
@@ -184,28 +185,28 @@ class TotpController:
                             lambda value: self.setup(entry, value) if self.epoch == epoch and session.active else None)
             return
         data = dict(data)
-        dialog, header, box = _dialog("Set Up One-Time Password", width=480, height=620)
+        dialog, header, box = _dialog(_tr("Set Up One-Time Password"), width=480, height=620)
         current = self.register(dialog)
         source = Adw.PreferencesGroup()
-        method = Adw.ComboRow(title="Setup Method", model=Gtk.StringList.new(["Secret Key", "Setup Link"]))
-        key = Adw.PasswordEntryRow(title="Secret Key", text=data.pop("key"))
-        uri = Adw.PasswordEntryRow(title="Setup Link", text=data.pop("uri"), visible=False)
+        method = Adw.ComboRow(title=_tr("Setup Method"), model=Gtk.StringList.new([_tr("Secret Key"), _tr("Setup Link")]))
+        key = Adw.PasswordEntryRow(title=_tr("Secret Key"), text=data.pop("key"))
+        uri = Adw.PasswordEntryRow(title=_tr("Setup Link"), text=data.pop("uri"), visible=False)
         for widget in (method, key, uri):
             source.add(widget)
         box.append(source)
-        options = Adw.PreferencesGroup(title="Code Settings")
+        options = Adw.PreferencesGroup(title=_tr("Code Settings"))
         modes = ["standard", "steam", "custom"]
-        mode = Adw.ComboRow(title="Type", model=Gtk.StringList.new(["Standard", "Steam", "Custom"]))
+        mode = Adw.ComboRow(title=_tr("Type"), model=Gtk.StringList.new([_tr("Standard"), _tr("Steam"), _tr("Custom")]))
         mode.set_selected(modes.index(data["mode"]))
-        algorithm = Adw.ComboRow(title="Algorithm", model=Gtk.StringList.new(["SHA-1", "SHA-256", "SHA-512"]))
+        algorithm = Adw.ComboRow(title=_tr("Algorithm"), model=Gtk.StringList.new(["SHA-1", "SHA-256", "SHA-512"]))
         algorithms = ["SHA-1", "SHA-256", "SHA-512"]
         algorithm.set_selected(algorithms.index(data["algorithm"]))
-        period = _spin("Period (Seconds)", max(1, data["period"]), 1, 86400)
-        digits = _spin("Code Length", min(10, max(1, data["digits"])), 1, 10)
+        period = _spin(_tr("Period (Seconds)"), max(1, data["period"]), 1, 86400)
+        digits = _spin(_tr("Code Length"), min(10, max(1, data["digits"])), 1, 10)
         for widget in (mode, algorithm, period, digits):
             options.add(widget)
         box.append(options)
-        message = Gtk.Label(label="Paste the Base32 secret or an otpauth://totp/ setup link from your account.",
+        message = Gtk.Label(label=_tr("Paste the Base32 secret or an otpauth://totp/ setup link from your account."),
                             wrap=True, xalign=0, css_classes=["dim-label"])
         box.append(message)
         def changed(*_):
@@ -230,11 +231,11 @@ class TotpController:
                 mode=modes[mode.get_selected()], algorithm=algorithms[algorithm.get_selected()],
                 period=int(period.get_value()), digits=int(digits.get_value()))
             session.run_job(lambda: session.vault.save_totp(entry, data["revision"], **values), saved)
-        save_button = Gtk.Button(label="Save", valign=Gtk.Align.CENTER, css_classes=["suggested-action"])
+        save_button = Gtk.Button(label=_tr("Save"), valign=Gtk.Align.CENTER, css_classes=["suggested-action"])
         save_button.connect("clicked", save)
         header.pack_end(save_button)
         if data["configured"]:
-            remove = Gtk.Button(label="Remove One-Time Password…", css_classes=["destructive-action"], halign=Gtk.Align.CENTER)
+            remove = Gtk.Button(label=_tr("Remove One-Time Password…"), css_classes=["destructive-action"], halign=Gtk.Align.CENTER)
             def remove_clicked(*_):
                 if current():
                     _confirm(session, "Remove One-Time Password?", "This removes the authenticator setup from the entry. Older history versions may still contain it.",
@@ -252,15 +253,15 @@ class TotpController:
             session.run_job(lambda: session.vault.totp_qr(entry),
                             lambda value: self.show_qr(entry, value) if self.epoch == epoch and session.active else None)
             return
-        dialog, header, box = _dialog("Authenticator QR Code", width=440, height=660)
+        dialog, header, box = _dialog(_tr("Authenticator QR Code"), width=440, height=660)
         box.append(Gtk.Label(label=entry.title, wrap=True, css_classes=["title-2"]))
-        box.append(Gtk.Label(label="Scan this setup secret with another authenticator to add the account.", wrap=True))
+        box.append(Gtk.Label(label=_tr("Scan this setup secret with another authenticator to add the account."), wrap=True))
         picture = Gtk.Picture(can_shrink=True, width_request=280, height_request=280,
                               halign=Gtk.Align.CENTER, content_fit=Gtk.ContentFit.CONTAIN)
         picture.set_paintable(Gdk.Texture.new_from_bytes(GLib.Bytes.new(data.pop("png"))))
         box.append(picture)
         if data["custom"]:
-            box.append(Gtk.Label(label="These custom or Steam settings may not be supported by every authenticator.", wrap=True, css_classes=["dim-label"]))
+            box.append(Gtk.Label(label=_tr("These custom or Steam settings may not be supported by every authenticator."), wrap=True, css_classes=["dim-label"]))
         remaining = Gtk.Label(css_classes=["dim-label"])
         box.append(remaining)
         state = {"timer": 0}
@@ -279,20 +280,20 @@ class TotpController:
                 state["timer"] = 0
                 dialog.close()
                 return GLib.SOURCE_REMOVE
-            remaining.set_label(f"Closes in {left} seconds")
+            remaining.set_label(_ntrf('Closes in {count} second', 'Closes in {count} seconds', left))
             return GLib.SOURCE_CONTINUE
         state["timer"] = GLib.timeout_add(250, tick)
         tick()
         actions = Gtk.Box(spacing=12, homogeneous=True)
-        copy = Gtk.Button(label="Copy Setup Link", valign=Gtk.Align.CENTER)
+        copy = Gtk.Button(label=_tr("Copy Setup Link"), valign=Gtk.Align.CENTER)
         copy.connect("clicked", lambda *_: session.run_job(lambda: session.vault.totp_settings(entry, data["revision"]),
             lambda value: session.copy(value) if current() else None) if current() else None)
         actions.append(copy)
-        export = Gtk.Button(label="Save QR Code…", valign=Gtk.Align.CENTER)
+        export = Gtk.Button(label=_tr("Save QR Code…"), valign=Gtk.Align.CENTER)
         def choose(*_):
             if current():
                 session.choose_file(lambda path: session.run_job(lambda: session.vault.export_totp_qr(entry, data["revision"], path),
-                    lambda _value: session.toast("QR code saved")) if current() else None, save=True, name="Authenticator.svg")
+                    lambda _value: session.toast(_tr("QR code saved"))) if current() else None, save=True, name="Authenticator.svg")
         export.connect("clicked", choose)
         actions.append(export)
         box.append(actions)

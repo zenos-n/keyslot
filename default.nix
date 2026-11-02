@@ -12,7 +12,7 @@ pkgs.stdenvNoCC.mkDerivation {
       let name = baseNameOf path;
       in name != "__pycache__" && !(pkgs.lib.hasSuffix ".pyc" name) && !(pkgs.lib.hasSuffix ".pyo" name);
   };
-  nativeBuildInputs = [ pkgs.meson pkgs.ninja pkgs.wrapGAppsHook4 pkgs.gobject-introspection ];
+  nativeBuildInputs = [ pkgs.meson pkgs.ninja pkgs.gettext pkgs.wrapGAppsHook4 pkgs.gobject-introspection ];
   nativeCheckInputs = [ pkgs.dbus pkgs.xvfb-run pkgs.gnome-keyring pkgs.libsodium pkgs.openssl pkgs.openssh pkgs.gcr_4 pkgs.nss_wrapper pkgs.zbar ];
   buildInputs = [ pkgs.gtk4 pkgs.libadwaita pkgs.libsecret pkgs.gdk-pixbuf pkgs.librsvg pkgs.adwaita-icon-theme (pkgs.python3.withPackages (p: [ p.pygobject3 ])) ];
   mesonFlags = [ "-Dtests=${if doCheck then "true" else "false"}" ];

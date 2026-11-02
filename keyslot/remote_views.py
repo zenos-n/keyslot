@@ -1,4 +1,5 @@
 """Reviewed remote commands; native KeePassXC retains all vault keys and merges."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 from pathlib import Path
 from gi.repository import Adw, GLib, Gtk
 from .database_views import _dialog, _save, _spin
@@ -21,17 +22,17 @@ def show(session, data=None):
     if data is None:
         session.run_job(session.vault.remote_locations, lambda value: show(session, value))
         return
-    dialog, header, box = _dialog("Remote Synchronization", width=560, height=500)
+    dialog, header, box = _dialog(_tr("Remote Synchronization"), width=560, height=500)
     current = _lifetime(session, dialog)
-    box.append(Gtk.Label(label="Synchronize this vault using your transfer tools, such as curl, scp, or rclone. "
-                         "Locations and credentials are saved inside the encrypted vault.", wrap=True, xalign=0))
+    box.append(Gtk.Label(label=_tr("Synchronize this vault using your transfer tools, such as curl, scp, or rclone. "
+                         "Locations and credentials are saved inside the encrypted vault."), wrap=True, xalign=0))
     rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"], valign=Gtk.Align.START)
     box.append(rows)
     def add(*_):
         if current() and not session.busy:
             dialog.close()
             edit(session, {"profile": {}, "revision": data["revision"]})
-    add_row = Gtk.Button(label="Add Remote Location…", valign=Gtk.Align.CENTER)
+    add_row = Gtk.Button(label=_tr("Add Remote Location…"), valign=Gtk.Align.CENTER)
     add_row.connect("clicked", add)
     box.append(add_row)
     def edit_location(name):
@@ -61,36 +62,36 @@ def show(session, data=None):
         name = item["name"]
         direction = "Download, merge, and upload" if item["download"] and item["upload"] else "Download and merge" if item["download"] else "Upload local vault"
         row = Adw.ActionRow(title=name, subtitle=direction, use_markup=False, title_lines=2)
-        for icon, label, callback in (("media-playback-start-symbolic", "Synchronize", synchronize),
-                                      ("document-edit-symbolic", "Edit Location", edit_location),
-                                      ("user-trash-symbolic", "Remove Location", remove)):
-            button = Gtk.Button(icon_name=icon, tooltip_text=label, valign=Gtk.Align.CENTER)
+        for icon, label, callback in (("media-playback-start-symbolic", _mark("Synchronize"), synchronize),
+                                      ("document-edit-symbolic", _mark("Edit Location"), edit_location),
+                                      ("user-trash-symbolic", _mark("Remove Location"), remove)):
+            button = Gtk.Button(icon_name=icon, tooltip_text=_tr(label), valign=Gtk.Align.CENTER)
             button.connect("clicked", lambda _button, callback=callback, name=name: callback(name))
             row.add_suffix(button)
         rows.append(row)
     if not data["locations"]:
-        box.append(Gtk.Label(label="No remote locations configured.", css_classes=["dim-label"]))
+        box.append(Gtk.Label(label=_tr("No remote locations configured."), css_classes=["dim-label"]))
     session.present_dialog(dialog)
 
 
 def edit(session, data):
     profile = data["profile"]
     original = profile.get("name", "")
-    dialog, header, box = _dialog("Remote Location", width=580, height=700)
+    dialog, header, box = _dialog(_tr("Remote Location"), width=580, height=700)
     current = _lifetime(session, dialog)
     group = Adw.PreferencesGroup()
-    name = Adw.EntryRow(title="Name", text=original)
+    name = Adw.EntryRow(title=_tr("Name"), text=original)
     group.add(name); box.append(group)
-    box.append(Gtk.Label(label="Commands run directly, without a shell. Use double quotes for arguments containing spaces. "
-                         "Include {TEMP_DATABASE} where the encrypted transfer file belongs. Installed transfer tools use your normal environment.",
+    box.append(Gtk.Label(label=_tr("Commands run directly, without a shell. Use double quotes for arguments containing spaces. "
+                         "Include {TEMP_DATABASE} where the encrypted transfer file belongs. Installed transfer tools use your normal environment."),
                          wrap=True, xalign=0))
     fields = {}
-    for prefix, title in (("download", "Download"), ("upload", "Upload")):
-        group = Adw.PreferencesGroup(title=title, description="Leave the command empty to skip this direction.")
-        command = Adw.PasswordEntryRow(title="Command", text=profile.get(prefix + "Command", ""))
-        duration = _spin("Timeout (Seconds)", profile.get(prefix + "TimeoutMsec", 10000) / 1000, 0.1, 3600, 0.1, 1)
+    for prefix, title in (("download", _mark("Download")), ("upload", _mark("Upload"))):
+        group = Adw.PreferencesGroup(title=_tr(title), description=_tr("Leave the command empty to skip this direction."))
+        command = Adw.PasswordEntryRow(title=_tr("Command"), text=profile.get(prefix + "Command", ""))
+        duration = _spin(_tr("Timeout (Seconds)"), profile.get(prefix + "TimeoutMsec", 10000) / 1000, 0.1, 3600, 0.1, 1)
         group.add(command); group.add(duration)
-        expander = Adw.ExpanderRow(title="Standard Input (Sensitive)", subtitle="Optional; sent with a final newline, then closed")
+        expander = Adw.ExpanderRow(title=_tr("Standard Input (Sensitive)"), subtitle=_tr("Optional; sent with a final newline, then closed"))
         text = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, left_margin=12, right_margin=12,
                             top_margin=12, bottom_margin=12, monospace=True)
         buffer = text.get_buffer(); buffer.set_enable_undo(False)
@@ -128,22 +129,22 @@ def edit(session, data):
 def review(session, plan):
     token, epoch = plan["token"], session.epoch
     profile = plan.pop("profile")
-    dialog, header, box = _dialog("Review Synchronization", width=580, height=600)
+    dialog, header, box = _dialog(_tr("Review Synchronization"), width=580, height=600)
     current = _lifetime(session, dialog)
     started = [False]
     box.append(Gtk.Label(label=profile["name"], css_classes=["title-2"], wrap=True))
-    box.append(Gtk.Label(label="These commands have your user account's access. Only approve commands you trust, "
-                         "including those configured by another vault client. Reveal and inspect each command before continuing.", wrap=True, xalign=0))
+    box.append(Gtk.Label(label=_tr("These commands have your user account's access. Only approve commands you trust, "
+                         "including those configured by another vault client. Reveal and inspect each command before continuing."), wrap=True, xalign=0))
     commands = []
     download, upload = bool(profile.get("downloadCommand", "").strip()), bool(profile.get("uploadCommand", "").strip())
-    for prefix, title in (("download", "Download"), ("upload", "Upload")):
+    for prefix, title in (("download", _mark("Download")), ("upload", _mark("Upload"))):
         if not profile.get(prefix + "Command", "").strip():
             continue
-        group = Adw.PreferencesGroup(title=title)
-        command = Adw.PasswordEntryRow(title="Command", text=profile[prefix + "Command"], editable=False)
+        group = Adw.PreferencesGroup(title=_tr(title))
+        command = Adw.PasswordEntryRow(title=_tr("Command"), text=profile[prefix + "Command"], editable=False)
         commands.append(command); group.add(command)
-        group.add(Adw.ActionRow(title="Timeout", subtitle=f'{profile.get(prefix + "TimeoutMsec", 10000) / 1000:g} seconds'))
-        group.add(Adw.ActionRow(title="Standard Input", subtitle="Configured (hidden; inspect in Edit Location)" if profile.get(prefix + "CommandInput") else "Empty; input is closed immediately"))
+        group.add(Adw.ActionRow(title=_tr("Timeout"), subtitle=_trf('{arg0:g} seconds', arg0=profile.get(prefix + 'TimeoutMsec', 10000) / 1000)))
+        group.add(Adw.ActionRow(title=_tr("Standard Input"), subtitle=_tr("Configured (hidden; inspect in Edit Location)") if profile.get(prefix + "CommandInput") else _tr("Empty; input is closed immediately")))
         box.append(group)
     message = "Synchronization saves the local vault, including any unsaved edits. "
     if download and upload:
@@ -151,7 +152,7 @@ def review(session, plan):
     if upload:
         message += "Transfer commands control remote write atomicity. A concurrent change after the final check can still race an upload; a failed or cancelled upload may have changed the remote file."
     box.append(Gtk.Label(label=message, wrap=True, xalign=0))
-    approved = Gtk.CheckButton(label="I have reviewed and trust these commands")
+    approved = Gtk.CheckButton(label=_tr("I have reviewed and trust these commands"))
     box.append(approved)
     def proceed(*_):
         if not current() or session.busy or not approved.get_active():
@@ -159,7 +160,7 @@ def review(session, plan):
         started[0] = True
         dialog.close()
         synchronize(session, token)
-    button = _save(header, proceed, "Synchronize")
+    button = _save(header, proceed, _tr('Synchronize'))
     button.set_sensitive(False)
     approved.connect("toggled", lambda *_: button.set_sensitive(approved.get_active()))
     def closed(*_):
@@ -175,33 +176,33 @@ def review(session, plan):
 
 def synchronize(session, token):
     epoch = session.epoch
-    dialog, header, box = _dialog("Synchronizing Vault", width=460, height=520)
+    dialog, header, box = _dialog(_tr("Synchronizing Vault"), width=460, height=520)
     alive = _lifetime(session, dialog)
     stopping = [False]
     current = lambda: alive() and not stopping[0]
     dialog.set_can_close(False)
-    status = Gtk.Label(label="Starting…", wrap=True, xalign=0)
+    status = Gtk.Label(label=_tr("Starting…"), wrap=True, xalign=0)
     box.append(status)
     spinner = Gtk.Spinner(spinning=True, halign=Gtk.Align.CENTER)
     box.append(spinner)
-    credentials = Adw.PreferencesGroup(title="Remote Vault Unlock", visible=False,
-        description="The downloaded vault needs a different unlock key. Its encryption settings will be preserved.")
-    password = Adw.PasswordEntryRow(title="Remote Master Password")
-    key_only = Adw.SwitchRow(title="Key File / Hardware Key Only")
-    slot = Adw.EntryRow(title="Hardware Slot (1 or 2, optional :serial)")
-    key = Adw.ActionRow(title="Remote Key File", subtitle="None selected")
+    credentials = Adw.PreferencesGroup(title=_tr("Remote Vault Unlock"), visible=False,
+        description=_tr("The downloaded vault needs a different unlock key. Its encryption settings will be preserved."))
+    password = Adw.PasswordEntryRow(title=_tr("Remote Master Password"))
+    key_only = Adw.SwitchRow(title=_tr("Key File / Hardware Key Only"))
+    slot = Adw.EntryRow(title=_tr("Hardware Slot (1 or 2, optional :serial)"))
+    key = Adw.ActionRow(title=_tr("Remote Key File"), subtitle=_tr("None selected"))
     selected = [""]
     def choose(path):
         if current():
-            selected[0] = path; key.set_subtitle(Path(path).name if path else "None selected")
-    for icon, label, callback in (("document-open-symbolic", "Choose Remote Key File", lambda *_: session.choose_file(choose)),
-                                  ("edit-clear-symbolic", "Clear Remote Key File", lambda *_: choose(""))):
-        button = Gtk.Button(icon_name=icon, tooltip_text=label, valign=Gtk.Align.CENTER)
+            selected[0] = path; key.set_subtitle(Path(path).name if path else _tr("None selected"))
+    for icon, label, callback in (("document-open-symbolic", _mark("Choose Remote Key File"), lambda *_: session.choose_file(choose)),
+                                  ("edit-clear-symbolic", _mark("Clear Remote Key File"), lambda *_: choose(""))):
+        button = Gtk.Button(icon_name=icon, tooltip_text=_tr(label), valign=Gtk.Align.CENTER)
         button.connect("clicked", callback); key.add_suffix(button)
     for row in (password, key_only, key, slot):
         credentials.add(row)
     box.append(credentials)
-    unlock = Gtk.Button(label="Unlock and Merge", valign=Gtk.Align.CENTER, visible=False, css_classes=["suggested-action"])
+    unlock = Gtk.Button(label=_tr("Unlock and Merge"), valign=Gtk.Align.CENTER, visible=False, css_classes=["suggested-action"])
     box.append(unlock)
     finished = [False]
     last_phase = ["review"]
@@ -225,7 +226,7 @@ def synchronize(session, token):
         credentials.set_visible(False); unlock.set_visible(False)
         _cancel(session, token, epoch)
         finished[0] = True
-        cancel.set_label("Close")
+        cancel.set_label(_tr("Close"))
         if session.vault.snapshot:
             session.window.show_vault(session.vault.snapshot)
     def received(value):
@@ -238,7 +239,7 @@ def synchronize(session, token):
                               "uploading": "Local vault saved. Uploading the encrypted merged vault…"}[phase])
             GLib.timeout_add(150, lambda: execute("poll"))
         elif phase == "ready_merge":
-            status.set_label("Unlocking and merging the remote vault…")
+            status.set_label(_tr("Unlocking and merging the remote vault…"))
             execute("merge")
         elif phase == "credentials_required":
             status.set_label(value.get("message", "The remote vault could not be unlocked with that key. Enter its master credential."))
@@ -254,13 +255,13 @@ def synchronize(session, token):
             _cancel(session, token, epoch)
             dialog.close()
             session.window.show_vault(session.vault.snapshot)
-            session.toast("Vault synchronization completed")
+            session.toast(_tr("Vault synchronization completed"))
     def merge(*_):
         values = {"credentials": True, "password": "" if key_only.get_active() else password.get_text(),
                   "no_password": key_only.get_active(), "keyfile": selected[0], "yubikey": slot.get_text()}
         password.set_text("")
         credentials.set_visible(False); unlock.set_visible(False); spinner.set_spinning(True)
-        status.set_label("Unlocking and merging the remote vault…")
+        status.set_label(_tr("Unlocking and merging the remote vault…"))
         execute("merge", **values)
     unlock.connect("clicked", merge)
     key_only.connect("notify::active", lambda *_: password.set_sensitive(not key_only.get_active()))
@@ -278,9 +279,9 @@ def synchronize(session, token):
         clear()
         if not finished[0]:
             _cancel(session, token, epoch)
-            session.toast("Synchronization cancelled; a completed local merge stays saved. Check the remote file if upload had begun.")
+            session.toast(_tr("Synchronization cancelled; a completed local merge stays saved. Check the remote file if upload had begun."))
         dialog.force_close()
-    cancel = Gtk.Button(label="Cancel", valign=Gtk.Align.CENTER)
+    cancel = Gtk.Button(label=_tr("Cancel"), valign=Gtk.Align.CENTER)
     cancel.connect("clicked", request_close); header.pack_start(cancel)
     dialog.connect("close-attempt", request_close)
     dialog._clear_sensitive_fields = request_close

@@ -1,4 +1,5 @@
 """Peer-owned Secret Service prompts, presented one at a time in GTK."""
+from .i18n import tr as _tr
 import time
 import uuid
 from pathlib import Path
@@ -88,10 +89,10 @@ class SecretPrompt:
         session = self._parent(collection)
         dialog = Adw.AlertDialog(heading=heading, body=body, body_use_markup=False)
         self.dialog = dialog
-        dialog.add_response("deny", "Deny")
-        dialog.add_response("allow", "Allow Once" if access else "Continue")
+        dialog.add_response("deny", _tr("Deny"))
+        dialog.add_response("allow", _tr("Allow Once") if access else _tr("Continue"))
         if access:
-            dialog.add_response("remember", "Allow Until Client Disconnects")
+            dialog.add_response("remember", _tr("Allow Until Client Disconnects"))
         dialog.set_default_response("deny")
         dialog.set_close_response("deny")
         dialog.set_response_appearance("allow", Adw.ResponseAppearance.DESTRUCTIVE if destructive else Adw.ResponseAppearance.SUGGESTED)

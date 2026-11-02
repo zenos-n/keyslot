@@ -1,4 +1,5 @@
 """Native, revision-bound review for recycling, restoring and permanent deletion."""
+from .i18n import tr as _tr
 from gi.repository import Adw, GLib, Gtk
 
 
@@ -32,7 +33,7 @@ def _review(session, action, review, bulk, initial_destination=""):
 
     if not review["entries"] and not review["groups"]:
         cancel()
-        session.toast("The recycle bin is empty")
+        session.toast(_tr("The recycle bin is empty"))
         return
     restore = review["restore"]
     permanent = review["purge_entries"] or review["purge_groups"]
@@ -69,18 +70,18 @@ def _review(session, action, review, bulk, initial_destination=""):
     dropdown = None
     if restore:
         options = Adw.PreferencesGroup()
-        dropdown = Adw.ComboRow(title="Destination", model=Gtk.StringList.new(
-            ["Original Locations"] + [item["path"] for item in destinations]))
+        dropdown = Adw.ComboRow(title=_tr("Destination"), model=Gtk.StringList.new(
+            [_tr("Original Locations")] + [item["path"] for item in destinations]))
         if initial_destination:
             index = next((index for index, item in enumerate(destinations) if item["id"] == initial_destination), None)
             if index is None:
                 cancel()
-                session.error("The drop destination is no longer available for restoration.")
+                session.error(_tr("The drop destination is no longer available for restoration."))
                 return
             dropdown.set_selected(index + 1)
         options.add(dropdown)
         dialog.set_extra_child(options)
-    dialog.add_response("cancel", "Cancel")
+    dialog.add_response("cancel", _tr("Cancel"))
     dialog.add_response("apply", label)
     dialog.set_default_response("cancel")
     dialog.set_close_response("cancel")
@@ -104,7 +105,7 @@ def _review(session, action, review, bulk, initial_destination=""):
             if restore and destination:
                 session.window.selected_group = destination
             session.apply_refreshed(snapshot)
-            session.toast("Items restored" if restore else "Recycle bin emptied" if action == "empty" else "Items deleted")
+            session.toast(_tr("Items restored") if restore else _tr("Recycle bin emptied") if action == "empty" else _tr("Items deleted"))
 
         if not session.run_job(lambda: session.vault.apply_trash(token, destination), done):
             state["phase"] = "review"

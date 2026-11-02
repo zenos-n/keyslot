@@ -1,4 +1,5 @@
 """Application accelerators and scoped KeePassXC shortcut overrides."""
+from .i18n import mark as _mark
 from dataclasses import dataclass
 import json
 import threading
@@ -7,13 +8,13 @@ from .application import Gdk, Gtk
 from .backend import VaultError
 from .core_backend import Vault
 from .startup import _write
-from .autotype_fields import TYPES
+from .autotype_fields import TYPE_LABELS, COPY_LABELS, TYPES
 
 
 MISSING = "__keyslot_default_shortcut__"
 MODIFIERS = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK
-RESERVED = {"<Control>a": "Select All Entries", "<Shift><Control>a": "Deselect All Entries",
-            "Escape": "Cancel / Leave Selection", "Menu": "Entry Context Menu", "<Shift>F10": "Entry Context Menu"}
+RESERVED = {"<Control>a": _mark('Select All Entries'), "<Shift><Control>a": _mark('Deselect All Entries'),
+            "Escape": _mark('Cancel / Leave Selection'), "Menu": _mark('Entry Context Menu'), "<Shift>F10": _mark('Entry Context Menu')}
 QT_NAMES = {"Esc": "Escape", "Del": "Delete", "Ins": "Insert", "Space": "space", "Backtab": "ISO_Left_Tab",
             "PgUp": "Page_Up", "PgDown": "Page_Down", "Enter": "KP_Enter", "Print": "Print",
             "VolumeUp": "AudioRaiseVolume", "VolumeDown": "AudioLowerVolume", "VolumeMute": "AudioMute",
@@ -35,48 +36,48 @@ class Shortcut:
 
 
 SPECS = [
-    Shortcut("app.new-window", "New Window", ""), Shortcut("app.recover", "Recover Unsaved Changes", ""),
-    Shortcut("app.lock-all", "Lock All Databases", "<Control><Shift>l", "actionLockAllDatabases"),
-    Shortcut("app.quit", "Quit", "<Control>q", "actionQuit"),
-    Shortcut("win.open", "Open Database", "<Control>o", "actionDatabaseOpen"),
-    Shortcut("win.new", "New Database", "<Control><Shift>n", "actionDatabaseNew"),
-    Shortcut("win.save", "Save Database", "<Control>s", "actionDatabaseSave", "vault"),
-    Shortcut("win.save-as", "Save Database As", "<Control><Shift>s", "actionDatabaseSaveAs", "vault"),
-    Shortcut("win.save-copy", "Save Encrypted Database Copy", "", "actionDatabaseSaveBackup", "vault"),
-    Shortcut("win.close", "Close Window", "<Control>w", "actionDatabaseClose"),
-    Shortcut("win.new-entry", "New Entry", "<Control>n", "actionEntryNew", "vault"),
-    Shortcut("win.edit-entry", "Edit Entry", "<Control>e", "actionEntryEdit", "entry"),
-    Shortcut("win.duplicate", "Duplicate Entry", "<Control>d", "actionEntryClone", "entry"),
-    Shortcut("win.delete", "Delete Selected Entries", "Delete", "actionEntryDelete", "selection"),
-    Shortcut("win.permanent-delete", "Permanently Delete Selected Entries", "<Shift>Delete", needs="selection"),
-    Shortcut("win.search", "Search", "<Control>f", needs="vault"),
-    Shortcut("win.lock", "Lock Database", "<Control>l", "actionLockDatabase", "lock"),
-    Shortcut("win.generator", "Password Generator", "<Control>g", "actionPasswordGenerator"),
-    Shortcut("win.refresh", "Reload Database", "<Control>r", needs="vault"),
-    Shortcut("win.import", "Import Database", "", "actionImport"),
-    Shortcut("win.merge", "Merge Database", "", "actionDatabaseMerge", "vault"),
-    Shortcut("win.remote-sync", "Remote Synchronization", "", needs="vault"),
-    Shortcut("win.export", "Export Unencrypted Data", "", needs="vault"),
-    Shortcut("win.settings", "Database Settings", "<Control><Shift>comma", "actionDatabaseSettings", "vault"),
-    Shortcut("win.change-key", "Change Unlock Key", "", "actionDatabaseSecurity", "vault"),
-    Shortcut("win.reports", "Database Reports", "<Control><Shift>r", "actionReports", "vault"),
-    Shortcut("win.passkeys", "Manage Passkeys", "", "actionPasskeys", "vault"),
-    Shortcut("win.open-url", "Open Entry Website", "<Control><Shift>u", "actionEntryOpenUrl", "entry"),
-    Shortcut("win.copy-title", "Copy Entry Title", "<Control>i", "actionEntryCopyTitle", "entry"),
-    Shortcut("win.copy-username", "Copy Username", "<Control>b", "actionEntryCopyUsername", "entry"),
-    Shortcut("win.copy-password", "Copy Password", "<Control>c", "actionEntryCopyPassword", "entry"),
-    Shortcut("win.copy-url", "Copy Website", "<Control>u", "actionEntryCopyURL", "entry"),
-    Shortcut("win.copy-notes", "Copy Notes", "", "actionEntryCopyNotes", "entry"),
-    Shortcut("win.copy-totp", "Copy One-Time Password", "<Control>t", "actionEntryCopyTotp", "totp"),
-    Shortcut("win.copy-password-totp", "Copy Password and One-Time Password", "<Control>y", "actionEntryCopyPasswordTotp", "totp"),
-    Shortcut("win.type-entry", "Type Selected Entry", "<Control><Shift>v", "actionEntryAutoTypeSequence", "autotype-entry"),
-    *[Shortcut("win.type-" + name, "Type " + title, "", qt, "autotype-" + name)
+    Shortcut("app.new-window", _mark("New Window"), ""), Shortcut("app.recover", _mark("Recover Unsaved Changes"), ""),
+    Shortcut("app.lock-all", _mark("Lock All Databases"), "<Control><Shift>l", "actionLockAllDatabases"),
+    Shortcut("app.quit", _mark("Quit"), "<Control>q", "actionQuit"),
+    Shortcut("win.open", _mark("Open Database"), "<Control>o", "actionDatabaseOpen"),
+    Shortcut("win.new", _mark("New Database"), "<Control><Shift>n", "actionDatabaseNew"),
+    Shortcut("win.save", _mark("Save Database"), "<Control>s", "actionDatabaseSave", "vault"),
+    Shortcut("win.save-as", _mark("Save Database As"), "<Control><Shift>s", "actionDatabaseSaveAs", "vault"),
+    Shortcut("win.save-copy", _mark("Save Encrypted Database Copy"), "", "actionDatabaseSaveBackup", "vault"),
+    Shortcut("win.close", _mark("Close Window"), "<Control>w", "actionDatabaseClose"),
+    Shortcut("win.new-entry", _mark("New Entry"), "<Control>n", "actionEntryNew", "vault"),
+    Shortcut("win.edit-entry", _mark("Edit Entry"), "<Control>e", "actionEntryEdit", "entry"),
+    Shortcut("win.duplicate", _mark("Duplicate Entry"), "<Control>d", "actionEntryClone", "entry"),
+    Shortcut("win.delete", _mark("Delete Selected Entries"), "Delete", "actionEntryDelete", "selection"),
+    Shortcut("win.permanent-delete", _mark("Permanently Delete Selected Entries"), "<Shift>Delete", needs="selection"),
+    Shortcut("win.search", _mark("Search"), "<Control>f", needs="vault"),
+    Shortcut("win.lock", _mark("Lock Database"), "<Control>l", "actionLockDatabase", "lock"),
+    Shortcut("win.generator", _mark("Password Generator"), "<Control>g", "actionPasswordGenerator"),
+    Shortcut("win.refresh", _mark("Reload Database"), "<Control>r", needs="vault"),
+    Shortcut("win.import", _mark("Import Database"), "", "actionImport"),
+    Shortcut("win.merge", _mark("Merge Database"), "", "actionDatabaseMerge", "vault"),
+    Shortcut("win.remote-sync", _mark("Remote Synchronization"), "", needs="vault"),
+    Shortcut("win.export", _mark("Export Unencrypted Data"), "", needs="vault"),
+    Shortcut("win.settings", _mark("Database Settings"), "<Control><Shift>comma", "actionDatabaseSettings", "vault"),
+    Shortcut("win.change-key", _mark("Change Unlock Key"), "", "actionDatabaseSecurity", "vault"),
+    Shortcut("win.reports", _mark("Database Reports"), "<Control><Shift>r", "actionReports", "vault"),
+    Shortcut("win.passkeys", _mark("Manage Passkeys"), "", "actionPasskeys", "vault"),
+    Shortcut("win.open-url", _mark("Open Entry Website"), "<Control><Shift>u", "actionEntryOpenUrl", "entry"),
+    Shortcut("win.copy-title", _mark("Copy Entry Title"), "<Control>i", "actionEntryCopyTitle", "entry"),
+    Shortcut("win.copy-username", _mark("Copy Username"), "<Control>b", "actionEntryCopyUsername", "entry"),
+    Shortcut("win.copy-password", _mark("Copy Password"), "<Control>c", "actionEntryCopyPassword", "entry"),
+    Shortcut("win.copy-url", _mark("Copy Website"), "<Control>u", "actionEntryCopyURL", "entry"),
+    Shortcut("win.copy-notes", _mark("Copy Notes"), "", "actionEntryCopyNotes", "entry"),
+    Shortcut("win.copy-totp", _mark("Copy One-Time Password"), "<Control>t", "actionEntryCopyTotp", "totp"),
+    Shortcut("win.copy-password-totp", _mark("Copy Password and One-Time Password"), "<Control>y", "actionEntryCopyPasswordTotp", "totp"),
+    Shortcut("win.type-entry", _mark("Type Selected Entry"), "<Control><Shift>v", "actionEntryAutoTypeSequence", "autotype-entry"),
+    *[Shortcut("win.type-" + name, TYPE_LABELS[name], "", qt, "autotype-" + name)
       for name, (title, _sequence, qt) in TYPES.items()],
-    Shortcut("win.autotype", "Choose Auto-Type Entry", "", needs="autotype"),
-    Shortcut("win.preferences", "Preferences", "<Control>comma", "actionSettings"),
-    Shortcut("win.shortcuts", "Keyboard Shortcuts", "<Control>question", "actionKeyboardShortcuts"),
-    Shortcut("win.shortcut-settings", "Customize Keyboard Shortcuts", ""),
-    Shortcut("win.about", "About Keyslot", "", "actionAbout"),
+    Shortcut("win.autotype", _mark("Choose Auto-Type Entry"), "", needs="autotype"),
+    Shortcut("win.preferences", _mark("Preferences"), "<Control>comma", "actionSettings"),
+    Shortcut("win.shortcuts", _mark("Keyboard Shortcuts"), "<Control>question", "actionKeyboardShortcuts"),
+    Shortcut("win.shortcut-settings", _mark("Customize Keyboard Shortcuts"), ""),
+    Shortcut("win.about", _mark("About Keyslot"), "", "actionAbout"),
 ]
 BY_ACTION = {spec.action: spec for spec in SPECS}
 ENTRY_ACTIONS = {"edit-entry": "edit", "duplicate": "duplicate", "delete": "delete", "permanent-delete": "permanent-delete",

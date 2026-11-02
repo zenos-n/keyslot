@@ -1,4 +1,5 @@
 """Reviewed entry copy/move between unlocked vaults, with explicit partial outcomes."""
+from .i18n import tr as _tr
 from pathlib import Path
 from gi.repository import Adw, GLib, Gtk
 from .backend import VaultError
@@ -39,13 +40,13 @@ def choose(session, entries=(), source_group=""):
     sessions = [item for item in app.sessions if item.vault.unlocked and not item.jobs.closed]
     noun = "Group" if source_group else "Entry" if len(entries) == 1 else "Entries"
     dialog, header, box = _dialog("Copy or Move " + noun, width=480, height=320)
-    options = Adw.PreferencesGroup(description="Open and unlock another vault to include it in the destination list.")
-    action = Adw.ComboRow(title="Action", model=Gtk.StringList.new(["Copy", "Move"]))
+    options = Adw.PreferencesGroup(description=_tr("Open and unlock another vault to include it in the destination list."))
+    action = Adw.ComboRow(title=_tr("Action"), model=Gtk.StringList.new([_tr("Copy"), _tr("Move")]))
     action.set_selected(1)
     labels = [(item.vault.snapshot.name or item.path.stem) + " — " + Path(item.path).name for item in sessions]
-    vault = Adw.ComboRow(title="Destination Vault", model=Gtk.StringList.new(labels))
+    vault = Adw.ComboRow(title=_tr("Destination Vault"), model=Gtk.StringList.new(labels))
     vault.set_selected(sessions.index(session))
-    group = Adw.ComboRow(title="Destination Group")
+    group = Adw.ComboRow(title=_tr("Destination Group"))
     groups = []
     def changed(*_):
         nonlocal groups
@@ -74,7 +75,7 @@ def choose(session, entries=(), source_group=""):
             return
         target = sessions[vault.get_selected()]
         if target.jobs.closed or not target.vault.unlocked or target.busy or (target is not session and target.dialogs):
-            session.error("Finish editing or unlocking the destination vault first.")
+            session.error(_tr("Finish editing or unlocking the destination vault first."))
             return
         destination = groups[group.get_selected()].identity
         transfer = EntryTransfer(session.vault, target.vault, entries, destination, action.get_selected() == 1, source_group)
@@ -92,7 +93,7 @@ def choose(session, entries=(), source_group=""):
             dialog.close()
             _review(session, target, transfer, state)
         session.run_job(transfer.prepare, ready, failed)
-    _save(header, continue_, "Continue")
+    _save(header, continue_, _tr('Continue'))
     session.present_dialog(dialog)
 
 
@@ -150,8 +151,8 @@ def _review(source, destination, transfer, state, presenter=None):
     if transfer.source_ticket["references"]:
         body += "\n\nField references are kept as written; check them in the destination."
     alert = Adw.AlertDialog(heading=heading, body=body, body_use_markup=False)
-    alert.add_response("cancel", "Cancel")
-    alert.add_response("apply", "Move" if move else "Copy")
+    alert.add_response("cancel", _tr("Cancel"))
+    alert.add_response("apply", _tr("Move") if move else _tr("Copy"))
     alert.set_close_response("cancel")
     alert.set_response_appearance("apply", Adw.ResponseAppearance.DESTRUCTIVE if move and (recycled_target or contains_bin and source is not destination) else Adw.ResponseAppearance.SUGGESTED)
     def response(_alert, choice):
@@ -194,7 +195,7 @@ def _review(source, destination, transfer, state, presenter=None):
                              if outcome.copied else "Transfer Did Not Complete")
                     body = "The destination contains a saved copy. The original was kept.\n\n" + outcome.message if outcome.copied else outcome.message
                 notice = Adw.AlertDialog(heading=title, body=body, body_use_markup=False)
-                notice.add_response("close", "Close")
+                notice.add_response("close", _tr("Close"))
                 if presenter.active:
                     presenter.present_dialog(notice)
                 else:

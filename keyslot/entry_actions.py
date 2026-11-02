@@ -1,4 +1,5 @@
 """Reviewed entry duplication and selected-entry tag/expiry actions."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 from datetime import datetime, timedelta, timezone
 
 from .database_views import Adw, GLib, Gtk, _dialog, _save
@@ -19,32 +20,32 @@ def choose(session, entries, action="tag", data=None):
             session.run_job(session.vault.entry_actions_info, lambda value: choose(session, entries, action, value))
             return
         data = {}
-    dialog, header, box = _dialog("Duplicate Entry" if action == "duplicate" else "Edit Tags" if action == "tag" else "Set Expiry",
+    dialog, header, box = _dialog(_tr("Duplicate Entry") if action == "duplicate" else _tr("Edit Tags") if action == "tag" else _tr("Set Expiry"),
                                   width=480, height=360)
     current = _lifetime(session, dialog)
-    fields = Adw.PreferencesGroup(description="Create a copy in the same group, retaining attachments, icons and custom settings."
-        if action == "duplicate" else f"Apply to {len(entries)} selected entries. Only entries that need a change will be saved.")
+    fields = Adw.PreferencesGroup(description=_tr("Create a copy in the same group, retaining attachments, icons and custom settings.")
+        if action == "duplicate" else _trf('Apply to {arg0} selected entries. Only entries that need a change will be saved.', arg0=len(entries)))
     controls = {}
     if action == "duplicate":
-        for key, title, default in (("rename", "Append ‘ - Clone’ to the Title", True),
-                                    ("references", "Reference the Original Username and Password", False),
-                                    ("history", "Include Entry History", True)):
-            row = Adw.SwitchRow(title=title, active=default)
+        for key, title, default in (("rename", _mark("Append ‘ - Clone’ to the Title"), True),
+                                    ("references", _mark("Reference the Original Username and Password"), False),
+                                    ("history", _mark("Include Entry History"), True)):
+            row = Adw.SwitchRow(title=_tr(title), active=default)
             fields.add(row)
             controls[key] = row
         if any(entry.totp or entry.passkey for entry in entries):
-            fields.set_description("The copy keeps the same one-time password setup and passkeys, along with attachments, icons and custom settings.")
+            fields.set_description(_tr("The copy keeps the same one-time password setup and passkeys, along with attachments, icons and custom settings."))
     elif action == "tag":
-        operation = Adw.ComboRow(title="Action", model=Gtk.StringList.new(["Add Tag", "Remove Tag"]))
+        operation = Adw.ComboRow(title=_tr("Action"), model=Gtk.StringList.new([_tr("Add Tag"), _tr("Remove Tag")]))
         tags = data["tags"]
-        tag = Adw.ComboRow(title="Tag", model=Gtk.StringList.new(tags + ["New Tag…"]))
-        custom = Adw.EntryRow(title="New Tag", visible=not tags)
+        tag = Adw.ComboRow(title=_tr("Tag"), model=Gtk.StringList.new(tags + [_tr("New Tag…")]))
+        custom = Adw.EntryRow(title=_tr("New Tag"), visible=not tags)
         tag.connect("notify::selected", lambda *_: custom.set_visible(tag.get_selected() == len(tags)))
         for row in (operation, tag, custom):
             fields.add(row)
     else:
-        mode = Adw.ComboRow(title="Expiry", model=Gtk.StringList.new(["Expire Now", "Never Expires", "At a Specific Time"]))
-        at = Adw.EntryRow(title="Expiry (ISO 8601)", visible=False,
+        mode = Adw.ComboRow(title=_tr("Expiry"), model=Gtk.StringList.new([_tr("Expire Now"), _tr("Never Expires"), _tr("At a Specific Time")]))
+        at = Adw.EntryRow(title=_tr("Expiry (ISO 8601)"), visible=False,
                           text=(datetime.now(timezone.utc) + timedelta(days=1)).isoformat(timespec="seconds").replace("+00:00", "Z"))
         mode.connect("notify::selected", lambda *_: at.set_visible(mode.get_selected() == 2))
         fields.add(mode)
@@ -68,12 +69,12 @@ def choose(session, entries, action="tag", data=None):
                 _release(session, review["token"])
             elif not review["changes"]:
                 _release(session, review["token"])
-                session.toast("The selected entries already have this setting")
+                session.toast(_tr("The selected entries already have this setting"))
             else:
                 dialog.close()
                 _review(session, review)
         session.run_job(lambda: session.vault.review_entry_action(entries, **values), reviewed)
-    _save(header, submit, "Review…")
+    _save(header, submit, _tr('Review…'))
     session.present_dialog(dialog)
 
 
@@ -106,7 +107,7 @@ def _review(session, review):
     if review["count"] > len(review["names"]):
         body += f'\n…and {review["count"] - len(review["names"])} more.'
     dialog = Adw.AlertDialog(heading=heading, body=body + "\n\n" + summary, body_use_markup=False)
-    dialog.add_response("cancel", "Cancel")
+    dialog.add_response("cancel", _tr("Cancel"))
     dialog.add_response("apply", label)
     dialog.set_close_response("cancel")
     dialog.set_default_response("cancel")
@@ -130,7 +131,7 @@ def _review(session, review):
                 window.groups.select_row(window.groups.get_first_child())
                 window.render_entries(created)
                 window.inner.set_show_content(True)
-            session.toast("Entry duplicated" if created else "Entry settings saved")
+            session.toast(_tr("Entry duplicated") if created else _tr("Entry settings saved"))
         def failed(message):
             state["phase"] = "review"
             release()
@@ -138,7 +139,7 @@ def _review(session, review):
         if not session.run_job(lambda: session.vault.apply_entry_action(token), done, failed):
             state["phase"] = "review"
             release()
-            session.toast("Entries unchanged; wait for the current operation and try again")
+            session.toast(_tr("Entries unchanged; wait for the current operation and try again"))
     dialog.connect("response", response)
     dialog.connect("closed", lambda *_: GLib.idle_add(release))
     if not session.present_dialog(dialog):
@@ -146,11 +147,11 @@ def _review(session, review):
 
 
 def selection_menu(session, entries):
-    menu = Gtk.MenuButton(icon_name="view-more-symbolic", tooltip_text="More Selected Entry Actions", valign=Gtk.Align.CENTER)
+    menu = Gtk.MenuButton(icon_name="view-more-symbolic", tooltip_text=_tr("More Selected Entry Actions"), valign=Gtk.Align.CENTER)
     popover = Gtk.Popover()
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)
-    for title, action in (("Edit Tags…", "tag"), ("Set Expiry…", "expiry")):
-        item = Gtk.Button(label=title, css_classes=["flat"])
+    for title, action in ((_mark("Edit Tags…"), "tag"), (_mark("Set Expiry…"), "expiry")):
+        item = Gtk.Button(label=_tr(title), css_classes=["flat"])
         def clicked(_button, action=action):
             selected = entries()
             popover.popdown()

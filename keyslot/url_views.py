@@ -1,4 +1,5 @@
 """Entry URL activation with native command approval and sealed linked-vault handoff."""
+from .i18n import tr as _tr
 from dataclasses import dataclass
 from pathlib import Path
 import gi
@@ -113,11 +114,11 @@ class UrlController:
             self.drop(item)
 
     def _review(self, item):
-        alert = Adw.AlertDialog(heading="Run This Command?", body=item.ticket["display"], body_use_markup=False)
-        remember = Gtk.CheckButton(label="Always allow this command for this entry")
+        alert = Adw.AlertDialog(heading=_tr("Run This Command?"), body=item.ticket["display"], body_use_markup=False)
+        remember = Gtk.CheckButton(label=_tr("Always allow this command for this entry"))
         alert.set_extra_child(remember)
-        alert.add_response("cancel", "Cancel")
-        alert.add_response("run", "Run")
+        alert.add_response("cancel", _tr("Cancel"))
+        alert.add_response("run", _tr("Run"))
         alert.set_close_response("cancel")
         alert.set_default_response("cancel")
         alert.set_response_appearance("run", Adw.ResponseAppearance.SUGGESTED)

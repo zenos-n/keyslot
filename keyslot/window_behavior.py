@@ -1,4 +1,5 @@
 """Window actions after explicit entry copies and successful unlocks."""
+from .i18n import tr as _tr
 import weakref
 from gi.repository import Adw, Gio, GLib, Gtk
 from .backend import VaultError
@@ -91,7 +92,7 @@ class WindowBehavior:
         connection = app.get_dbus_connection()
         path, identifier = app.get_dbus_object_path(), window.get_id()
         if connection is None or not path or not identifier:
-            session.toast("Could not identify this window for the GNOME companion")
+            session.toast(_tr("Could not identify this window for the GNOME companion"))
             return
         self.request = request = Gio.Cancellable()
         serial, epoch, view_epoch = self.serial, session.epoch, session.view_epoch
@@ -106,32 +107,32 @@ class WindowBehavior:
                     or epoch != session.epoch or view_epoch != session.view_epoch):
                 return
             if not accepted:
-                session.toast("Could not lower this window. Check that the updated Keyslot GNOME companion is enabled.")
+                session.toast(_tr("Could not lower this window. Check that the updated Keyslot GNOME companion is enabled."))
         try:
             connection.call("org.gnome.Shell", TARGET_PATH, TARGET_INTERFACE, "Lower",
                 GLib.Variant("(s)", (f"{path}/window/{identifier}",)), GLib.VariantType.new("(b)"),
                 Gio.DBusCallFlags.NO_AUTO_START, 3000, request, completed)
         except GLib.Error:
             self.cancel()
-            session.toast("Could not contact the Keyslot GNOME companion")
+            session.toast(_tr("Could not contact the Keyslot GNOME companion"))
 
 
 def preferences(session, page, background):
     settings = session.application.startup
-    group = Adw.PreferencesGroup(title="Window Behavior",
-        description="Minimize and hide actions also follow your automatic locking settings.")
-    mode = Adw.ComboRow(title="After Copying Entry Data",
-        subtitle="Lowering behind other windows requires the Keyslot GNOME companion",
-        model=Gtk.StringList.new(["Keep Window Open", "Minimize", "Lower Behind Other Windows"]))
+    group = Adw.PreferencesGroup(title=_tr("Window Behavior"),
+        description=_tr("Minimize and hide actions also follow your automatic locking settings."))
+    mode = Adw.ComboRow(title=_tr("After Copying Entry Data"),
+        subtitle=_tr("Lowering behind other windows requires the Keyslot GNOME companion"),
+        model=Gtk.StringList.new([_tr("Keep Window Open"), _tr("Minimize"), _tr("Lower Behind Other Windows")]))
     def selected_mode():
         if not settings.hide_window_on_copy:
             return 0
         return 1 if settings.minimize_on_copy else 2 if settings.drop_to_background_on_copy else 0
     mode.set_selected(selected_mode())
-    unlock = Adw.SwitchRow(title="Minimize After Unlocking", active=settings.minimize_after_unlock)
-    hide = Adw.SwitchRow(title="Hide Instead of Minimize", active=settings.minimize_to_background,
-        subtitle="Requires Run in Background; open Keyslot again to restore its window", sensitive=settings.background)
-    links = Adw.SwitchRow(title="Minimize After Opening Links", active=settings.minimize_on_url)
+    unlock = Adw.SwitchRow(title=_tr("Minimize After Unlocking"), active=settings.minimize_after_unlock)
+    hide = Adw.SwitchRow(title=_tr("Hide Instead of Minimize"), active=settings.minimize_to_background,
+        subtitle=_tr("Requires Run in Background; open Keyslot again to restore its window"), sensitive=settings.background)
+    links = Adw.SwitchRow(title=_tr("Minimize After Opening Links"), active=settings.minimize_on_url)
     for row in (mode, unlock, hide, links):
         group.add(row)
     updating = False

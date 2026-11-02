@@ -1,4 +1,5 @@
 """User-initiated HIBP checks; cancellation and failures retain clearly partial findings."""
+from .i18n import tr as _tr, trf as _trf
 from gi.repository import Adw, GLib, Gtk
 from .core_backend import EngineError
 from .reports_views import _clear
@@ -11,33 +12,33 @@ class BreachReport:
         self.rows = {}
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
         self.box.append(Gtk.Label(wrap=True, xalign=0, label=(
-            "Check active, nonempty passwords against Have I Been Pwned. Excluded entries follow the filter above. "
-            "A match means the password appeared in breach data; it does not identify which account was breached.")))
-        self.box.append(Gtk.LinkButton(uri="https://haveibeenpwned.com/Passwords", label="Have I Been Pwned", halign=Gtk.Align.START))
+            _tr("Check active, nonempty passwords against Have I Been Pwned. Excluded entries follow the filter above. "
+            "A match means the password appeared in breach data; it does not identify which account was breached."))))
+        self.box.append(Gtk.LinkButton(uri="https://haveibeenpwned.com/Passwords", label=_tr("Have I Been Pwned"), halign=Gtk.Align.START))
         actions = Gtk.Box(spacing=12, homogeneous=True)
-        self.online = Gtk.Button(label="Check Online…", css_classes=["suggested-action"])
-        self.offline = Gtk.Button(label="Check Offline File…")
+        self.online = Gtk.Button(label=_tr("Check Online…"), css_classes=["suggested-action"])
+        self.offline = Gtk.Button(label=_tr("Check Offline File…"))
         self.online.connect("clicked", self.confirm_online)
         self.offline.connect("clicked", lambda *_: self.session.choose_file(lambda path: self.start("offline", path)))
         actions.append(self.online)
         actions.append(self.offline)
         self.box.append(actions)
         self.box.append(Gtk.Label(wrap=True, xalign=0, css_classes=["dim-label"], label=(
-            "Offline checks read an extracted HIBP SHA-1 corpus (HASH:COUNT), without connecting to the internet. "
-            "The file may be sorted by hash or by count.")))
-        self.status = Gtk.Label(label="No check has been run.", wrap=True, xalign=0)
+            _tr("Offline checks read an extracted HIBP SHA-1 corpus (HASH:COUNT), without connecting to the internet. "
+            "The file may be sorted by hash or by count."))))
+        self.status = Gtk.Label(label=_tr("No check has been run."), wrap=True, xalign=0)
         self.progress = Gtk.ProgressBar(visible=False)
         self.box.append(self.status)
         self.box.append(self.progress)
         controls = Gtk.Box(spacing=12)
-        self.cancel = Gtk.Button(label="Cancel Check", visible=False)
-        self.retry = Gtk.Button(label="Retry Remaining Requests", visible=False)
+        self.cancel = Gtk.Button(label=_tr("Cancel Check"), visible=False)
+        self.retry = Gtk.Button(label=_tr("Retry Remaining Requests"), visible=False)
         self.cancel.connect("clicked", lambda *_: self.stop())
         self.retry.connect("clicked", self.resume)
         controls.append(self.cancel)
         controls.append(self.retry)
         self.box.append(controls)
-        self.findings = Adw.PreferencesGroup(title="Exposed Passwords")
+        self.findings = Adw.PreferencesGroup(title=_tr("Exposed Passwords"))
         self.box.append(self.findings)
         self.result_rows = []
 
@@ -53,12 +54,12 @@ class BreachReport:
     def confirm_online(self, *_):
         if self.closed or self.session.busy or self.running:
             return
-        alert = Adw.AlertDialog(heading="Check Passwords Online?", body=(
-            "Keyslot will contact api.pwnedpasswords.com over HTTPS. The service receives your IP address and the first five "
+        alert = Adw.AlertDialog(heading=_tr("Check Passwords Online?"), body=(
+            _tr("Keyslot will contact api.pwnedpasswords.com over HTTPS. The service receives your IP address and the first five "
             "characters of each password's SHA-1 hash. Padded responses are matched inside the native vault helper. "
-            "Passwords, full hashes, usernames and entry URLs are not sent. This permission applies only to this check."))
-        alert.add_response("cancel", "Cancel")
-        alert.add_response("check", "Check Online")
+            "Passwords, full hashes, usernames and entry URLs are not sent. This permission applies only to this check.")))
+        alert.add_response("cancel", _tr("Cancel"))
+        alert.add_response("check", _tr("Check Online"))
         alert.set_default_response("cancel")
         alert.set_close_response("cancel")
         alert.set_response_appearance("check", Adw.ResponseAppearance.SUGGESTED)
@@ -74,7 +75,7 @@ class BreachReport:
         self.rows.clear()
         self.render()
         self.progress.set_fraction(0)
-        self.status.set_label("Preparing password check…")
+        self.status.set_label(_tr("Preparing password check…"))
         self.set_running(True)
         excluded = self.owner.excluded.get_active()
         def ready(data):
@@ -89,7 +90,7 @@ class BreachReport:
                 self.status.set_label("Check not completed. " + message)
         if not self.session.run_job(lambda: self.session.vault.prepare_hibp(mode, path, excluded), ready, failed):
             self.set_running(False)
-            self.status.set_label("The vault is busy. Start the check again.")
+            self.status.set_label(_tr("The vault is busy. Start the check again."))
 
     def next(self, serial):
         if self.closed or serial != self.serial or not self.running:
@@ -126,7 +127,7 @@ class BreachReport:
                     result += f" {data['skipped']} entries could not be checked because of unresolved references or ambiguous identifiers."
                 self.status.set_label(result)
             else:
-                self.status.set_label(f"Checking… {fraction:.0%} complete. {len(self.rows)} exposed entries found so far; results are incomplete.")
+                self.status.set_label(_trf('Checking… {arg0:.0%} complete. {arg1} exposed entries found so far; results are incomplete.', arg0=fraction, arg1=len(self.rows)))
                 GLib.idle_add(self.next, serial)
         def failed(message):
             if not self.closed and serial == self.serial:
@@ -141,7 +142,7 @@ class BreachReport:
             return
         self.session.touch()
         self.set_running(True)
-        self.status.set_label("Continuing incomplete check…")
+        self.status.set_label(_tr("Continuing incomplete check…"))
         self.next(self.serial)
 
     def release(self, token=None):
@@ -155,13 +156,13 @@ class BreachReport:
         self.release()
         self.set_running(False)
         self.retry.set_visible(False)
-        self.status.set_label("Cancelled. Any findings shown are partial; the check was not completed.")
+        self.status.set_label(_tr("Cancelled. Any findings shown are partial; the check was not completed."))
 
     def reset(self):
         self.stop()
         self.rows.clear()
         self.render()
-        self.status.set_label("No check has been run for this report.")
+        self.status.set_label(_tr("No check has been run for this report."))
 
     def close(self):
         if self.closed:
@@ -178,7 +179,7 @@ class BreachReport:
             self.findings.remove(row)
         self.result_rows.clear()
         for item in sorted(self.rows.values(), key=lambda value: value["count"], reverse=True):
-            row = Adw.ActionRow(title=item["title"] or "Untitled Entry", subtitle=f"{int(item['count']):,} recorded exposures · {item['group']}",
+            row = Adw.ActionRow(title=item["title"] or _tr("Untitled Entry"), subtitle=_trf('{arg0:,} recorded exposures · {arg1}', arg0=int(item['count']), arg1=item['group']),
                                 use_markup=False, activatable=True)
             row.connect("activated", lambda *_args, item=item: self.owner.open_entry(item))
             self.findings.add(row)

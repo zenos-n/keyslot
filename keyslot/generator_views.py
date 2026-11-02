@@ -1,4 +1,5 @@
 """Upstream password/passphrase generation with private, credential-free settings."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 import json
 from pathlib import Path
 
@@ -18,9 +19,9 @@ DEFAULTS = dict(length=24, word_count=6, passphrase=False, lowercase=True, upper
                 dashes=True, math=True, logograms=True, extended_ascii=False, every_group=True,
                 exclude_lookalike=False, additional="", excluded="", word_case="lowercase",
                 separator=" ", wordlist="eff_large.wordlist")
-CASES = [("lowercase", "lower case"), ("uppercase", "UPPER CASE"),
-         ("titlecase", "Title Case"), ("mixedcase", "MIXED case")]
-QUALITIES = ["Poor", "Poor", "Weak", "Good", "Excellent"]
+CASES = [("lowercase", _mark("lower case")), ("uppercase", _mark("UPPER CASE")),
+         ("titlecase", _mark("Title Case")), ("mixedcase", _mark("MIXED case"))]
+QUALITIES = [_mark("Poor"), _mark("Poor"), _mark("Weak"), _mark("Good"), _mark("Excellent")]
 
 
 def _validate(data):
@@ -89,82 +90,82 @@ def show(session, on_apply=None):
              "health_revision": 0, "health_timer": 0, "mode": saved["passphrase"], "saved": saved,
              "length": saved["length"], "word_count": saved["word_count"], "lists": [], "library": [], "system": [],
              "custom": saved["wordlist"] if Path(saved["wordlist"]).is_absolute() else ""}
-    dialog = Adw.Dialog(title="Password Generator", content_width=440)
+    dialog = Adw.Dialog(title=_tr("Password Generator"), content_width=440)
     toolbar = Adw.ToolbarView()
     header = Adw.HeaderBar()
     toolbar.add_top_bar(header)
     box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24), 24)
-    output = Adw.PasswordEntryRow(title="Generated Passphrase" if saved["passphrase"] else "Generated Password")
+    output = Adw.PasswordEntryRow(title=_tr("Generated Passphrase") if saved["passphrase"] else _tr("Generated Password"))
     result_group = Adw.PreferencesGroup()
     result_group.add(output)
     box.append(result_group)
     strength = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, visible=False)
     strength_label = Gtk.Label(xalign=0, wrap=True, css_classes=["caption"])
-    meter = Gtk.LevelBar(min_value=0, max_value=128, tooltip_text="Estimated Password Strength")
+    meter = Gtk.LevelBar(min_value=0, max_value=128, tooltip_text=_tr("Estimated Password Strength"))
     for name, value in (("low", 40), ("high", 75), ("full", 100)):
         meter.add_offset_value(name, value)
     strength.append(strength_label)
     strength.append(meter)
     box.append(strength)
-    warning = Gtk.Label(label="This word list contains fewer than 1296 distinct words.",
+    warning = Gtk.Label(label=_tr("This word list contains fewer than 1296 distinct words."),
                         xalign=0, wrap=True, css_classes=["warning"], visible=False)
     box.append(warning)
     error_label = Gtk.Label(xalign=0, wrap=True, css_classes=["error"], visible=False)
     box.append(error_label)
     options = Adw.PreferencesGroup()
-    words = Adw.SwitchRow(title="Use a Passphrase", active=saved["passphrase"])
+    words = Adw.SwitchRow(title=_tr("Use a Passphrase"), active=saved["passphrase"])
     length = Adw.SpinRow.new_with_range(1, 100 if saved["passphrase"] else 999, 1)
-    length.set_title("Words" if saved["passphrase"] else "Length")
+    length.set_title(_tr("Words") if saved["passphrase"] else _tr("Length"))
     length.set_value(saved["word_count"] if saved["passphrase"] else saved["length"])
     options.add(words)
     options.add(length)
     box.append(options)
-    phrase = Adw.PreferencesGroup(title="Passphrase Options", visible=saved["passphrase"])
-    word_case = Adw.ComboRow(title="Word Case", model=Gtk.StringList.new([label for _, label in CASES]))
+    phrase = Adw.PreferencesGroup(title=_tr("Passphrase Options"), visible=saved["passphrase"])
+    word_case = Adw.ComboRow(title=_tr("Word Case"), model=Gtk.StringList.new([_tr(label) for _, label in CASES]))
     word_case.set_selected(next(i for i, (code, _) in enumerate(CASES) if code == saved["word_case"]))
-    separator = Adw.EntryRow(title="Word Separator", text=saved["separator"])
-    wordlist = Adw.ComboRow(title="Word List", sensitive=False)
-    custom = Adw.ActionRow(title="Custom Word List", subtitle=Path(state["custom"]).name or "None selected",
+    separator = Adw.EntryRow(title=_tr("Word Separator"), text=saved["separator"])
+    wordlist = Adw.ComboRow(title=_tr("Word List"), sensitive=False)
+    custom = Adw.ActionRow(title=_tr("Custom Word List"), subtitle=Path(state["custom"]).name or _tr("None selected"),
                           subtitle_lines=1, use_markup=False, visible=bool(state["custom"]))
-    phrase.set_description("Choose a UTF-8 or Diceware word list. Import a copy into your library or use a file directly.")
+    phrase.set_description(_tr("Choose a UTF-8 or Diceware word list. Import a copy into your library or use a file directly."))
     for row in (word_case, separator, wordlist, custom):
         phrase.add(row)
-    manage = Adw.ActionRow(title="Manage Word Lists…", subtitle="Import or remove custom lists", activatable=True)
+    manage = Adw.ActionRow(title=_tr("Manage Word Lists…"), subtitle=_tr("Import or remove custom lists"), activatable=True)
     manage.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
     phrase.add(manage)
     box.append(phrase)
-    characters = Adw.PreferencesGroup(title="Characters", visible=not saved["passphrase"])
+    characters = Adw.PreferencesGroup(title=_tr("Characters"), visible=not saved["passphrase"])
     rows = {}
-    for key, title in [("lowercase", "Lowercase (a–z)"), ("uppercase", "Uppercase (A–Z)"),
-                       ("numbers", "Numbers (0–9)"), ("symbols", "Symbols (!@#$…) ")]:
-        row = Adw.SwitchRow(title=title.strip(), active=saved[key])
+    for key, title in [("lowercase", _mark('Lowercase (a–z)')), ("uppercase", _mark('Uppercase (A–Z)')),
+                       ("numbers", _mark('Numbers (0–9)')), ("symbols", _mark("Symbols (!@#$…)"))]:
+        row = Adw.SwitchRow(title=_tr(title.strip()), active=saved[key])
         characters.add(row)
         rows[key] = row
     box.append(characters)
     advanced_group = Adw.PreferencesGroup(visible=not saved["passphrase"])
-    advanced = Adw.ExpanderRow(title="More Character Options")
-    for key, title in [("exclude_lookalike", "Exclude Look-alike Characters"),
-                       ("every_group", "Require Each Character Group"), ("extended_ascii", "Extended ASCII Characters")]:
-        row = Adw.SwitchRow(title=title, active=saved[key])
+    advanced = Adw.ExpanderRow(title=_tr("More Character Options"))
+    for key, title in [("exclude_lookalike", _mark("Exclude Look-alike Characters")),
+                       ("every_group", _mark("Require Each Character Group")), ("extended_ascii", _mark("Extended ASCII Characters"))]:
+        row = Adw.SwitchRow(title=_tr(title), active=saved[key])
         advanced.add_row(row)
         rows[key] = row
     symbol_rows = []
-    for key, title in [("braces", "Brackets: ()[]{}"), ("punctuation", "Punctuation: .,:;"),
-                       ("quotes", "Quotes"), ("dashes", "Dashes and Slashes"),
-                       ("math", "Math Symbols"), ("logograms", "Other Symbols")]:
-        row = Adw.SwitchRow(title=title, active=saved[key], sensitive=saved["symbols"])
+    for key, title in [("braces", _mark("Brackets: ()[]{}")), ("punctuation", _mark("Punctuation: .,:;")),
+                       ("quotes", _mark("Quotes")), ("dashes", _mark("Dashes and Slashes")),
+                       ("math", _mark("Math Symbols")), ("logograms", _mark("Other Symbols"))]:
+        row = Adw.SwitchRow(title=_tr(title), active=saved[key], sensitive=saved["symbols"])
         advanced.add_row(row)
         rows[key] = row
         symbol_rows.append(row)
-    additional = Adw.EntryRow(title="Additional Characters", text=saved["additional"])
-    excluded = Adw.EntryRow(title="Excluded Characters", text=saved["excluded"])
+    additional = Adw.EntryRow(title=_tr("Additional Characters"), text=saved["additional"])
+    excluded = Adw.EntryRow(title=_tr("Excluded Characters"), text=saved["excluded"])
     advanced.add_row(additional)
     advanced.add_row(excluded)
     advanced_group.add(advanced)
     box.append(advanced_group)
     actions = Gtk.Box(spacing=12, homogeneous=True)
-    generate = Gtk.Button(label="Generate", css_classes=["suggested-action"], sensitive=False)
-    copy = Gtk.Button(label="Use Password" if on_apply else "Copy", sensitive=False)
+    generate = Gtk.Button(label=_tr("Generate"), css_classes=["suggested-action"], sensitive=False)
+    copy = Gtk.Button(label=_tr("Use Password") if on_apply else _tr("Copy"), sensitive=False)
     actions.append(generate)
     if on_apply:
         generate.remove_css_class("suggested-action")
@@ -200,7 +201,7 @@ def show(session, on_apply=None):
 
     def display_health(data):
         quality = QUALITIES[data["quality"]]
-        strength_label.set_label(f'{quality} · {data["entropy"]:.1f} bits · {data["length"]} characters')
+        strength_label.set_label(_trf('{arg0} · {arg1:.1f} bits · {arg2} characters', arg0=_tr(quality), arg1=data['entropy'], arg2=data['length']))
         meter.set_value(min(128, max(0, data["entropy"])))
         strength.set_visible(True)
         warning.set_visible(data.get("wordlist_valid") is False)
@@ -235,8 +236,8 @@ def show(session, on_apply=None):
         state["mode"] = active
         length.get_adjustment().set_upper(100 if active else 999)
         length.set_value(state["word_count" if active else "length"])
-        length.set_title("Words" if active else "Length")
-        output.set_title("Generated Passphrase" if active else "Generated Password")
+        length.set_title(_tr("Words") if active else _tr("Length"))
+        output.set_title(_tr("Generated Passphrase") if active else _tr("Generated Password"))
         phrase.set_visible(active)
         characters.set_visible(not active)
         advanced_group.set_visible(not active)
@@ -255,14 +256,14 @@ def show(session, on_apply=None):
         if state["closed"]:
             return
         state["custom"] = value
-        custom.set_subtitle(Path(value).name if value else "None selected")
+        custom.set_subtitle(Path(value).name if value else _tr("None selected"))
         if value:
             wordlist.set_selected(state["lists"].index(value) if value in state["lists"] else len(state["lists"]))
         else:
             wordlist.set_selected(next((i for i, name in enumerate(state["lists"]) if name == "eff_large.wordlist"), 0))
         invalidate()
-    custom.add_suffix(button("document-open-symbolic", "Choose Word List", lambda: session.choose_file(custom_selected)))
-    custom.add_suffix(button("edit-clear-symbolic", "Use Default Word List", lambda: custom_selected("")))
+    custom.add_suffix(button("document-open-symbolic", _tr('Choose Word List'), lambda: session.choose_file(custom_selected)))
+    custom.add_suffix(button("edit-clear-symbolic", _tr('Use Default Word List'), lambda: custom_selected("")))
     def list_changed(*_):
         custom.set_visible(wordlist.get_selected() == len(state["lists"]))
         invalidate()
@@ -279,9 +280,9 @@ def show(session, on_apply=None):
         if Path(selected).is_absolute() and Path(selected).parent == library.directory and selected not in state["lists"]:
             selected = "eff_large.wordlist"
             state["custom"] = ""
-            custom.set_subtitle("None selected")
+            custom.set_subtitle(_tr("None selected"))
         labels = [f"{name} (Installed)" for name in state["system"]] + [item["name"] for item in entries]
-        wordlist.set_model(Gtk.StringList.new(labels + ["Custom…"]))
+        wordlist.set_model(Gtk.StringList.new(labels + [_tr("Custom…")]))
         wordlist.set_selected(state["lists"].index(selected) if selected in state["lists"] else len(state["lists"]))
         custom.set_visible(wordlist.get_selected() == len(state["lists"]))
         invalidate()
@@ -290,14 +291,14 @@ def show(session, on_apply=None):
         if state["closed"] or session.busy:
             return
         from .application import scroll
-        view = Adw.Dialog(title="Word Lists", content_width=440, content_height=460)
+        view = Adw.Dialog(title=_tr("Word Lists"), content_width=440, content_height=460)
         tools = Adw.ToolbarView()
         top = Adw.HeaderBar()
-        add = Gtk.Button(label="Import…", css_classes=["suggested-action"])
+        add = Gtk.Button(label=_tr("Import…"), css_classes=["suggested-action"])
         top.pack_end(add)
         tools.add_top_bar(top)
         content = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 18)
-        description = Gtk.Label(label="Imported lists are copied into this configuration's library. Removing a copy leaves the original file untouched.",
+        description = Gtk.Label(label=_tr("Imported lists are copied into this configuration's library. Removing a copy leaves the original file untouched."),
                                 xalign=0, wrap=True, css_classes=["dim-label"])
         content.append(description)
         notice = Gtk.Label(xalign=0, wrap=True, visible=False)
@@ -311,13 +312,13 @@ def show(session, on_apply=None):
         def render(entries):
             while child := entries_box.get_first_child():
                 entries_box.remove(child)
-            group = Adw.PreferencesGroup(title="Custom Word Lists")
+            group = Adw.PreferencesGroup(title=_tr("Custom Word Lists"))
             entries_box.append(group)
             if not entries:
-                group.add(Adw.ActionRow(title="No custom word lists", subtitle="Installed word lists remain available in the generator."))
+                group.add(Adw.ActionRow(title=_tr("No custom word lists"), subtitle=_tr("Installed word lists remain available in the generator.")))
             for item in entries:
                 row = Adw.ActionRow(title=item["name"], use_markup=False, subtitle=item["path"], subtitle_lines=1)
-                row.add_suffix(button("user-trash-symbolic", "Remove Word List", lambda item=item: remove(item)))
+                row.add_suffix(button("user-trash-symbolic", _tr('Remove Word List'), lambda item=item: remove(item)))
                 group.add(row)
 
         def failed(message):
@@ -361,8 +362,8 @@ def show(session, on_apply=None):
             update_lists(result["entries"], result["path"])
             render(result["entries"])
             notice.remove_css_class("error")
-            notice.set_label("Word list imported." if result["wordlist_valid"] else
-                             "Imported. This list has fewer than 1296 distinct words; use a longer passphrase or a larger list.")
+            notice.set_label(_tr("Word list imported.") if result["wordlist_valid"] else
+                             _tr("Imported. This list has fewer than 1296 distinct words; use a longer passphrase or a larger list."))
             notice.set_visible(True)
 
         def import_file(path):
@@ -379,9 +380,9 @@ def show(session, on_apply=None):
         def remove(item):
             if opened["working"]:
                 return
-            alert = Adw.AlertDialog(heading="Remove Word List?", body=f'Remove “{item["name"]}” from this library? The original imported file is kept.')
-            alert.add_response("cancel", "Cancel")
-            alert.add_response("remove", "Remove")
+            alert = Adw.AlertDialog(heading=_tr("Remove Word List?"), body=_trf('Remove “{arg0}” from this library? The original imported file is kept.', arg0=item['name']))
+            alert.add_response("cancel", _tr("Cancel"))
+            alert.add_response("remove", _tr("Remove"))
             alert.set_close_response("cancel")
             alert.set_default_response("cancel")
             alert.set_response_appearance("remove", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -397,7 +398,7 @@ def show(session, on_apply=None):
                         selected = "eff_large.wordlist"
                     if state["custom"] == item["path"]:
                         state["custom"] = ""
-                        custom.set_subtitle("None selected")
+                        custom.set_subtitle(_tr("None selected"))
                     update_lists(entries, selected)
                     render(entries)
                 run(operation, removed)
@@ -447,7 +448,7 @@ def show(session, on_apply=None):
                         _write(path, json.dumps(chosen) + "\n")
                     state["saved"] = chosen
                 except (OSError, ValueError, VaultError) as exc:
-                    session.toast("Generated password; settings could not be saved")
+                    session.toast(_tr("Generated password; settings could not be saved"))
                     error_label.set_label(str(exc))
                     error_label.set_visible(True)
         def perform():

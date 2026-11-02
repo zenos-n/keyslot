@@ -1,4 +1,5 @@
 """Native database workflows. Backend calls run through the application's worker."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 from pathlib import Path
 
 import gi
@@ -19,7 +20,9 @@ def _dialog(title, width=520, height=620):
     return dialog, header, box
 
 
-def _save(header, callback, label="Save"):
+def _save(header, callback, label=None):
+    if label is None:
+        label = _tr("Save")
     button = Gtk.Button(valign=Gtk.Align.CENTER, label=label, css_classes=["suggested-action"])
     button.connect("clicked", callback)
     header.pack_end(button)
@@ -37,23 +40,23 @@ def _spin(title, value, minimum, maximum, step=1, digits=0):
 def import_database(app):
     if app.busy:
         return
-    formats = [("keepass1", "KeePass 1 (.kdb)"), ("xml", "KeePass XML"),
-               ("bitwarden", "Bitwarden JSON"), ("1pux", "1Password (.1pux)"),
-               ("opvault", "1Password OPVault Folder"), ("protonpass", "Proton Pass JSON"), ("csv", "CSV")]
-    dialog, header, box = _dialog("Import Database", height=520)
-    box.append(Gtk.Label(label="Import into a new encrypted database. Choose the source first, then a new database file and unlock key.", wrap=True))
-    group = Adw.PreferencesGroup(title="Import Source")
-    format_row = Adw.ComboRow(title="Format", model=Gtk.StringList.new([label for _, label in formats]))
-    source_row = Adw.ActionRow(title="Source", subtitle="None selected")
-    password = Adw.PasswordEntryRow(title="Source Password")
-    key_row = Adw.ActionRow(title="Source Key File", subtitle="None selected")
+    formats = [("keepass1", _mark('KeePass 1 (.kdb)')), ("xml", _mark('KeePass XML')),
+               ("bitwarden", _mark('Bitwarden JSON')), ("1pux", _mark('1Password (.1pux)')),
+               ("opvault", _mark('1Password OPVault Folder')), ("protonpass", _mark('Proton Pass JSON')), ("csv", _mark('CSV'))]
+    dialog, header, box = _dialog(_tr("Import Database"), height=520)
+    box.append(Gtk.Label(label=_tr("Import into a new encrypted database. Choose the source first, then a new database file and unlock key."), wrap=True))
+    group = Adw.PreferencesGroup(title=_tr("Import Source"))
+    format_row = Adw.ComboRow(title=_tr("Format"), model=Gtk.StringList.new([_tr(label) for _, label in formats]))
+    source_row = Adw.ActionRow(title=_tr("Source"), subtitle=_tr("None selected"))
+    password = Adw.PasswordEntryRow(title=_tr("Source Password"))
+    key_row = Adw.ActionRow(title=_tr("Source Key File"), subtitle=_tr("None selected"))
     selected = {"source": "", "keyfile": ""}
     def source_selected(path, index):
         if index != format_row.get_selected():
             return
         selected["source"] = path
         source_row.set_subtitle(Path(path).name)
-    choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text="Choose Import Source")
+    choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text=_tr("Choose Import Source"))
     def choose_source(*_):
         index = format_row.get_selected()
         app.choose_file(lambda path: source_selected(path, index), folder=formats[index][0] == "opvault")
@@ -61,16 +64,16 @@ def import_database(app):
     source_row.add_suffix(choose)
     def key_selected(path):
         selected["keyfile"] = path
-        key_row.set_subtitle(Path(path).name if path else "None selected")
-    key_choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text="Choose Source Key File")
+        key_row.set_subtitle(Path(path).name if path else _tr("None selected"))
+    key_choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text=_tr("Choose Source Key File"))
     key_choose.connect("clicked", lambda *_: app.choose_file(key_selected))
-    key_clear = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="edit-clear-symbolic", tooltip_text="Clear Source Key File")
+    key_clear = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="edit-clear-symbolic", tooltip_text=_tr("Clear Source Key File"))
     key_clear.connect("clicked", lambda *_: key_selected(""))
     key_row.add_suffix(key_choose)
     key_row.add_suffix(key_clear)
     def format_changed(*_):
         selected["source"] = ""
-        source_row.set_subtitle("None selected")
+        source_row.set_subtitle(_tr("None selected"))
         password.set_text("")
         format = formats[format_row.get_selected()][0]
         password.set_visible(format in {"keepass1", "bitwarden", "opvault"})
@@ -83,7 +86,7 @@ def import_database(app):
     box.append(group)
     def submit(*_):
         if not selected["source"]:
-            app.error("Choose an import source first.")
+            app.error(_tr("Choose an import source first."))
             return
         options = {"source": selected["source"], "source_format": formats[format_row.get_selected()][0],
                    "source_password": password.get_text(), "source_keyfile": selected["keyfile"]}
@@ -93,14 +96,14 @@ def import_database(app):
             csv_import(app, options["source"])
         else:
             review_import(app, options)
-    _save(header, submit, "Continue")
+    _save(header, submit, _tr('Continue'))
     dialog.connect("closed", lambda *_: password.set_text(""))
     app.present_dialog(dialog)
 
 
-CSV_FIELDS = [("group", "Group"), ("title", "Title"), ("username", "Username"), ("password", "Password"),
-              ("url", "URL"), ("tags", "Tags"), ("notes", "Notes"), ("totp", "TOTP"), ("icon", "Icon"),
-              ("modified", "Last Modified"), ("created", "Created")]
+CSV_FIELDS = [("group", _mark('Group')), ("title", _mark('Title')), ("username", _mark('Username')), ("password", _mark('Password')),
+              ("url", _mark('URL')), ("tags", _mark('Tags')), ("notes", _mark('Notes')), ("totp", _mark('TOTP')), ("icon", _mark('Icon')),
+              ("modified", _mark('Last Modified')), ("created", _mark('Created'))]
 
 
 def review_import(app, options, data=None):
@@ -110,13 +113,13 @@ def review_import(app, options, data=None):
         app.run_job(lambda: app.vault.inspect_import(**options), lambda value: review_import(app, options, value))
         return
     options = {**options, "source_fingerprint": data["source_fingerprint"]}
-    dialog, header, box = _dialog("Review Import", height=640)
-    box.append(Gtk.Label(label=f"{data['entries']} entries in {data['groups']} groups. Passwords are hidden.", wrap=True))
+    dialog, header, box = _dialog(_tr("Review Import"), height=640)
+    box.append(Gtk.Label(label=_trf('{arg0} entries in {arg1} groups. Passwords are hidden.', arg0=data['entries'], arg1=data['groups']), wrap=True))
     entries = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"])
     box.append(entries)
     controls = Gtk.Box(spacing=12, halign=Gtk.Align.CENTER)
-    previous = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="go-previous-symbolic", tooltip_text="Previous Entries")
-    next_page = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="go-next-symbolic", tooltip_text="Next Entries")
+    previous = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="go-previous-symbolic", tooltip_text=_tr("Previous Entries"))
+    next_page = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="go-next-symbolic", tooltip_text=_tr("Next Entries"))
     position = Gtk.Label()
     for widget in (previous, position, next_page):
         controls.append(widget)
@@ -130,9 +133,9 @@ def review_import(app, options, data=None):
         start = value["row_start"]
         state["start"] = start
         for item in value["preview"]:
-            entries.append(Adw.ActionRow(title=item["title"] or "Untitled",
+            entries.append(Adw.ActionRow(title=item["title"] or _tr("Untitled"),
                 subtitle=" · ".join(part for part in (item["group"], item["username"]) if part)))
-        position.set_label(f"{start + 1 if value['entries'] else 0}–{start + len(value['preview'])} of {value['entries']}")
+        position.set_label(_trf('{arg0}–{arg1} of {arg2}', arg0=start + 1 if value['entries'] else 0, arg1=start + len(value['preview']), arg2=value['entries']))
         previous.set_sensitive(start > 0)
         next_page.set_sensitive(start + len(value["preview"]) < value["entries"])
     def page(offset):
@@ -149,7 +152,7 @@ def review_import(app, options, data=None):
         dialog.close()
         app.choose_file(lambda path: app.unlock_dialog(path, create=True, import_options=options),
                         save=True, name="Imported Passwords.kdbx", kdbx=True)
-    _save(header, submit, "Choose New Database…")
+    _save(header, submit, _tr('Choose New Database…'))
     dialog.connect("closed", lambda *_: state.update(closed=True))
     app.present_dialog(dialog)
 
@@ -157,34 +160,34 @@ def review_import(app, options, data=None):
 def csv_import(app, source):
     if app.busy:
         return
-    dialog, header, box = _dialog("Import CSV", height=700)
+    dialog, header, box = _dialog(_tr("Import CSV"), height=700)
     box.append(Gtk.Label(label=Path(source).name, wrap=True, css_classes=["title-3"]))
-    group = Adw.PreferencesGroup(title="File Format")
-    codec = Adw.EntryRow(title="Text Encoding", text="UTF-8")
-    separators = [(",", "Comma"), (";", "Semicolon"), ("\t", "Tab"), ("-", "Hyphen"), (":", "Colon"), (".", "Period")]
-    quotes = [('"', 'Double Quote (\")'), ("'", "Single Quote (')"), (":", "Colon"), (".", "Period"), ("|", "Vertical Bar"), ("", "None")]
-    comments = [("#", "#"), (";", ";"), (":", ":"), ("@", "@"), ("", "None")]
-    separator = Adw.ComboRow(title="Field Separator", model=Gtk.StringList.new([label for _, label in separators]))
-    quote = Adw.ComboRow(title="Text Quotes", model=Gtk.StringList.new([label for _, label in quotes]))
-    comment = Adw.ComboRow(title="Comment Prefix", model=Gtk.StringList.new([label for _, label in comments]))
-    backslash = Adw.SwitchRow(title="Backslash Escapes")
-    has_header = Adw.SwitchRow(title="First Row Contains Column Names", active=True)
-    skip = _spin("Skip First Rows", 1, 1, 2147483647)
+    group = Adw.PreferencesGroup(title=_tr("File Format"))
+    codec = Adw.EntryRow(title=_tr("Text Encoding"), text="UTF-8")
+    separators = [(",", _mark('Comma')), (";", _mark('Semicolon')), ("\t", _mark('Tab')), ("-", _mark('Hyphen')), (":", _mark('Colon')), (".", _mark('Period'))]
+    quotes = [('"', _mark('Double Quote (")')), ("'", _mark("Single Quote (')")), (":", _mark('Colon')), (".", _mark('Period')), ("|", _mark('Vertical Bar')), ("", _mark('None'))]
+    comments = [("#", "#"), (";", ";"), (":", ":"), ("@", "@"), ("", _mark('None'))]
+    separator = Adw.ComboRow(title=_tr("Field Separator"), model=Gtk.StringList.new([_tr(label) for _, label in separators]))
+    quote = Adw.ComboRow(title=_tr("Text Quotes"), model=Gtk.StringList.new([_tr(label) for _, label in quotes]))
+    comment = Adw.ComboRow(title=_tr("Comment Prefix"), model=Gtk.StringList.new([_tr(label) for _, label in comments]))
+    backslash = Adw.SwitchRow(title=_tr("Backslash Escapes"))
+    has_header = Adw.SwitchRow(title=_tr("First Row Contains Column Names"), active=True)
+    skip = _spin(_tr("Skip First Rows"), 1, 1, 2147483647)
     for row in (codec, separator, quote, comment, backslash, has_header, skip):
         group.add(row)
     box.append(group)
-    load = Gtk.Button(valign=Gtk.Align.CENTER, label="Read Columns")
-    raw = Gtk.Button(valign=Gtk.Align.CENTER, label="Preview Source Values…", sensitive=False)
+    load = Gtk.Button(valign=Gtk.Align.CENTER, label=_tr("Read Columns"))
+    raw = Gtk.Button(valign=Gtk.Align.CENTER, label=_tr("Preview Source Values…"), sensitive=False)
     buttons = Gtk.Box(spacing=12)
     buttons.append(load)
     buttons.append(raw)
     box.append(buttons)
-    status = Gtk.Label(label="Read the columns, then select the field for each column.", wrap=True)
+    status = Gtk.Label(label=_tr("Read the columns, then select the field for each column."), wrap=True)
     box.append(status)
-    mappings = Adw.PreferencesGroup(title="Field Mapping", description="Not Present leaves the field empty.")
+    mappings = Adw.PreferencesGroup(title=_tr("Field Mapping"), description=_tr("Not Present leaves the field empty."))
     box.append(mappings)
-    allow_empty = Adw.SwitchRow(title="Allow Entries Without Titles",
-        subtitle="Entries without titles can be difficult to tell apart")
+    allow_empty = Adw.SwitchRow(title=_tr("Allow Entries Without Titles"),
+        subtitle=_tr("Entries without titles can be difficult to tell apart"))
     title_options = Adw.PreferencesGroup()
     title_options.add(allow_empty)
     box.append(title_options)
@@ -203,7 +206,7 @@ def csv_import(app, source):
         if state["closed"]:
             return
         if params != parameters():
-            app.toast("CSV settings changed; read columns again")
+            app.toast(_tr("CSV settings changed; read columns again"))
             return
         previous_mapping = {key: int(row.get_selected()) - 1 for key, row in rows.items()}
         old = state["data"]
@@ -211,15 +214,15 @@ def csv_import(app, source):
         for row in rows.values():
             mappings.remove(row)
         rows.clear()
-        labels = ["Not Present"] + [f"{index + 1} · {data['headers'][index]}" if index < len(data["headers"]) else f"Column {index + 1}"
+        labels = [_tr("Not Present")] + [f"{index + 1} · {data['headers'][index]}" if index < len(data["headers"]) else _trf("Column {number}", number=index + 1)
                                       for index in range(data["columns"])]
         for key, label in CSV_FIELDS:
-            row = Adw.ComboRow(title=label, model=Gtk.StringList.new(labels))
+            row = Adw.ComboRow(title=_tr(label), model=Gtk.StringList.new(labels))
             row.set_selected((previous_mapping if same_columns else data["mapping"]).get(key, -1) + 1)
             mappings.add(row)
             rows[key] = row
         state.update(data=data, parsed=params)
-        status.set_label(f"{data['rows'] - data['skip_rows']} data rows · {data['columns']} columns")
+        status.set_label(_trf('{arg0} data rows · {arg1} columns', arg0=data['rows'] - data['skip_rows'], arg1=data['columns']))
         raw.set_sensitive(True)
         review.set_sensitive(True)
     def read(*_):
@@ -252,7 +255,7 @@ def csv_import(app, source):
                    "source_fingerprint": state["data"]["source_fingerprint"]}
         app.run_job(lambda: app.vault.inspect_import(**options),
                     lambda data: review_import(app, options, data) if not state["closed"] else None)
-    review = _save(header, submit, "Review")
+    review = _save(header, submit, _tr('Review'))
     review.set_sensitive(False)
     load.connect("clicked", read)
     raw.connect("clicked", preview)
@@ -261,15 +264,15 @@ def csv_import(app, source):
 
 
 def csv_preview(app, source, options, data):
-    dialog, _header, box = _dialog("CSV Source Values", width=760, height=620)
-    box.append(Gtk.Label(label="Long values are shortened in this preview. Full values are imported.", wrap=True))
-    row = _spin("First Row", data["row_start"] + 1, 1, data["rows"])
-    column = _spin("First Column", data["column_start"] + 1, 1, data["columns"])
+    dialog, _header, box = _dialog(_tr("CSV Source Values"), width=760, height=620)
+    box.append(Gtk.Label(label=_tr("Long values are shortened in this preview. Full values are imported."), wrap=True))
+    row = _spin(_tr("First Row"), data["row_start"] + 1, 1, data["rows"])
+    column = _spin(_tr("First Column"), data["column_start"] + 1, 1, data["columns"])
     controls = Adw.PreferencesGroup()
     controls.add(row)
     controls.add(column)
     box.append(controls)
-    update = Gtk.Button(valign=Gtk.Align.CENTER, label="Update Preview")
+    update = Gtk.Button(valign=Gtk.Align.CENTER, label=_tr("Update Preview"))
     box.append(update)
     position = Gtk.Label(wrap=True)
     box.append(position)
@@ -291,8 +294,7 @@ def csv_preview(app, source, options, data):
         for y, values in enumerate(value["preview"], 1):
             for x, text in enumerate(values):
                 grid.attach(Gtk.Label(label=text, selectable=True, xalign=0, yalign=0, wrap=True, max_width_chars=32), x, y, 1, 1)
-        position.set_label(f"Rows {value['row_start'] + 1}–{value['row_start'] + len(value['preview'])} of {value['rows']} · "
-                           f"Columns {value['column_start'] + 1}–{value['column_start'] + len(value['preview_headers'])} of {value['columns']}")
+        position.set_label(_trf('Rows {arg0}–{arg1} of {arg2} · Columns {arg3}–{arg4} of {arg5}', arg0=value['row_start'] + 1, arg1=value['row_start'] + len(value['preview']), arg2=value['rows'], arg3=value['column_start'] + 1, arg4=value['column_start'] + len(value['preview_headers']), arg5=value['columns']))
     def refresh(*_):
         if app.busy:
             return
@@ -315,18 +317,18 @@ def settings(app, data=None):
     if data is None:
         app.run_job(app.vault.settings, lambda value: settings(app, value))
         return
-    dialog, header, box = _dialog("Database Settings")
-    general = Adw.PreferencesGroup(title="General")
-    name = Adw.EntryRow(title="Name", text=data["name"])
-    username = Adw.EntryRow(title="Default Username", text=data["default_username"])
-    recycle = Adw.SwitchRow(title="Use Recycle Bin", active=data["recycle_bin"])
-    compression = Adw.SwitchRow(title="Compress Database", active=data["compression"])
+    dialog, header, box = _dialog(_tr("Database Settings"))
+    general = Adw.PreferencesGroup(title=_tr("General"))
+    name = Adw.EntryRow(title=_tr("Name"), text=data["name"])
+    username = Adw.EntryRow(title=_tr("Default Username"), text=data["default_username"])
+    recycle = Adw.SwitchRow(title=_tr("Use Recycle Bin"), active=data["recycle_bin"])
+    compression = Adw.SwitchRow(title=_tr("Compress Database"), active=data["compression"])
     for row in (name, username, recycle, compression):
         general.add(row)
     box.append(general)
-    browser = Adw.PreferencesGroup(title="Browser Integration")
-    connections = Adw.ActionRow(title="Connected Browsers", subtitle="Review and revoke this database’s browser connections")
-    manage = Gtk.Button(icon_name="go-next-symbolic", tooltip_text="Manage Browser Connections", valign=Gtk.Align.CENTER)
+    browser = Adw.PreferencesGroup(title=_tr("Browser Integration"))
+    connections = Adw.ActionRow(title=_tr("Connected Browsers"), subtitle=_tr("Review and revoke this database’s browser connections"))
+    manage = Gtk.Button(icon_name="go-next-symbolic", tooltip_text=_tr("Manage Browser Connections"), valign=Gtk.Align.CENTER)
     manage.connect("clicked", lambda *_: (dialog.close(), browser_connections(app)))
     connections.add_suffix(manage)
     connections.set_activatable_widget(manage)
@@ -335,30 +337,30 @@ def settings(app, data=None):
     description = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, height_request=100,
         left_margin=12, right_margin=12, top_margin=12, bottom_margin=12)
     description.get_buffer().set_text(data["description"])
-    details = Adw.PreferencesGroup(title="Description")
+    details = Adw.PreferencesGroup(title=_tr("Description"))
     details.add(Gtk.ScrolledWindow(child=description, css_classes=["card"], overflow=Gtk.Overflow.HIDDEN,
                                   min_content_height=100, hscrollbar_policy=Gtk.PolicyType.NEVER))
     box.append(details)
-    history = Adw.PreferencesGroup(title="History", description="Reducing a limit removes older saved versions.")
-    versions = _spin("Maximum Versions (−1 = Unlimited)", data["history_items"], -1, 2147483647)
-    limited = Adw.SwitchRow(title="Limit History Size", active=data["history_size"] >= 0)
-    size = _spin("Maximum History Size (MiB)", max(0, data["history_size"]) / 1048576,
+    history = Adw.PreferencesGroup(title=_tr("History"), description=_tr("Reducing a limit removes older saved versions."))
+    versions = _spin(_tr("Maximum Versions (−1 = Unlimited)"), data["history_items"], -1, 2147483647)
+    limited = Adw.SwitchRow(title=_tr("Limit History Size"), active=data["history_size"] >= 0)
+    size = _spin(_tr("Maximum History Size (MiB)"), max(0, data["history_size"]) / 1048576,
                  0, 2047.99, step=1, digits=2)
     size.set_sensitive(limited.get_active())
     limited.connect("notify::active", lambda *_: size.set_sensitive(limited.get_active()))
     for row in (versions, limited, size):
         history.add(row)
     box.append(history)
-    encryption = Adw.PreferencesGroup(title="Encryption",
-        description="Key derivation settings control the cost of unlocking the database.")
+    encryption = Adw.PreferencesGroup(title=_tr("Encryption"),
+        description=_tr("Key derivation settings control the cost of unlocking the database."))
     ciphers, kdfs = data["ciphers"], data["kdfs"]
-    cipher = Adw.ComboRow(title="Cipher", model=Gtk.StringList.new([c["name"] for c in ciphers]))
+    cipher = Adw.ComboRow(title=_tr("Cipher"), model=Gtk.StringList.new([c["name"] for c in ciphers]))
     cipher.set_selected(next(i for i, c in enumerate(ciphers) if c["id"] == data["cipher"]))
-    kdf = Adw.ComboRow(title="Key Derivation", model=Gtk.StringList.new([k["name"] for k in kdfs]))
+    kdf = Adw.ComboRow(title=_tr("Key Derivation"), model=Gtk.StringList.new([k["name"] for k in kdfs]))
     kdf.set_selected(next(i for i, k in enumerate(kdfs) if k["id"] == data["kdf"]))
-    rounds = _spin("Iterations", data["rounds"], 1, 2147483647)
-    memory = _spin("Memory (MiB)", data.get("memory_kib", 65536) / 1024, 1, 4194303)
-    parallel = _spin("Parallelism", data.get("parallelism", 4), 1, 16777215)
+    rounds = _spin(_tr("Iterations"), data["rounds"], 1, 2147483647)
+    memory = _spin(_tr("Memory (MiB)"), data.get("memory_kib", 65536) / 1024, 1, 4194303)
+    parallel = _spin(_tr("Parallelism"), data.get("parallelism", 4), 1, 16777215)
     def algorithm_changed(*_, initial=False):
         selected = kdfs[kdf.get_selected()]
         memory.set_visible(selected["supports_memory"])
@@ -372,8 +374,8 @@ def settings(app, data=None):
     kdf.connect("notify::selected", algorithm_changed)
     for row in (cipher, kdf, rounds, memory, parallel):
         encryption.add(row)
-    target = _spin("Target Unlock Time (ms)", 1000, 100, 5000, step=100)
-    calibrate = Gtk.Button(label="Calibrate", valign=Gtk.Align.CENTER)
+    target = _spin(_tr("Target Unlock Time (ms)"), 1000, 100, 5000, step=100)
+    calibrate = Gtk.Button(label=_tr("Calibrate"), valign=Gtk.Align.CENTER)
     target.add_suffix(calibrate)
     encryption.add(target)
     def calibration_parameters():
@@ -387,15 +389,15 @@ def settings(app, data=None):
         previous_rounds = int(rounds.get_value())
         def calibrated(result):
             if params != calibration_parameters() or int(rounds.get_value()) != previous_rounds:
-                app.toast("Encryption settings changed; calibrate again")
+                app.toast(_tr("Encryption settings changed; calibrate again"))
                 return
             rounds.set_value(result["rounds"])
-            app.toast("Iterations calibrated · save to apply")
+            app.toast(_tr("Iterations calibrated · save to apply"))
         app.run_job(lambda: app.vault.benchmark_kdf(**params), calibrated)
     calibrate.connect("clicked", benchmark)
     box.append(encryption)
     version = data["format"]
-    box.append(Gtk.Label(label=f"KDBX {version >> 16}.{version & 0xffff}", css_classes=["caption", "dim-label"]))
+    box.append(Gtk.Label(label=_trf('KDBX {arg0}.{arg1}', arg0=version >> 16, arg1=version & 65535), css_classes=["caption", "dim-label"]))
     def submit(*_):
         buf = description.get_buffer()
         selected_kdf = kdfs[kdf.get_selected()]
@@ -409,10 +411,10 @@ def settings(app, data=None):
             values.update(memory_kib=int(memory.get_value() * 1024), parallelism=int(parallel.get_value()))
         changes = {key: value for key, value in values.items() if value != data.get(key)}
         app.run_job(lambda: app.vault.save_settings(**changes),
-                    lambda snapshot: (dialog.close(), app.window.show_vault(snapshot), app.toast("Database settings saved")))
+                    lambda snapshot: (dialog.close(), app.window.show_vault(snapshot), app.toast(_tr("Database settings saved"))))
     from .secret_views import settings as secret_settings
-    service = Adw.PreferencesGroup(title="Secret Service")
-    exposure = Adw.ActionRow(title="Exposed Group…", subtitle="Choose which entries applications can access", activatable=True)
+    service = Adw.PreferencesGroup(title=_tr("Secret Service"))
+    exposure = Adw.ActionRow(title=_tr("Exposed Group…"), subtitle=_tr("Choose which entries applications can access"), activatable=True)
     exposure.connect("activated", lambda *_: secret_settings(app))
     service.add(exposure)
     box.append(service)
@@ -427,12 +429,12 @@ def change_key(app, data=None):
     if data is None:
         app.run_job(app.vault.settings, lambda value: change_key(app, value))
         return
-    dialog, header, box = _dialog("Change Unlock Key")
-    password_group = Adw.PreferencesGroup(title="Password")
-    replace = Adw.SwitchRow(title="Set a New Master Password")
-    password = Adw.PasswordEntryRow(title="New Master Password", sensitive=False)
-    repeat = Adw.PasswordEntryRow(title="Repeat Password", sensitive=False)
-    remove_password = Adw.SwitchRow(title="Remove Current Password", sensitive=data["password_key"])
+    dialog, header, box = _dialog(_tr("Change Unlock Key"))
+    password_group = Adw.PreferencesGroup(title=_tr("Password"))
+    replace = Adw.SwitchRow(title=_tr("Set a New Master Password"))
+    password = Adw.PasswordEntryRow(title=_tr("New Master Password"), sensitive=False)
+    repeat = Adw.PasswordEntryRow(title=_tr("Repeat Password"), sensitive=False)
+    remove_password = Adw.SwitchRow(title=_tr("Remove Current Password"), sensitive=data["password_key"])
     def replacement_changed(*_):
         active = replace.get_active()
         password.set_sensitive(active)
@@ -444,17 +446,17 @@ def change_key(app, data=None):
     for row in (replace, password, repeat, remove_password):
         password_group.add(row)
     box.append(password_group)
-    key_group = Adw.PreferencesGroup(title="Key File")
+    key_group = Adw.PreferencesGroup(title=_tr("Key File"))
     selected_key = [""]
-    file_row = Adw.ActionRow(title="New Key File", subtitle="Keep the current key file")
-    remove_file = Adw.SwitchRow(title="Remove Current Key File", sensitive=data["file_key"])
+    file_row = Adw.ActionRow(title=_tr("New Key File"), subtitle=_tr("Keep the current key file"))
+    remove_file = Adw.SwitchRow(title=_tr("Remove Current Key File"), sensitive=data["file_key"])
     def selected(path):
         selected_key[0] = path
         file_row.set_subtitle(Path(path).name)
         remove_file.set_active(False)
-    choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text="Choose Existing Key File")
+    choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text=_tr("Choose Existing Key File"))
     choose.connect("clicked", lambda *_: app.choose_file(selected))
-    generate = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="list-add-symbolic", tooltip_text="Generate New Key File")
+    generate = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="list-add-symbolic", tooltip_text=_tr("Generate New Key File"))
     def generate_file():
         app.choose_file(lambda path: app.run_job(lambda: app.vault.generate_keyfile(path), lambda _: selected(path)),
                         save=True, name="Passwords.keyx")
@@ -464,26 +466,26 @@ def change_key(app, data=None):
     key_group.add(file_row)
     key_group.add(remove_file)
     box.append(key_group)
-    hardware = Adw.PreferencesGroup(title="Hardware Key")
-    slot = Adw.EntryRow(title="New Slot (1 or 2, optional :serial)")
-    remove_hardware = Adw.SwitchRow(title="Remove Current Hardware Key", sensitive=data["hardware_key"])
+    hardware = Adw.PreferencesGroup(title=_tr("Hardware Key"))
+    slot = Adw.EntryRow(title=_tr("New Slot (1 or 2, optional :serial)"))
+    remove_hardware = Adw.SwitchRow(title=_tr("Remove Current Hardware Key"), sensitive=data["hardware_key"])
     hardware.add(slot)
     hardware.add(remove_hardware)
     box.append(hardware)
-    box.append(Gtk.Label(label="The encrypted backup retains the previous unlock key.", wrap=True,
+    box.append(Gtk.Label(label=_tr("The encrypted backup retains the previous unlock key."), wrap=True,
                          css_classes=["caption", "dim-label"]))
     def submit(*_):
         changes = {}
         if replace.get_active():
             value = password.get_text()
             if not value or value != repeat.get_text():
-                app.error("Enter a nonempty new master password and repeat it exactly.")
+                app.error(_tr("Enter a nonempty new master password and repeat it exactly."))
                 return
             changes["password"] = value
         if remove_password.get_active():
             changes["remove_password"] = True
         if selected_key[0] and remove_file.get_active():
-            app.error("Choose either a replacement key file or removal of the current file key.")
+            app.error(_tr("Choose either a replacement key file or removal of the current file key."))
             return
         if selected_key[0]:
             changes["keyfile"] = selected_key[0]
@@ -500,7 +502,7 @@ def change_key(app, data=None):
             app.quick_blob = None
             dialog.close()
             app.window.show_vault(snapshot)
-            app.toast("Database unlock key changed")
+            app.toast(_tr("Database unlock key changed"))
             storage = getattr(app.application.startup, "storage", None)
             if storage and any(key in changes for key in ("keyfile", "remove_keyfile", "yubikey", "remove_hardware")):
                 path = app.vault.path
@@ -511,7 +513,7 @@ def change_key(app, data=None):
                         "" if changes.get("remove_hardware") else changes.get("yubikey", previous["yubikey"]))
                 app.run_job(remember_components)
         app.run_job(lambda: app.vault.change_key(**changes), changed)
-    _save(header, submit, "Change Key")
+    _save(header, submit, _tr('Change Key'))
     dialog.connect("closed", lambda *_: (password.set_text(""), repeat.set_text("")))
     app.present_dialog(dialog)
 
@@ -522,19 +524,19 @@ def merge(app, source=None):
     if source is None:
         app.choose_file(lambda path: merge(app, path), kdbx=True)
         return
-    dialog, header, box = _dialog("Merge Databases", width=460, height=500)
-    box.append(Gtk.Label(label=f"Merge {Path(source).name} into {app.vault.snapshot.name or app.vault.path.stem}.", wrap=True))
-    group = Adw.PreferencesGroup(title="Source Database Unlock")
-    same = Adw.SwitchRow(title="Use Current Database's Unlock Key")
-    password = Adw.PasswordEntryRow(title="Source Master Password")
-    key_only = Adw.SwitchRow(title="Key File / Hardware Key Only")
-    slot = Adw.EntryRow(title="Hardware Key Slot (1 or 2, optional :serial)")
-    file_row = Adw.ActionRow(title="Key File", subtitle="None selected")
+    dialog, header, box = _dialog(_tr("Merge Databases"), width=460, height=500)
+    box.append(Gtk.Label(label=_trf('Merge {arg0} into {arg1}.', arg0=Path(source).name, arg1=app.vault.snapshot.name or app.vault.path.stem), wrap=True))
+    group = Adw.PreferencesGroup(title=_tr("Source Database Unlock"))
+    same = Adw.SwitchRow(title=_tr("Use Current Database's Unlock Key"))
+    password = Adw.PasswordEntryRow(title=_tr("Source Master Password"))
+    key_only = Adw.SwitchRow(title=_tr("Key File / Hardware Key Only"))
+    slot = Adw.EntryRow(title=_tr("Hardware Key Slot (1 or 2, optional :serial)"))
+    file_row = Adw.ActionRow(title=_tr("Key File"), subtitle=_tr("None selected"))
     selected_key = [""]
     def selected(path):
         selected_key[0] = path
         file_row.set_subtitle(Path(path).name)
-    choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text="Choose Source Key File")
+    choose = Gtk.Button(valign=Gtk.Align.CENTER, icon_name="document-open-symbolic", tooltip_text=_tr("Choose Source Key File"))
     choose.connect("clicked", lambda *_: app.choose_file(selected))
     file_row.add_suffix(choose)
     def sensitivity(*_):
@@ -551,8 +553,8 @@ def merge(app, source=None):
                   "keyfile": selected_key[0], "yubikey": slot.get_text(), "no_password": key_only.get_active(),
                   "same_credentials": same.get_active()}
         app.run_job(lambda: app.vault.merge(source, **values),
-                    lambda snapshot: (dialog.close(), app.window.show_vault(snapshot), app.toast("Databases merged")))
-    _save(header, submit, "Merge")
+                    lambda snapshot: (dialog.close(), app.window.show_vault(snapshot), app.toast(_tr("Databases merged"))))
+    _save(header, submit, _tr('Merge'))
     dialog.connect("closed", lambda *_: password.set_text(""))
     app.present_dialog(dialog)
 
@@ -560,13 +562,13 @@ def merge(app, source=None):
 def export(app):
     if not app.vault.unlocked or app.busy:
         return
-    dialog = Adw.AlertDialog(heading="Export Unencrypted Data",
-        body="The exported file will include passwords and other stored secrets. Choose the format to export.")
+    dialog = Adw.AlertDialog(heading=_tr("Export Unencrypted Data"),
+        body=_tr("The exported file will include passwords and other stored secrets. Choose the format to export."))
     formats = ["xml", "csv", "html"]
-    choice = Gtk.DropDown.new_from_strings(["KeePass XML", "CSV", "HTML"])
+    choice = Gtk.DropDown.new_from_strings([_tr("KeePass XML"), "CSV", "HTML"])
     dialog.set_extra_child(choice)
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("choose", "Choose File…")
+    dialog.add_response("cancel", _tr("Cancel"))
+    dialog.add_response("choose", _tr("Choose File…"))
     def selected(_dialog, response):
         if response != "choose":
             return
@@ -585,14 +587,14 @@ def save_copy(app, destination=None):
         return
     def save(overwrite=False):
         app.run_job(lambda: app.vault.save_copy(destination, overwrite),
-                    lambda _: app.toast("Encrypted database copy saved"))
+                    lambda _: app.toast(_tr("Encrypted database copy saved")))
     if not Path(destination).exists():
         save()
         return
-    dialog = Adw.AlertDialog(heading="Replace Existing File?",
-        body=f"Save an encrypted copy to {destination}? The existing file will be replaced. The current database stays open.")
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("replace", "Replace")
+    dialog = Adw.AlertDialog(heading=_tr("Replace Existing File?"),
+        body=_trf('Save an encrypted copy to {arg0}? The existing file will be replaced. The current database stays open.', arg0=destination))
+    dialog.add_response("cancel", _tr("Cancel"))
+    dialog.add_response("replace", _tr("Replace"))
     dialog.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
     dialog.connect("response", lambda _dialog, response: save(True) if response == "replace" else None)
     app.present_dialog(dialog)
@@ -602,13 +604,13 @@ def confirm_export(app, destination, format):
     if not app.vault.unlocked or app.busy:
         return
     overwrite = Path(destination).exists()
-    dialog = Adw.AlertDialog(heading="Save Unencrypted Export?",
+    dialog = Adw.AlertDialog(heading=_tr("Save Unencrypted Export?"),
         body=f"Save passwords and other secrets to {destination}?" + (" The existing file will be replaced." if overwrite else ""))
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("export", "Export and Replace" if overwrite else "Export")
+    dialog.add_response("cancel", _tr("Cancel"))
+    dialog.add_response("export", _tr("Export and Replace") if overwrite else _tr("Export"))
     dialog.set_response_appearance("export", Adw.ResponseAppearance.DESTRUCTIVE)
     dialog.connect("response", lambda _dialog, response: app.run_job(
-        lambda: app.vault.export_database(destination, format, overwrite), lambda _: app.toast("Unencrypted export saved"))
+        lambda: app.vault.export_database(destination, format, overwrite), lambda _: app.toast(_tr("Unencrypted export saved")))
         if response == "export" else None)
     app.present_dialog(dialog)
 
@@ -619,9 +621,9 @@ def browser_connections(app, data=None):
     if data is None:
         app.run_job(app.vault.browser_associations, lambda value: browser_connections(app, value))
         return
-    dialog, _header, box = _dialog("Browser Connections", height=360)
-    group = Adw.PreferencesGroup(title="Connected Browsers",
-        description="Connections are saved inside this encrypted database. Revoking a connection requires that browser to pair again.")
+    dialog, _header, box = _dialog(_tr("Browser Connections"), height=360)
+    group = Adw.PreferencesGroup(title=_tr("Connected Browsers"),
+        description=_tr("Connections are saved inside this encrypted database. Revoking a connection requires that browser to pair again."))
     box.append(group)
     state = {"closed": False}
     dialog.connect("closed", lambda *_: state.update(closed=True))
@@ -634,15 +636,15 @@ def browser_connections(app, data=None):
             group.remove(row)
         rows.clear()
         if not connections:
-            row = Adw.ActionRow(title="No Connected Browsers", subtitle="No browser has been paired with this database")
+            row = Adw.ActionRow(title=_tr("No Connected Browsers"), subtitle=_tr("No browser has been paired with this database"))
             rows.append(row)
             group.add(row)
         for connection in connections:
             identifier = connection["id"]
             row = Adw.ActionRow(title=identifier, subtitle=connection.get("created", ""), use_markup=False)
             if connection.get("trusted"):
-                row.set_subtitle("Fully trusted · " + connection.get("created", ""))
-                stop = Gtk.Button(label="Stop Trusting", valign=Gtk.Align.CENTER)
+                row.set_subtitle(_trf("Fully trusted · {created}", created=connection.get("created", "")))
+                stop = Gtk.Button(label=_tr("Stop Trusting"), valign=Gtk.Align.CENTER)
                 def untrust(_button, identifier=identifier, revision=connection["revision"]):
                     if state["closed"] or app.busy:
                         return
@@ -652,17 +654,17 @@ def browser_connections(app, data=None):
                     app.run_job(save, render)
                 stop.connect("clicked", untrust)
                 row.add_suffix(stop)
-            remove = Gtk.Button(icon_name="edit-delete-symbolic", tooltip_text="Revoke Browser Connection", valign=Gtk.Align.CENTER)
+            remove = Gtk.Button(icon_name="edit-delete-symbolic", tooltip_text=_tr("Revoke Browser Connection"), valign=Gtk.Align.CENTER)
             remove.connect("clicked", lambda *_args, identifier=identifier: confirm(identifier))
             row.add_suffix(remove)
             rows.append(row)
             group.add(row)
 
     def confirm(identifier):
-        alert = Adw.AlertDialog(heading="Revoke Browser Connection?",
-            body=f'“{identifier}” will need to connect to this database again.')
-        alert.add_response("cancel", "Cancel")
-        alert.add_response("revoke", "Revoke Connection")
+        alert = Adw.AlertDialog(heading=_tr("Revoke Browser Connection?"),
+            body=_trf('“{arg0}” will need to connect to this database again.', arg0=identifier))
+        alert.add_response("cancel", _tr("Cancel"))
+        alert.add_response("revoke", _tr("Revoke Connection"))
         alert.set_default_response("cancel")
         alert.set_close_response("cancel")
         alert.set_response_appearance("revoke", Adw.ResponseAppearance.DESTRUCTIVE)

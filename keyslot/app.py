@@ -1,4 +1,5 @@
 """Application-wide state and one native window per database."""
+from .i18n import mark as _mark, tr as _tr
 from pathlib import Path
 import resource
 import shutil
@@ -33,9 +34,9 @@ class Keyslot(Adw.Application):
         self.command_requests = set()
         gui_cli.configure(self)
         self.add_main_option("login", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
-                             "Unlock the remembered vault using the login keyring", None)
+                             _tr("Unlock the remembered vault using the login keyring"), None)
         self.add_main_option("background", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
-                             "Run without opening a window", None)
+                             _tr("Run without opening a window"), None)
         self._initial_vault = Vault()
         self.window = None
         self.quitting = False
@@ -597,13 +598,13 @@ class MainWindow(Adw.ApplicationWindow):
     def menu(self):
         menu = Gio.Menu()
         opening = Gio.Menu()
-        for label, action in [("New Window", "app.new-window"), ("Open Database…", "win.open"), ("New Database…", "win.new")]:
-            opening.append(label, action)
-        opening.append("Recover Unsaved Changes…", "app.recover")
+        for label, action in [(_mark("New Window"), "app.new-window"), (_mark("Open Database…"), "win.open"), (_mark("New Database…"), "win.new")]:
+            opening.append(_tr(label), action)
+        opening.append(_tr("Recover Unsaved Changes…"), "app.recover")
         menu.append_section(None, opening)
         database = Gio.Menu()
-        database.append("Save", "win.save")
-        database.append("Save As…", "win.save-as")
+        database.append(_tr("Save"), "win.save")
+        database.append(_tr("Save As…"), "win.save-as")
         for actions in [[("Database Settings…", "settings"), ("Change Unlock Key…", "change-key"), ("Refresh", "refresh")],
                         [("Import Database…", "import"), ("Save Copy…", "save-copy"), ("Merge Database…", "merge"), ("Remote Synchronization…", "remote-sync"),
                          ("Export Unencrypted Data…", "export"), ("Reports…", "reports")],
@@ -612,18 +613,18 @@ class MainWindow(Adw.ApplicationWindow):
             for label, action in actions:
                 section.append(label, "win." + action)
             database.append_section(None, section)
-        database.append("Lock All Databases", "app.lock-all")
+        database.append(_tr("Lock All Databases"), "app.lock-all")
         tools = Gio.Menu()
-        tools.append_submenu("Database", database)
-        tools.append("Password Generator", "win.generator")
-        tools.append("Auto-Type…", "win.autotype")
+        tools.append_submenu(_tr("Database"), database)
+        tools.append(_tr("Password Generator"), "win.generator")
+        tools.append(_tr("Auto-Type…"), "win.autotype")
         menu.append_section(None, tools)
         help_menu = Gio.Menu()
-        help_menu.append("Preferences", "win.preferences")
-        help_menu.append("Keyboard Shortcuts", "win.shortcuts")
-        help_menu.append("About Keyslot", "win.about")
+        help_menu.append(_tr("Preferences"), "win.preferences")
+        help_menu.append(_tr("Keyboard Shortcuts"), "win.shortcuts")
+        help_menu.append(_tr("About Keyslot"), "win.about")
         menu.append_section(None, help_menu)
-        return Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text="Main Menu")
+        return Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text=_tr("Main Menu"))
 
     def _focused(self, *_):
         if self.session and self.is_active():

@@ -15,7 +15,7 @@ pkgs.mkShell {
   KEYSLOT_TEST_X11 = "${pkgs.libX11}/lib/libX11.so.6";
   KEYSLOT_TEST_XTST = "${pkgs.libXtst}/lib/libXtst.so.6";
   KEYSLOT_UPSTREAM_TEST_DATA = "${pkgs.keepassxc.src}/tests/data";
-  packages = [ engine pkgs.meson pkgs.ninja pkgs.gjs pkgs.dbus pkgs.xvfb-run pkgs.gnome-keyring pkgs.openssh
+  packages = [ engine pkgs.meson pkgs.ninja pkgs.gettext pkgs.gjs pkgs.dbus pkgs.xvfb-run pkgs.gnome-keyring pkgs.openssh
     pkgs.gtk4 pkgs.libadwaita pkgs.libsecret pkgs.gdk-pixbuf pkgs.librsvg pkgs.gobject-introspection
     (pkgs.python3.withPackages (p: [ p.pygobject3 ])) ];
 }

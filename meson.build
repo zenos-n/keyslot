@@ -9,6 +9,7 @@ conf.set('BINDIR', bindir)
 configure_file(input: 'keyslot.in', output: 'keyslot', configuration: conf,
                install: true, install_dir: get_option('bindir'), install_mode: 'rwxr-xr-x')
 install_subdir('keyslot', install_dir: pkgdir, exclude_directories: ['__pycache__'])
+subdir('po')
 configure_file(input: 'data/com.neg-zero.keyslot.desktop.in',
     output: 'com.neg-zero.keyslot.desktop', configuration: conf,
     install: true, install_dir: get_option('datadir') / 'applications')

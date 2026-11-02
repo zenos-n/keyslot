@@ -1,4 +1,5 @@
 """Group browsing and native search controls; queries and sensitive switches stay ephemeral."""
+from .i18n import tr as _tr
 import json
 from gi.repository import Adw, GLib, Gtk
 from .backend import VaultError
@@ -22,34 +23,34 @@ class SearchOptions:
         self.last_query = ""
         self.previous, self.selection = None, set()
         self.state = "idle"
-        self.scope = Adw.ComboRow(title="Search Scope", model=Gtk.StringList.new(
-            ["Selected Group", "Selected Group and Subgroups", "Entire Vault"]))
+        self.scope = Adw.ComboRow(title=_tr("Search Scope"), model=Gtk.StringList.new(
+            [_tr("Selected Group"), _tr("Selected Group and Subgroups"), _tr("Entire Vault")]))
         self.scope.set_selected(2 if not saved["limit_group"] else 1 if saved["search_recursive"] else 0)
-        self.recursive = Adw.SwitchRow(title="Show Subgroup Entries", active=saved["recursive"])
-        self.wait = Adw.SwitchRow(title="Press Enter to Search", active=saved["wait_enter"])
-        self.case = Adw.SwitchRow(title="Case Sensitive")
-        self.protected = Adw.SwitchRow(title="Search Passwords", subtitle="Also searches protected custom fields", active=True)
-        self.recycled = Adw.SwitchRow(title="Include Recycle Bin")
-        self.disabled = Adw.SwitchRow(title="Search Disabled Groups", subtitle="Ignore groups' search-exclusion settings")
+        self.recursive = Adw.SwitchRow(title=_tr("Show Subgroup Entries"), active=saved["recursive"])
+        self.wait = Adw.SwitchRow(title=_tr("Press Enter to Search"), active=saved["wait_enter"])
+        self.case = Adw.SwitchRow(title=_tr("Case Sensitive"))
+        self.protected = Adw.SwitchRow(title=_tr("Search Passwords"), subtitle=_tr("Also searches protected custom fields"), active=True)
+        self.recycled = Adw.SwitchRow(title=_tr("Include Recycle Bin"))
+        self.disabled = Adw.SwitchRow(title=_tr("Search Disabled Groups"), subtitle=_tr("Ignore groups' search-exclusion settings"))
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, width_request=360,
                          margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
-        browsing = Adw.PreferencesGroup(title="Browsing")
+        browsing = Adw.PreferencesGroup(title=_tr("Browsing"))
         browsing.add(self.recursive)
         content.append(browsing)
-        searching = Adw.PreferencesGroup(title="Searching")
+        searching = Adw.PreferencesGroup(title=_tr("Searching"))
         for row in (self.scope, self.wait, self.case, self.protected, self.recycled, self.disabled):
             searching.add(row)
         content.append(searching)
-        content.append(Gtk.Label(label="Queries and the case, protected-field, recycle-bin and disabled-group switches are not remembered.",
+        content.append(Gtk.Label(label=_tr("Queries and the case, protected-field, recycle-bin and disabled-group switches are not remembered."),
                                  wrap=True, xalign=0, css_classes=["dim-label"]))
-        syntax = Gtk.Button(label="Search Syntax…", valign=Gtk.Align.CENTER)
+        syntax = Gtk.Button(label=_tr("Search Syntax…"), valign=Gtk.Align.CENTER)
         syntax.connect("clicked", self.help)
         content.append(syntax)
         self.problem = Gtk.Label(label=problem, visible=bool(problem), wrap=True, xalign=0, css_classes=["warning"])
         content.append(self.problem)
         self.popover = Gtk.Popover(child=Gtk.ScrolledWindow(child=content, hscrollbar_policy=Gtk.PolicyType.NEVER,
             propagate_natural_height=True, max_content_height=540, min_content_width=320))
-        self.button = Gtk.MenuButton(icon_name="preferences-other-symbolic", tooltip_text="View and Search Options",
+        self.button = Gtk.MenuButton(icon_name="preferences-other-symbolic", tooltip_text=_tr("View and Search Options"),
                                      popover=self.popover, valign=Gtk.Align.CENTER)
         self.popover.connect("show", lambda *_: content.set_size_request(
             max(220, min(360, (self.session.host_window.get_width() or 1180) - 72)), -1))
@@ -100,13 +101,13 @@ class SearchOptions:
             failed("The vault is busy. Reopen and close these options to try again.")
 
     def help(self, *_):
-        alert = Adw.AlertDialog(heading="Search Syntax", body_use_markup=False, body=(
-            'Words are combined with AND. Put a phrase in double quotes.\n\n'
+        alert = Adw.AlertDialog(heading=_tr("Search Syntax"), body_use_markup=False, body=(
+            _tr('Words are combined with AND. Put a phrase in double quotes.\n\n'
             'title:mail\nusername:alice\nurl:example.org\ngroup:work\ntag:banking\nis:expired\nhas:totp\n'
             '-tag:archive excludes a term.\n_Account:123 searches a custom field.\n\n'
             'Search Passwords controls password and protected custom-field searches. '
-            'Group scope and search-exclusion settings follow the options in this menu.'))
-        alert.add_response("close", "Close")
+            'Group scope and search-exclusion settings follow the options in this menu.')))
+        alert.add_response("close", _tr("Close"))
         self.popover.popdown()
         self.session.present_dialog(alert)
 

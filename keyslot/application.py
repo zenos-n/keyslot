@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .i18n import mark as _mark, ntrf as _ntrf, tr as _tr, trf as _trf
 
 from collections import Counter
 from pathlib import Path
@@ -254,7 +255,7 @@ class VaultSession:
         if not self.vault.unlocked or self.busy:
             return False
         if done is None and (self.dialogs or self.file_requests):
-            self.toast("Finish the current dialog before saving the vault")
+            self.toast(_tr("Finish the current dialog before saving the vault"))
             return False
         def saved(snapshot):
             self.window.show_vault(snapshot)
@@ -263,7 +264,7 @@ class VaultSession:
             if done:
                 done()
             else:
-                self.toast("Vault saved")
+                self.toast(_tr("Vault saved"))
         return self.run_job(self.vault.save, saved, failed)
 
     def save_as(self):
@@ -361,8 +362,8 @@ class VaultSession:
             self.needs_attention = True
             self.emit_state()
             return
-        dialog = Adw.AlertDialog(heading="Could Not Complete Operation", body=message)
-        dialog.add_response("close", "Close")
+        dialog = Adw.AlertDialog(heading=_tr("Could Not Complete Operation"), body=_tr(message))
+        dialog.add_response("close", _tr("Close"))
         self.present_dialog(dialog)
 
     def toast(self, message):
@@ -376,9 +377,9 @@ class VaultSession:
                 return
             if success:
                 seconds = self.application.startup.clipboard_seconds
-                self.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
+                self.toast(_ntrf('Copied · clipboard clears in {count} second', 'Copied · clipboard clears in {count} seconds', seconds) if seconds else _tr("Copied"))
             else:
-                self.toast("Could not copy to the clipboard")
+                self.toast(_tr("Could not copy to the clipboard"))
             if done:
                 done(success)
         return self.application.clipboards.copy(self, value, copied)
@@ -398,7 +399,7 @@ class VaultSession:
         cancellable = Gio.Cancellable()
         self.file_requests.add(cancellable)
         self.application.shortcuts.refresh_state()
-        chooser = Gtk.FileDialog(title="Select Folder" if folder else "Save File" if save else "Open File")
+        chooser = Gtk.FileDialog(title=_tr("Select Folder") if folder else _tr("Save File") if save else _tr("Open File"))
         if name:
             chooser.set_initial_name(name)
         if kdbx:
@@ -476,7 +477,7 @@ class VaultSession:
                     return
             else:
                 self.lock()
-        dialog = Adw.Dialog(title="Unlock Changed Vault" if reopen else "Import Database" if import_options else "New Database" if create else "Unlock Database", content_width=440)
+        dialog = Adw.Dialog(title=_tr("Unlock Changed Vault") if reopen else _tr("Import Database") if import_options else _tr("New Database") if create else _tr("Unlock Database"), content_width=440)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
@@ -485,30 +486,30 @@ class VaultSession:
         if resume:
             resume.add_vault_choice(dialog, box)
         if reopen:
-            box.append(Gtk.Label(label="The vault changed elsewhere. Enter its current credential. Your previous data stays open until unlocking succeeds.", wrap=True))
+            box.append(Gtk.Label(label=_tr("The vault changed elsewhere. Enter its current credential. Your previous data stays open until unlocking succeeds."), wrap=True))
         group = Adw.PreferencesGroup()
-        password = Adw.PasswordEntryRow(title="Master Password")
+        password = Adw.PasswordEntryRow(title=_tr("Master Password"))
         group.add(password)
-        repeat = Adw.PasswordEntryRow(title="Repeat Password") if create else None
+        repeat = Adw.PasswordEntryRow(title=_tr("Repeat Password")) if create else None
         if repeat:
             group.add(repeat)
         box.append(group)
-        advanced = Adw.ExpanderRow(title="Additional Unlock Options", expanded=bool(keyfile or components["yubikey"]))
+        advanced = Adw.ExpanderRow(title=_tr("Additional Unlock Options"), expanded=bool(keyfile or components["yubikey"]))
         selected_key = [keyfile]
-        keyfile = Adw.ActionRow(title="Key File", subtitle=Path(keyfile).name if keyfile else "None selected")
+        keyfile = Adw.ActionRow(title=_tr("Key File"), subtitle=Path(keyfile).name if keyfile else _tr("None selected"))
         def set_key(p):
             selected_key[0] = p
-            keyfile.set_subtitle(Path(p).name if p else "None selected")
-        keyfile.add_suffix(button("document-open-symbolic", "Choose Key File", lambda: self.choose_file(set_key)))
+            keyfile.set_subtitle(Path(p).name if p else _tr("None selected"))
+        keyfile.add_suffix(button("document-open-symbolic", _tr('Choose Key File'), lambda: self.choose_file(set_key)))
         if create:
             def generate_keyfile():
                 self.choose_file(lambda target: self.run_job(lambda: self.vault.generate_keyfile(target),
                                                             lambda _: set_key(target)), save=True, name="Passwords.keyx")
-            keyfile.add_suffix(button("list-add-symbolic", "Generate Key File", generate_keyfile))
-        keyfile.add_suffix(button("edit-clear-symbolic", "Clear Key File", lambda: set_key("")))
+            keyfile.add_suffix(button("list-add-symbolic", _tr('Generate Key File'), generate_keyfile))
+        keyfile.add_suffix(button("edit-clear-symbolic", _tr('Clear Key File'), lambda: set_key("")))
         advanced.add_row(keyfile)
-        slot = Adw.EntryRow(title="Hardware Key Slot (1 or 2, optional :serial)", text=components["yubikey"])
-        no_password = Adw.SwitchRow(title="Key File / Hardware Key Only")
+        slot = Adw.EntryRow(title=_tr("Hardware Key Slot (1 or 2, optional :serial)"), text=components["yubikey"])
+        no_password = Adw.SwitchRow(title=_tr("Key File / Hardware Key Only"))
         advanced.add_row(slot)
         advanced.add_row(no_password)
         def password_mode_changed(*_):
@@ -519,7 +520,7 @@ class VaultSession:
         advanced_group = Adw.PreferencesGroup()
         advanced_group.add(advanced)
         box.append(advanced_group)
-        action = Gtk.Button(label="Import Database" if import_options else "Create Database" if create else "Unlock", css_classes=["suggested-action", "pill"])
+        action = Gtk.Button(label=_tr("Import Database") if import_options else _tr("Create Database") if create else _tr("Unlock"), css_classes=["suggested-action", "pill"])
         failure = Gtk.Label(wrap=True, css_classes=["error"], visible=False)
         box.append(failure)
         box.append(action)
@@ -528,7 +529,7 @@ class VaultSession:
                 if not self.busy:
                     dialog.close()
                     database_views.save_copy(self)
-            recovery = Gtk.Button(label="Save Current Data as a Copy…")
+            recovery = Gtk.Button(label=_tr("Save Current Data as a Copy…"))
             recovery.connect("clicked", lambda *_: save_current())
             box.append(recovery)
         seconds = self.application.startup.lock_seconds
@@ -543,7 +544,7 @@ class VaultSession:
                 return
             secret = password.get_text()
             if repeat and not no_password.get_active() and secret != repeat.get_text():
-                self.error("The master passwords do not match.")
+                self.error(_tr("The master passwords do not match."))
                 return
             key = selected_key[0]
             hardware, key_only = slot.get_text(), no_password.get_active()
@@ -612,19 +613,19 @@ class VaultSession:
                 return
         else:
             self.lock()
-        dialog = Adw.Dialog(title="Quick Unlock", content_width=440)
+        dialog = Adw.Dialog(title=_tr("Quick Unlock"), content_width=440)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
         if resume:
             resume.add_vault_choice(dialog, box)
-        password = Adw.PasswordEntryRow(title="Short Password")
+        password = Adw.PasswordEntryRow(title=_tr("Short Password"))
         group = Adw.PreferencesGroup()
         group.add(password)
         box.append(group)
-        unlock = Gtk.Button(label="Unlock", css_classes=["suggested-action", "pill"])
-        full = Gtk.Button(label="Use Master Password", css_classes=["pill"])
+        unlock = Gtk.Button(label=_tr("Unlock"), css_classes=["suggested-action", "pill"])
+        full = Gtk.Button(label=_tr("Use Master Password"), css_classes=["pill"])
         box.append(unlock)
         box.append(full)
         def submit(*_):
@@ -702,18 +703,18 @@ class VaultSession:
             self.run_job(lambda: self.vault.editable_fields(entry), lambda result: self.edit_entry(entry, result))
             return
         values = values or {}
-        dialog = Adw.Dialog(title="Edit Entry" if entry else "New Entry", content_width=520, content_height=600)
+        dialog = Adw.Dialog(title=_tr("Edit Entry") if entry else _tr("New Entry"), content_width=520, content_height=600)
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        save = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        save = Gtk.Button(label=_tr("Save"), css_classes=["suggested-action"])
         header.pack_end(save)
         toolbar.add_top_bar(header)
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24), 24)
-        fields = Adw.PreferencesGroup(title="Login Details")
-        title = Adw.EntryRow(title="Title", text=entry.title if entry else "")
-        username = Adw.EntryRow(title="Username", text=values.get("UserName", self.vault.snapshot.default_username if not entry else ""))
-        url = Adw.EntryRow(title="Website", text=values.get("URL", ""))
-        secret = Adw.PasswordEntryRow(title="New Password" if entry else "Password")
+        fields = Adw.PreferencesGroup(title=_tr("Login Details"))
+        title = Adw.EntryRow(title=_tr("Title"), text=entry.title if entry else "")
+        username = Adw.EntryRow(title=_tr("Username"), text=values.get("UserName", self.vault.snapshot.default_username if not entry else ""))
+        url = Adw.EntryRow(title=_tr("Website"), text=values.get("URL", ""))
+        secret = Adw.PasswordEntryRow(title=_tr("New Password") if entry else _tr("Password"))
         dirty_password = [False]
         secret.connect("changed", lambda *_: dirty_password.__setitem__(0, True))
         for row in (title, username, url, secret):
@@ -722,9 +723,9 @@ class VaultSession:
         from .entry_defaults import Generation
         generation = Generation(self, dialog, secret, save, box)
         if entry:
-            fields.set_description("Leave the password unchanged to keep the current one.")
+            fields.set_description(_tr("Leave the password unchanged to keep the current one."))
         groups = [g for g in self.vault.snapshot.groups if g.addressable and not g.recycled]
-        group = Adw.ComboRow(title="Group", model=Gtk.StringList.new(group_labels(groups)))
+        group = Adw.ComboRow(title=_tr("Group"), model=Gtk.StringList.new(group_labels(groups)))
         selected = entry.group if entry else (self.window.selected_group or self.vault.snapshot.root)
         group.set_selected(next((i for i, g in enumerate(groups) if g.identity == selected), 0))
         location = Adw.PreferencesGroup()
@@ -742,14 +743,14 @@ class VaultSession:
             if not entry and not icon.user_selected_icon:
                 icon.select_icon(default_icon())
         group.connect("notify::selected", changed_group)
-        visual = Adw.PreferencesGroup(title="Appearance")
+        visual = Adw.PreferencesGroup(title=_tr("Appearance"))
         visual.add(icon)
-        foreground = appearance.color_row("Text Color", entry.foreground if entry else "")
-        background = appearance.color_row("Background Color", entry.background if entry else "")
+        foreground = appearance.color_row(_mark("Text Color"), entry.foreground if entry else "")
+        background = appearance.color_row(_mark("Background Color"), entry.background if entry else "")
         visual.add(foreground)
         visual.add(background)
         box.append(visual)
-        notes_group = Adw.PreferencesGroup(title="Notes")
+        notes_group = Adw.PreferencesGroup(title=_tr("Notes"))
         notes = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, monospace=self.application.startup.monospace_notes,
                              top_margin=12, bottom_margin=12,
                              left_margin=12, right_margin=12, height_request=120)
@@ -757,12 +758,12 @@ class VaultSession:
         notes_group.add(Gtk.ScrolledWindow(child=notes, css_classes=["card"], overflow=Gtk.Overflow.HIDDEN,
                                             hscrollbar_policy=Gtk.PolicyType.NEVER, min_content_height=120))
         box.append(notes_group)
-        advanced = Adw.PreferencesGroup(title="Entry Options")
-        tags = Adw.EntryRow(title="Tags (separated by semicolons)", text=entry.tags if entry else "")
-        expires = Adw.SwitchRow(title="Expires", active=entry.expires if entry else False)
-        expiry = Adw.EntryRow(title="Expiry (ISO 8601)", text=entry.expiry if entry else "")
-        override = Adw.EntryRow(title="URL Override", text=entry.override_url if entry else "")
-        exclude = Adw.SwitchRow(title="Exclude from Password Reports", active=entry.exclude_reports if entry else False)
+        advanced = Adw.PreferencesGroup(title=_tr("Entry Options"))
+        tags = Adw.EntryRow(title=_tr("Tags (separated by semicolons)"), text=entry.tags if entry else "")
+        expires = Adw.SwitchRow(title=_tr("Expires"), active=entry.expires if entry else False)
+        expiry = Adw.EntryRow(title=_tr("Expiry (ISO 8601)"), text=entry.expiry if entry else "")
+        override = Adw.EntryRow(title=_tr("URL Override"), text=entry.override_url if entry else "")
+        exclude = Adw.SwitchRow(title=_tr("Exclude from Password Reports"), active=entry.exclude_reports if entry else False)
         for row in (tags, expires, expiry, override, exclude):
             advanced.add(row)
         box.append(advanced)
@@ -772,12 +773,12 @@ class VaultSession:
             buffer.insert_at_cursor(text, -1)
             notes.grab_focus()
         reference_views.menu(self, dialog, header, [
-            ("Title", "T", lambda text: reference_views.insert_text(title, text)),
-            ("Username", "U", lambda text: reference_views.insert_text(username, text)),
-            ("Password", "P", lambda text: reference_views.insert_text(secret, text)),
-            ("Website", "A", lambda text: reference_views.insert_text(url, text)),
-            ("Notes", "N", reference_notes),
-            ("URL Override", "A", lambda text: reference_views.insert_text(override, text)),
+            (_tr('Title'), "T", lambda text: reference_views.insert_text(title, text)),
+            (_tr('Username'), "U", lambda text: reference_views.insert_text(username, text)),
+            (_tr('Password'), "P", lambda text: reference_views.insert_text(secret, text)),
+            (_tr('Website'), "A", lambda text: reference_views.insert_text(url, text)),
+            (_tr('Notes'), "N", reference_notes),
+            (_tr('URL Override'), "A", lambda text: reference_views.insert_text(override, text)),
         ], entry)
 
         def submit(*_):
@@ -793,7 +794,7 @@ class VaultSession:
             if expires.get_active():
                 options["expiry"] = expiry.get_text()
             self.run_job(lambda: self.vault.save_entry(*fields, **options),
-                lambda snapshot: (dialog.close(), self.window.show_vault(snapshot), self.toast("Entry saved")))
+                lambda snapshot: (dialog.close(), self.window.show_vault(snapshot), self.toast(_tr("Entry saved"))))
         save.connect("clicked", submit)
         toolbar.set_content(scroll(box, natural=True))
         dialog.set_child(toolbar)
@@ -803,11 +804,11 @@ class VaultSession:
     def new_group(self):
         if not self.vault.unlocked or self.busy:
             return
-        dialog = Adw.AlertDialog(heading="New Group", body="Create a group inside the selected group.")
-        name = Gtk.Entry(placeholder_text="Group name", activates_default=True)
+        dialog = Adw.AlertDialog(heading=_tr("New Group"), body=_tr("Create a group inside the selected group."))
+        name = Gtk.Entry(placeholder_text=_tr("Group name"), activates_default=True)
         dialog.set_extra_child(name)
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("create", "Create")
+        dialog.add_response("cancel", _tr("Cancel"))
+        dialog.add_response("create", _tr("Create"))
         dialog.set_response_appearance("create", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_default_response("create")
         parent = self.window.selected_group or self.vault.snapshot.root
@@ -851,7 +852,7 @@ class VaultSession:
         if self.busy:
             return
         dialog = Adw.AlertDialog(heading=heading, body=body)
-        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("cancel", _tr("Cancel"))
         dialog.add_response("apply", label)
         dialog.set_response_appearance("apply", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.connect("response", lambda _d, response: self.run_job(operation, self.window.show_vault)
@@ -863,59 +864,59 @@ class VaultSession:
             return
         selected = self.window.selected_group or self.vault.snapshot.root
         current = next(g for g in self.vault.snapshot.groups if g.identity == selected)
-        dialog = Adw.Dialog(title="Edit Group", content_width=480)
+        dialog = Adw.Dialog(title=_tr("Edit Group"), content_width=480)
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        save = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        save = Gtk.Button(label=_tr("Save"), css_classes=["suggested-action"])
         header.pack_end(save)
         toolbar.add_top_bar(header)
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24), 24)
         fields = Adw.PreferencesGroup()
-        name = Adw.EntryRow(title="Name", text=current.name)
+        name = Adw.EntryRow(title=_tr("Name"), text=current.name)
         fields.add(name)
         groups = [g for g in self.vault.snapshot.groups if not g.recycled and g.identity != selected]
-        parent = Adw.ComboRow(title="Parent Group", model=Gtk.StringList.new(group_labels(groups)))
+        parent = Adw.ComboRow(title=_tr("Parent Group"), model=Gtk.StringList.new(group_labels(groups)))
         parent.set_selected(next((i for i, g in enumerate(groups) if g.identity == current.parent), 0))
         parent.set_sensitive(bool(current.parent))
         if not current.recycled:
             fields.add(parent)
         icon, decoration = appearance.icon_row(self, current, dialog=dialog)
         fields.add(icon)
-        icon_scope = Adw.ComboRow(title="Apply Icon To", model=Gtk.StringList.new([
-            "This Group Only", "Also Child Groups", "Also Child Entries", "All Children"]),
+        icon_scope = Adw.ComboRow(title=_tr("Apply Icon To"), model=Gtk.StringList.new([
+            _tr("This Group Only"), _tr("Also Child Groups"), _tr("Also Child Entries"), _tr("All Children")]),
             sensitive=current.addressable)
         fields.add(icon_scope)
         box.append(fields)
         from .group_icon_views import Changes
         icon_changes = Changes(self, dialog, box, save)
-        options = Adw.PreferencesGroup(title="Group Options")
-        tags = Adw.EntryRow(title="Tags (separated by semicolons)", text=current.tags)
-        searching = Adw.ComboRow(title="Search Entries", model=Gtk.StringList.new(["Inherit", "Enabled", "Disabled"]))
+        options = Adw.PreferencesGroup(title=_tr("Group Options"))
+        tags = Adw.EntryRow(title=_tr("Tags (separated by semicolons)"), text=current.tags)
+        searching = Adw.ComboRow(title=_tr("Search Entries"), model=Gtk.StringList.new([_tr("Inherit"), _tr("Enabled"), _tr("Disabled")]))
         searching.set_selected(current.searching)
-        expires = Adw.SwitchRow(title="Expires", active=current.expires)
-        expiry = Adw.EntryRow(title="Expiry (ISO 8601)", text=current.expiry)
+        expires = Adw.SwitchRow(title=_tr("Expires"), active=current.expires)
+        expiry = Adw.EntryRow(title=_tr("Expiry (ISO 8601)"), text=current.expiry)
         for option in (tags, searching, expires, expiry):
             options.add(option)
         box.append(options)
         notes = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, height_request=120, monospace=self.application.startup.monospace_notes,
                              left_margin=12, right_margin=12, top_margin=12, bottom_margin=12)
         notes.get_buffer().set_text(current.notes)
-        notes_group = Adw.PreferencesGroup(title="Notes")
+        notes_group = Adw.PreferencesGroup(title=_tr("Notes"))
         notes_group.add(Gtk.ScrolledWindow(child=notes, css_classes=["card"], overflow=Gtk.Overflow.HIDDEN,
                                             hscrollbar_policy=Gtk.PolicyType.NEVER, min_content_height=120))
         box.append(notes_group)
-        auto_type = Gtk.Button(label="Auto-Type Settings…")
+        auto_type = Gtk.Button(label=_tr("Auto-Type Settings…"))
         auto_type.connect("clicked", lambda *_: autotype_views.settings(self, group=current.identity))
         box.append(auto_type)
         from . import browser_options
-        browser = Gtk.Button(label="Browser Integration…", sensitive=not current.recycled and current.addressable)
+        browser = Gtk.Button(label=_tr("Browser Integration…"), sensitive=not current.recycled and current.addressable)
         browser.connect("clicked", lambda *_: browser_options.settings(self, group=current.identity))
         box.append(browser)
-        sharing = Gtk.Button(label="KeeShare Settings…", sensitive=not current.recycled)
+        sharing = Gtk.Button(label=_tr("KeeShare Settings…"), sensitive=not current.recycled)
         sharing.connect("clicked", lambda *_: keeshare_views.settings(self, current.identity))
         box.append(sharing)
         if current.parent:
-            transfer = Gtk.Button(label="Copy or Move Group…")
+            transfer = Gtk.Button(label=_tr("Copy or Move Group…"))
             transfer.connect("clicked", lambda *_: (dialog.close(), self.move_group(current)))
             box.append(transfer)
         def submit(*_):
@@ -961,24 +962,24 @@ class VaultSession:
                          lambda result: self.edit_attribute(entry, name, result))
             return
         info = info or {}
-        dialog = Adw.Dialog(title="Custom Attribute", content_width=440)
+        dialog = Adw.Dialog(title=_tr("Custom Attribute"), content_width=440)
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        save = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        save = Gtk.Button(label=_tr("Save"), css_classes=["suggested-action"])
         header.pack_end(save)
         toolbar.add_top_bar(header)
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         fields = Adw.PreferencesGroup()
-        key = Adw.EntryRow(title="Name", text=name or "")
+        key = Adw.EntryRow(title=_tr("Name"), text=name or "")
         from .attribute_views import suggestions
         suggestions(self, dialog, entry, key)
-        value = Adw.PasswordEntryRow(title="Value", text=info.get("value", ""))
-        protected = Adw.SwitchRow(title="Protect Value", active=info.get("protected", True))
+        value = Adw.PasswordEntryRow(title=_tr("Value"), text=info.get("value", ""))
+        protected = Adw.SwitchRow(title=_tr("Protect Value"), active=info.get("protected", True))
         for row in (key, value, protected):
             fields.add(row)
         box.append(fields)
         reference_views.menu(self, dialog, header, [
-            ("Value", "P", lambda text: reference_views.insert_text(value, text)),
+            (_tr('Value'), "P", lambda text: reference_views.insert_text(value, text)),
         ])
         def submit(*_):
             params = (entry, key.get_text(), value.get_text(), protected.get_active())
@@ -986,7 +987,7 @@ class VaultSession:
                          lambda snapshot: (dialog.close(), self.window.show_vault(snapshot)))
         save.connect("clicked", submit)
         if name is not None:
-            remove = Gtk.Button(label="Delete Attribute…", css_classes=["destructive-action"])
+            remove = Gtk.Button(label=_tr("Delete Attribute…"), css_classes=["destructive-action"])
             remove.connect("clicked", lambda *_: (dialog.close(), self.confirm_change(
                 "Delete Custom Attribute?", name, "Delete", lambda: self.vault.remove_attribute(entry, name, revision=info.get("revision")))))
             box.append(remove)
@@ -1057,12 +1058,12 @@ class DatabaseView(Gtk.Box):
         header.set_title_widget(Adw.WindowTitle(title="Keyslot"))
         header.pack_end(self.app.host_window.menu())
         toolbar.add_top_bar(header)
-        self.welcome = Adw.StatusPage(icon_name=ICON_NAME, title="Your Passwords, Safely Kept",
-                                     description="Open a KeePass database to get started.")
+        self.welcome = Adw.StatusPage(icon_name=ICON_NAME, title=_tr("Your Passwords, Safely Kept"),
+                                     description=_tr("Open a KeePass database to get started."))
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, halign=Gtk.Align.CENTER)
-        open_button = Gtk.Button(label="Open Database…", css_classes=["suggested-action", "pill"], action_name="win.open")
-        create_button = Gtk.Button(label="New Database…", css_classes=["pill"], action_name="win.new")
-        self.unlock_button = Gtk.Button(label="Unlock Database", css_classes=["suggested-action", "pill"], visible=False)
+        open_button = Gtk.Button(label=_tr("Open Database…"), css_classes=["suggested-action", "pill"], action_name="win.open")
+        create_button = Gtk.Button(label=_tr("New Database…"), css_classes=["pill"], action_name="win.new")
+        self.unlock_button = Gtk.Button(label=_tr("Unlock Database"), css_classes=["suggested-action", "pill"], visible=False)
         self.unlock_button.connect("clicked", lambda *_: self.app.unlock_dialog(str(self.app.path)))
         self.locked_spinner = Gtk.Spinner(visible=False, halign=Gtk.Align.CENTER)
         box.append(self.locked_spinner)
@@ -1077,20 +1078,20 @@ class DatabaseView(Gtk.Box):
         self.outer = Adw.OverlaySplitView(min_sidebar_width=200, max_sidebar_width=240)
         sidebar = Adw.ToolbarView()
         head = Adw.HeaderBar(show_start_title_buttons=True, show_end_title_buttons=False)
-        head.set_title_widget(Adw.WindowTitle(title="Groups"))
+        head.set_title_widget(Adw.WindowTitle(title=_tr("Groups")))
         from . import property_views
-        head.pack_end(button("document-properties-symbolic", "Group Properties",
+        head.pack_end(button("document-properties-symbolic", _tr('Group Properties'),
             lambda: property_views.show(self.app, group=self.selected_group or self.app.vault.snapshot.root) if self.app.vault.unlocked else None))
         sidebar.add_top_bar(head)
         side_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.groups = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["navigation-sidebar"])
         self.groups.connect("row-selected", self._select_group)
         side_content.append(scroll(self.groups))
-        new_group = Gtk.Button(label="New Group", margin_start=12,
+        new_group = Gtk.Button(label=_tr("New Group"), margin_start=12,
                                margin_end=12, margin_bottom=12)
         new_group.connect("clicked", lambda *_: self.app.new_group())
         side_content.append(new_group)
-        edit_group = Gtk.Button(label="Edit / Move Group…", margin_start=12, margin_end=12, margin_bottom=12)
+        edit_group = Gtk.Button(label=_tr("Edit / Move Group…"), margin_start=12, margin_end=12, margin_bottom=12)
         edit_group.connect("clicked", lambda *_: self.app.edit_group())
         side_content.append(edit_group)
         sidebar.set_content(side_content)
@@ -1099,16 +1100,16 @@ class DatabaseView(Gtk.Box):
         list_toolbar = Adw.ToolbarView()
         list_header = Adw.HeaderBar(show_start_title_buttons=True, show_end_title_buttons=False)
         self.list_header = list_header
-        self.list_title = Adw.WindowTitle(title="All Entries", subtitle="0 entries")
+        self.list_title = Adw.WindowTitle(title=_tr("All Entries"), subtitle=_tr("0 entries"))
         list_header.set_title_widget(self.list_title)
-        list_header.pack_start(button("sidebar-show-symbolic", "Show Groups", lambda: self.outer.set_show_sidebar(not self.outer.get_show_sidebar())))
-        self.new_entry_button = button("list-add-symbolic", "New Entry (Ctrl+N)", self.app.edit_entry)
+        list_header.pack_start(button("sidebar-show-symbolic", _tr('Show Groups'), lambda: self.outer.set_show_sidebar(not self.outer.get_show_sidebar())))
+        self.new_entry_button = button("list-add-symbolic", _tr('New Entry (Ctrl+N)'), self.app.edit_entry)
         list_header.pack_end(self.new_entry_button)
-        self.selection_toggle = Gtk.ToggleButton(icon_name="selection-mode-symbolic", tooltip_text="Select Entries",
+        self.selection_toggle = Gtk.ToggleButton(icon_name="selection-mode-symbolic", tooltip_text=_tr("Select Entries"),
                                                  valign=Gtk.Align.CENTER)
         self.selection_toggle.connect("toggled", lambda toggle: self.set_selection_mode(toggle.get_active()))
         list_header.pack_end(self.selection_toggle)
-        self.selection_cancel = Gtk.Button(label="Cancel", visible=False, valign=Gtk.Align.CENTER)
+        self.selection_cancel = Gtk.Button(label=_tr("Cancel"), visible=False, valign=Gtk.Align.CENTER)
         self.selection_cancel.connect("clicked", lambda *_: self.set_selection_mode(False))
         list_header.pack_end(self.selection_cancel)
         list_menu = self.app.host_window.menu()
@@ -1116,7 +1117,7 @@ class DatabaseView(Gtk.Box):
         list_header.pack_end(list_menu)
         list_toolbar.add_top_bar(list_header)
         entries_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.search = Gtk.SearchEntry(placeholder_text="Search passwords", hexpand=True)
+        self.search = Gtk.SearchEntry(placeholder_text=_tr("Search passwords"), hexpand=True)
         self.search.connect("search-changed", self._search_changed)
         from .search_view import SearchOptions
         self.search_tools = SearchOptions(self)
@@ -1144,28 +1145,28 @@ class DatabaseView(Gtk.Box):
         from . import drag_drop
         drag_drop.entry_list(self.app, self.entries)
         entries_box.append(scroll(margins(self.entries, 12)))
-        self.empty_label = Gtk.Label(label="No entries found", visible=False, margin_bottom=24, css_classes=["dim-label"])
+        self.empty_label = Gtk.Label(label=_tr("No entries found"), visible=False, margin_bottom=24, css_classes=["dim-label"])
         entries_box.append(self.empty_label)
         list_toolbar.set_content(entries_box)
         self.selection_bar = Gtk.ActionBar(revealed=False)
-        self.select_all = button("edit-select-all-symbolic", "Select All", self.toggle_all)
+        self.select_all = button("edit-select-all-symbolic", _tr('Select All'), self.toggle_all)
         self.selection_bar.pack_start(self.select_all)
-        self.bulk_transfer = Gtk.Button(label="Copy or Move…", valign=Gtk.Align.CENTER)
+        self.bulk_transfer = Gtk.Button(label=_tr("Copy or Move…"), valign=Gtk.Align.CENTER)
         self.bulk_transfer.connect("clicked", lambda *_: self.app.move_entries(self.selected_entries()))
         self.selection_bar.set_center_widget(self.bulk_transfer)
         from . import trash_views
-        self.bulk_restore = Gtk.Button(label="Restore…", valign=Gtk.Align.CENTER, visible=False)
+        self.bulk_restore = Gtk.Button(label=_tr("Restore…"), valign=Gtk.Align.CENTER, visible=False)
         self.bulk_restore.connect("clicked", lambda *_: trash_views.choose(
             self.app, "restore", entries=self.selected_entries(), bulk=True))
         self.selection_bar.pack_end(self.bulk_restore)
-        self.bulk_recycle = button("user-trash-symbolic", "Delete Selected Entries",
+        self.bulk_recycle = button("user-trash-symbolic", _tr('Delete Selected Entries'),
                                    lambda: self.app.delete_entries(self.selected_entries()))
         self.selection_bar.pack_end(self.bulk_recycle)
         from . import entry_actions
         self.bulk_more = entry_actions.selection_menu(self.app, self.selected_entries)
         self.selection_bar.pack_end(self.bulk_more)
         list_toolbar.add_bottom_bar(self.selection_bar)
-        self.inner.set_sidebar(Adw.NavigationPage(title="Entries", child=list_toolbar))
+        self.inner.set_sidebar(Adw.NavigationPage(title=_tr("Entries"), child=list_toolbar))
         detail_toolbar = Adw.ToolbarView()
         detail_header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=True)
         self.database_title = Adw.WindowTitle(title="Keyslot")
@@ -1173,13 +1174,13 @@ class DatabaseView(Gtk.Box):
         detail_header.pack_end(self.app.host_window.menu())
         self.spinner = Gtk.Spinner(visible=False)
         detail_header.pack_end(self.spinner)
-        detail_header.pack_end(button("changes-prevent-symbolic", "Lock Database (Ctrl+L)", self.app.request_lock))
-        self.save_button = button("document-save-symbolic", "Save Vault (Ctrl+S)", self.app.save)
+        detail_header.pack_end(button("changes-prevent-symbolic", _tr('Lock Database (Ctrl+L)'), self.app.request_lock))
+        self.save_button = button("document-save-symbolic", _tr('Save Vault (Ctrl+S)'), self.app.save)
         detail_header.pack_end(self.save_button)
         detail_toolbar.add_top_bar(detail_header)
         self.detail = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
         detail_toolbar.set_content(scroll(Adw.Clamp(child=margins(self.detail, 24), maximum_size=620)))
-        self.inner.set_content(Adw.NavigationPage(title="Entry Details", child=detail_toolbar))
+        self.inner.set_content(Adw.NavigationPage(title=_tr("Entry Details"), child=detail_toolbar))
         self.outer.set_content(self.inner)
         self.stack.add_named(self.outer, "vault")
         for width, target in [(950, self.outer), (650, self.inner)]:
@@ -1230,8 +1231,8 @@ class DatabaseView(Gtk.Box):
         self._empty_detail()
         self.database_title.set_title("Keyslot")
         has_path = self.app.path is not None
-        self.welcome.set_title("Database Locked" if has_path else "Your Passwords, Safely Kept")
-        self.welcome.set_description("Unlock your database to access your passwords." if has_path else "Open a KeePass database to get started.")
+        self.welcome.set_title(_tr("Database Locked") if has_path else _tr("Your Passwords, Safely Kept"))
+        self.welcome.set_description(_tr("Unlock your database to access your passwords.") if has_path else _tr("Open a KeePass database to get started."))
         self.unlock_button.set_visible(has_path)
         self.stack.set_visible_child_name("locked")
         self.app.emit_state()
@@ -1257,7 +1258,7 @@ class DatabaseView(Gtk.Box):
         old_group = self.selected_group
         self.refreshing_groups = True
         clear(self.groups)
-        all_row = Adw.ActionRow(title="All Entries")
+        all_row = Adw.ActionRow(title=_tr("All Entries"))
         all_row.group_path = None
         all_row.add_prefix(Gtk.Image(icon_name="view-list-symbolic"))
         self.groups.append(all_row)
@@ -1286,7 +1287,7 @@ class DatabaseView(Gtk.Box):
         if not row:
             return
         self.selected_group = row.group_path
-        self.list_title.set_title("All Entries" if row.group_path is None else row.group_name)
+        self.list_title.set_title(_tr("All Entries") if row.group_path is None else row.group_name)
         if self.refreshing_groups:
             return
         if self.search.get_text().strip():
@@ -1311,7 +1312,7 @@ class DatabaseView(Gtk.Box):
         selected_recycled = any(group.identity == self.selected_group and group.recycled for group in self.snapshot.groups)
         title = "All Entries" if self.selected_group is None else next(
             (group.name for group in self.snapshot.groups if group.identity == self.selected_group), "Entries")
-        self.list_title.set_title("Search Results" if query else title)
+        self.list_title.set_title(_tr("Search Results") if query else title)
         rows = []
         candidates = self.snapshot.entries if not query or self.search_matches is not None else ()
         for entry in sorted(candidates, key=lambda e: e.title.casefold()):
@@ -1342,14 +1343,14 @@ class DatabaseView(Gtk.Box):
             from . import drag_drop
             drag_drop.entry_row(self.app, row, entry)
             if entry.totp:
-                row.add_suffix(Gtk.Image(icon_name="alarm-symbolic", tooltip_text="One-Time Password Available"))
+                row.add_suffix(Gtk.Image(icon_name="alarm-symbolic", tooltip_text=_tr("One-Time Password Available")))
             row.set_activatable(True)
             self.entries.append(row)
             rows.append(row)
         subtitle = ("Press Enter to Search" if self.search_tools.state == "waiting" else
                     "Searching…" if self.search_tools.state == "pending" else
                     "Search Failed" if self.search_tools.state == "error" else f"{len(rows)} entries")
-        self.list_title.set_subtitle(subtitle if query else f"{len(rows)} entries")
+        self.list_title.set_subtitle(subtitle if query else _ntrf('{count} entry', '{count} entries', len(rows)))
         self.entry_count = len(rows)
         self.empty_label.set_visible(not rows and (not query or self.search_tools.state == "ready"))
         if self.selection_mode:
@@ -1386,11 +1387,11 @@ class DatabaseView(Gtk.Box):
         (self.list_header.add_css_class if enabled else self.list_header.remove_css_class)("selection-mode")
         if not enabled:
             self.selection_anchor = None
-        self.selection_toggle.set_tooltip_text("Finish Selecting Entries" if enabled else "Select Entries")
+        self.selection_toggle.set_tooltip_text(_tr("Finish Selecting Entries") if enabled else _tr("Select Entries"))
         self.selection_bar.set_revealed(enabled)
         self.entries.set_selection_mode(Gtk.SelectionMode.MULTIPLE if enabled else Gtk.SelectionMode.SINGLE)
         if self.snapshot:
-            self.list_title.set_title("All Entries" if self.selected_group is None else next(
+            self.list_title.set_title(_tr("All Entries") if self.selected_group is None else next(
                 (item.name for item in self.snapshot.groups if item.identity == self.selected_group), "Entries"))
         self.render_entries(previous, selection)
 
@@ -1473,8 +1474,8 @@ class DatabaseView(Gtk.Box):
         entries = self.selected_entries()
         count = len(entries)
         self.selected_entry = None
-        self.list_title.set_title(f"{count} Selected")
-        self.select_all.set_tooltip_text("Deselect All" if count == self.entry_count else "Select All")
+        self.list_title.set_title(_trf('{arg0} Selected', arg0=count))
+        self.select_all.set_tooltip_text(_tr("Deselect All") if count == self.entry_count else _tr("Select All"))
         self.select_all.set_sensitive(self.entry_count > 0)
         eligible = bool(entries) and all(not entry.recycled for entry in entries)
         restorable = bool(entries) and all(entry.recycled for entry in entries)
@@ -1489,9 +1490,8 @@ class DatabaseView(Gtk.Box):
                 check.set_active(row.is_selected())
             row = row.get_next_sibling()
         clear(self.detail)
-        noun = "Entry" if count == 1 else "Entries"
-        self.detail.append(Adw.StatusPage(title=f"{count} {noun} Selected" if count else "Select Entries",
-            icon_name="edit-select-all-symbolic", description="Use the actions below the entry list to copy, move, restore, delete or edit tags and expiry."))
+        self.detail.append(Adw.StatusPage(title=_ntrf('{count} Entry Selected', '{count} Entries Selected', count) if count else _tr("Select Entries"),
+            icon_name="edit-select-all-symbolic", description=_tr("Use the actions below the entry list to copy, move, restore, delete or edit tags and expiry.")))
         self.app.application.shortcuts.refresh_state()
 
     def _entry_keys(self, _keys, keyval, _code, state):
@@ -1530,8 +1530,8 @@ class DatabaseView(Gtk.Box):
         self.app.previews.clear()
         self.app.totp.clear()
         clear(self.detail)
-        self.detail.append(Adw.StatusPage(title="Select an Entry", icon_name="dialog-password-symbolic",
-                                         description="Your login details will appear here."))
+        self.detail.append(Adw.StatusPage(title=_tr("Select an Entry"), icon_name="dialog-password-symbolic",
+                                         description=_tr("Your login details will appear here.")))
         self.app.application.shortcuts.refresh_state()
 
     def render_detail(self, entry):
@@ -1546,99 +1546,99 @@ class DatabaseView(Gtk.Box):
         hero.append(Gtk.Label(label=entry.group_path or entry.group, wrap=True, css_classes=["dim-label"]))
         self.detail.append(hero)
         fields = Adw.PreferencesGroup()
-        fields.add(self.app.previews.field(entry, "UserName", "Username"))
-        fields.add(self.app.previews.field(entry, "Password", "Password"))
+        fields.add(self.app.previews.field(entry, "UserName", _tr("Username")))
+        fields.add(self.app.previews.field(entry, "Password", _tr("Password")))
         if entry.url:
-            website = Adw.ActionRow(title="Website", subtitle=GLib.markup_escape_text(entry.url))
-            website.add_suffix(button("adw-external-link-symbolic", "Open Entry URL", lambda: self.app.open_entry_url(entry)))
+            website = Adw.ActionRow(title=_tr("Website"), subtitle=GLib.markup_escape_text(entry.url))
+            website.add_suffix(button("adw-external-link-symbolic", _tr('Open Entry URL'), lambda: self.app.open_entry_url(entry)))
             fields.add(website)
         if entry.override_url:
-            override = Adw.ActionRow(title="URL Override", subtitle=GLib.markup_escape_text(entry.override_url))
-            override.add_suffix(button("adw-external-link-symbolic", "Open URL Override", lambda: self.app.open_entry_url(entry, True)))
+            override = Adw.ActionRow(title=_tr("URL Override"), subtitle=GLib.markup_escape_text(entry.override_url))
+            override.add_suffix(button("adw-external-link-symbolic", _tr('Open URL Override'), lambda: self.app.open_entry_url(entry, True)))
             fields.add(override)
         if entry.command_approved:
-            permission = Adw.ActionRow(title="Command Approval", subtitle="This entry can run a previously approved command")
-            permission.add_suffix(button("edit-delete-symbolic", "Forget Command Approval", lambda: self.app.run_job(
+            permission = Adw.ActionRow(title=_tr("Command Approval"), subtitle=_tr("This entry can run a previously approved command"))
+            permission.add_suffix(button("edit-delete-symbolic", _tr('Forget Command Approval'), lambda: self.app.run_job(
                 lambda: self.app.vault.url_forget(entry), self.show_vault)))
             fields.add(permission)
         if entry.totp:
             fields.add(self.app.totp.row(entry))
         self.detail.append(fields)
-        passkeys = Adw.PreferencesGroup(title="Passkey")
-        passkey = Adw.ActionRow(title="Passkey Details…" if entry.passkey else "Import Passkey…", activatable=True,
-            subtitle="View, export or remove this passkey" if entry.passkey else "Attach a passkey to this entry")
+        passkeys = Adw.PreferencesGroup(title=_tr("Passkey"))
+        passkey = Adw.ActionRow(title=_tr("Passkey Details…") if entry.passkey else _tr("Import Passkey…"), activatable=True,
+            subtitle=_tr("View, export or remove this passkey") if entry.passkey else _tr("Attach a passkey to this entry"))
         passkey.connect("activated", lambda *_: passkey_views.show_info(self.app, entry) if entry.passkey
                         else passkey_views.choose_import(self.app, entry))
         passkey.set_sensitive(entry.passkey or not entry.recycled)
         passkeys.add(passkey)
         self.detail.append(passkeys)
-        ssh = Adw.PreferencesGroup(title="SSH Key")
-        settings = Adw.ActionRow(title="SSH Key Settings…", activatable=True, subtitle="Configure an attached or external key")
+        ssh = Adw.PreferencesGroup(title=_tr("SSH Key"))
+        settings = Adw.ActionRow(title=_tr("SSH Key Settings…"), activatable=True, subtitle=_tr("Configure an attached or external key"))
         settings.set_sensitive(not entry.recycled)
         settings.connect("activated", lambda *_: ssh_views.entry_settings(self.app, entry))
         ssh.add(settings)
         self.detail.append(ssh)
-        auto_type = Adw.PreferencesGroup(title="Auto-Type")
-        settings = Adw.ActionRow(title="Auto-Type Settings…", subtitle="Sequences and window associations", activatable=True)
+        auto_type = Adw.PreferencesGroup(title=_tr("Auto-Type"))
+        settings = Adw.ActionRow(title=_tr("Auto-Type Settings…"), subtitle=_tr("Sequences and window associations"), activatable=True)
         settings.connect("activated", lambda *_: autotype_views.settings(self.app, entry=entry))
         auto_type.add(settings)
-        type_entry = Adw.ActionRow(title="Type Entry…", activatable=True, action_name="win.type-entry")
+        type_entry = Adw.ActionRow(title=_tr("Type Entry…"), activatable=True, action_name="win.type-entry")
         menu = Gio.Menu()
-        from .autotype_fields import TYPES
+        from .autotype_fields import TYPE_LABELS, COPY_LABELS, TYPES
         for name, (title, _sequence, _qt) in TYPES.items():
-            menu.append("Type " + title, "win.type-" + name)
+            menu.append(_tr(TYPE_LABELS[name]), "win.type-" + name)
         type_entry.add_suffix(Gtk.MenuButton(icon_name="view-more-symbolic", menu_model=menu,
-                                            tooltip_text="Type Individual Fields", valign=Gtk.Align.CENTER))
+                                            tooltip_text=_tr("Type Individual Fields"), valign=Gtk.Align.CENTER))
         auto_type.add(type_entry)
         self.type_status = Gtk.Label(label=self.app.type_fields.error, visible=bool(self.app.type_fields.error),
                                     xalign=0, wrap=True, css_classes=["error"])
         auto_type.add(self.type_status)
         self.detail.append(auto_type)
         from . import browser_options
-        browser = Adw.PreferencesGroup(title="Browser Integration")
-        browser_row = Adw.ActionRow(title="Browser Settings…", subtitle="Visibility, form submission and HTTP authentication",
+        browser = Adw.PreferencesGroup(title=_tr("Browser Integration"))
+        browser_row = Adw.ActionRow(title=_tr("Browser Settings…"), subtitle=_tr("Visibility, form submission and HTTP authentication"),
                                    activatable=True, sensitive=not entry.recycled and entry.addressable)
         browser_row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
         browser_row.connect("activated", lambda *_: browser_options.settings(self.app, entry=entry))
         browser.add(browser_row)
-        websites = Adw.ActionRow(title="Additional Websites…", subtitle="Use this login on other websites",
+        websites = Adw.ActionRow(title=_tr("Additional Websites…"), subtitle=_tr("Use this login on other websites"),
                                 activatable=True, sensitive=not entry.recycled and entry.addressable)
         websites.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
         websites.connect("activated", lambda *_: browser_options.websites(self.app, entry))
         browser.add(websites)
         self.detail.append(browser)
         if entry.notes:
-            self.detail.append(self.app.previews.field(entry, "Notes", "Notes", notes=True))
-        custom = Adw.PreferencesGroup(title="Custom Attributes")
+            self.detail.append(self.app.previews.field(entry, "Notes", _tr("Notes"), notes=True))
+        custom = Adw.PreferencesGroup(title=_tr("Custom Attributes"))
         for name in entry.attributes:
-            row = Adw.ActionRow(title=GLib.markup_escape_text(name), subtitle="Copy or edit this attribute")
-            row.add_suffix(button("edit-copy-symbolic", "Copy " + name, lambda n=name: self.app.run_job(
+            row = Adw.ActionRow(title=GLib.markup_escape_text(name), subtitle=_tr("Copy or edit this attribute"))
+            row.add_suffix(button("edit-copy-symbolic", _trf("Copy {field}", field=name), lambda n=name: self.app.run_job(
                 lambda: self.app.vault.attribute(entry, n), self.app.copy_entry)))
-            row.add_suffix(button("document-edit-symbolic", "Edit " + name, lambda n=name: self.app.edit_attribute(entry, n)))
+            row.add_suffix(button("document-edit-symbolic", _trf("Edit {field}", field=name), lambda n=name: self.app.edit_attribute(entry, n)))
             custom.add(row)
-        custom_add = Adw.ActionRow(title="Add Custom Attribute…", activatable=True)
+        custom_add = Adw.ActionRow(title=_tr("Add Custom Attribute…"), activatable=True)
         custom_add.connect("activated", lambda *_: self.app.edit_attribute(entry))
         custom.add(custom_add)
         self.detail.append(custom)
-        otp_settings = Gtk.Button(label="Configure One-Time Password…")
+        otp_settings = Gtk.Button(label=_tr("Configure One-Time Password…"))
         otp_settings.connect("clicked", lambda *_: self.app.setup_totp(entry))
         otp_actions = Gtk.Box(spacing=12, homogeneous=True)
         otp_actions.append(otp_settings)
         if entry.totp:
-            qr = Gtk.Button(label="Show Authenticator QR Code…")
+            qr = Gtk.Button(label=_tr("Show Authenticator QR Code…"))
             qr.connect("clicked", lambda *_: self.app.totp.show_qr(entry))
             otp_actions.append(qr)
         self.detail.append(otp_actions)
-        attachments = Adw.PreferencesGroup(title="Attachments")
+        attachments = Adw.PreferencesGroup(title=_tr("Attachments"))
         for name in entry.attachments:
             row = Adw.ActionRow(title=GLib.markup_escape_text(name))
-            row.add_suffix(button("document-save-symbolic", "Save Attachment", lambda n=name: self.app.choose_file(
+            row.add_suffix(button("document-save-symbolic", _tr('Save Attachment'), lambda n=name: self.app.choose_file(
                 lambda dest: self.app.run_job(lambda: self.app.vault.export_attachment(entry, n, dest),
                                              lambda _: self.app.toast("Attachment saved")), save=True, name=Path(n).name)))
-            row.add_suffix(button("user-trash-symbolic", "Remove Attachment", lambda n=name: self.app.confirm_change(
+            row.add_suffix(button("user-trash-symbolic", _tr('Remove Attachment'), lambda n=name: self.app.confirm_change(
                 "Remove Attachment?", n, "Remove", lambda: self.app.vault.remove_attachment(entry, n))))
             attachments.add(row)
-        add = Adw.ActionRow(title="Add Attachment…", activatable=True)
+        add = Adw.ActionRow(title=_tr("Add Attachment…"), activatable=True)
         add.add_prefix(Gtk.Image(icon_name="list-add-symbolic"))
         add.connect("activated", lambda *_: self.app.choose_file(lambda source: self.app.import_attachment(entry, source)))
         attachments.add(add)
@@ -1646,19 +1646,19 @@ class DatabaseView(Gtk.Box):
         from . import drag_drop
         drag_drop.attachments(self.app, attachments, entry)
         from . import property_views
-        properties = Gtk.Button(label="Entry Properties…")
+        properties = Gtk.Button(label=_tr("Entry Properties…"))
         properties.connect("clicked", lambda *_: property_views.show(self.app, entry=entry.uuid))
         self.detail.append(properties)
         if entry.history_count:
-            history = Gtk.Button(label=f"View History ({entry.history_count} Versions)")
+            history = Gtk.Button(label=_ntrf('View History ({count} Version)', 'View History ({count} Versions)', entry.history_count))
             history.connect("clicked", lambda *_: self.app.show_history(entry))
             self.detail.append(history)
         actions = Gtk.Box(spacing=12, homogeneous=True)
         from . import entry_actions
-        duplicate = Gtk.Button(label="Duplicate Entry…", sensitive=entry.addressable and not entry.recycled)
+        duplicate = Gtk.Button(label=_tr("Duplicate Entry…"), sensitive=entry.addressable and not entry.recycled)
         duplicate.connect("clicked", lambda *_: entry_actions.choose(self.app, [entry], "duplicate"))
         self.detail.append(duplicate)
-        edit = Gtk.Button(label="Restore…" if entry.recycled else "Edit Entry", css_classes=["suggested-action"])
+        edit = Gtk.Button(label=_tr("Restore…") if entry.recycled else _tr("Edit Entry"), css_classes=["suggested-action"])
         def edit_or_restore(*_):
             if entry.recycled:
                 from .trash_views import choose
@@ -1666,10 +1666,10 @@ class DatabaseView(Gtk.Box):
             else:
                 self.app.edit_entry(entry)
         edit.connect("clicked", edit_or_restore)
-        move = Gtk.Button(label="Copy or Move…")
+        move = Gtk.Button(label=_tr("Copy or Move…"))
         move.connect("clicked", lambda *_: self.app.move_entry(entry))
         permanent = entry.recycled or not self.snapshot.recycle_bin_enabled
-        delete = button("user-trash-symbolic", "Delete Permanently…" if permanent else "Move to Recycle Bin…",
+        delete = button("user-trash-symbolic", _tr("Delete Permanently…") if permanent else _tr("Move to Recycle Bin…"),
                         lambda: self.app.delete_entry(entry))
         edit.set_sensitive(entry.addressable)
         move.set_sensitive(entry.addressable)
@@ -1678,7 +1678,7 @@ class DatabaseView(Gtk.Box):
             actions.append(widget)
         self.detail.append(actions)
         if not entry.addressable:
-            self.detail.append(Gtk.Label(label="This entry has an ambiguous path. Rename it in KeePassXC to enable actions here.",
+            self.detail.append(Gtk.Label(label=_tr("This entry has an ambiguous path. Rename it in KeePassXC to enable actions here."),
                                          wrap=True, css_classes=["warning"]))
 
 def main():

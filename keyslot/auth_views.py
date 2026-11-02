@@ -1,4 +1,5 @@
 """Session-only Polkit unlock without credential material in GTK."""
+from .i18n import tr as _tr
 from pathlib import Path
 from gi.repository import Adw, Gtk
 from .database_views import _dialog
@@ -12,24 +13,24 @@ def unlock(session, path, allow_recovery=False, resume=None):
     else:
         session.lock()
     epoch = session.epoch
-    dialog, _header, box = _dialog("Unlock with System Authentication", width=460, height=400)
+    dialog, _header, box = _dialog(_tr("Unlock with System Authentication"), width=460, height=400)
     dialog.set_can_close(False)
     state = {"closed": False, "working": False}
     box.append(Gtk.Image(icon_name="changes-prevent-symbolic", pixel_size=64))
     box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
     if resume:
         resume.add_vault_choice(dialog, box)
-    box.append(Gtk.Label(label="Authenticate using your system's agent. It may offer your login password or configured biometrics. "
-                         "A hardware key may still require a touch afterward.", xalign=0, wrap=True))
+    box.append(Gtk.Label(label=_tr("Authenticate using your system's agent. It may offer your login password or configured biometrics. "
+                         "A hardware key may still require a touch afterward."), xalign=0, wrap=True))
     status = Gtk.Label(wrap=True, xalign=0)
     box.append(status)
     spinner = Gtk.Spinner(spinning=False, halign=Gtk.Align.CENTER)
     box.append(spinner)
-    system = Gtk.Button(label="Authenticate and Unlock", css_classes=["suggested-action", "pill"])
-    master = Gtk.Button(label="Use Master Password", css_classes=["pill"])
-    short = Gtk.Button(label="Use Short Password", css_classes=["pill"],
+    system = Gtk.Button(label=_tr("Authenticate and Unlock"), css_classes=["suggested-action", "pill"])
+    master = Gtk.Button(label=_tr("Use Master Password"), css_classes=["pill"])
+    short = Gtk.Button(label=_tr("Use Short Password"), css_classes=["pill"],
                        visible=bool(session.quick_blob and Path(path).resolve() == session.quick_path))
-    cancel = Gtk.Button(label="Cancel", css_classes=["pill"])
+    cancel = Gtk.Button(label=_tr("Cancel"), css_classes=["pill"])
     for control in (system, master, short, cancel):
         box.append(control)
     def current():
@@ -50,7 +51,7 @@ def unlock(session, path, allow_recovery=False, resume=None):
         state["working"] = True
         system.set_sensitive(False); master.set_sensitive(False); short.set_sensitive(False)
         spinner.set_spinning(True)
-        status.set_label("Waiting for system authentication…")
+        status.set_label(_tr("Waiting for system authentication…"))
         def operation():
             try:
                 return session.vault.system_unlock(path, allow_recovery=allow_recovery), ""

@@ -1,4 +1,5 @@
 """KeePassXC-compatible GUI commands; passwords only arrive through stdin."""
+from .i18n import mark as _mark, tr as _tr
 import os
 import platform
 from pathlib import Path
@@ -14,21 +15,21 @@ from .backend import VaultError
 
 def configure(app):
     for name, short, description in [
-        ("version", ord("v"), "Show application and core versions"),
-        ("debug-info", 0, "Show runtime and build information"),
-        ("lock", 0, "Lock all open databases and exit"),
-        ("pw-stdin", 0, "Read one database password per line from standard input"),
-        ("minimized", 0, "Open in the background"),
-        ("allow-screencapture", 0, "Allow screen capture (Windows/macOS compatibility option)"),
+        ("version", ord("v"), _mark("Show application and core versions")),
+        ("debug-info", 0, _mark("Show runtime and build information")),
+        ("lock", 0, _mark("Lock all open databases and exit")),
+        ("pw-stdin", 0, _mark("Read one database password per line from standard input")),
+        ("minimized", 0, _mark("Open in the background")),
+        ("allow-screencapture", 0, _mark("Allow screen capture (Windows/macOS compatibility option)")),
     ]:
-        app.add_main_option(name, short, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, description, None)
+        app.add_main_option(name, short, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _tr(description), None)
     app.add_main_option("keyfile", 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING,
-                        "Key file for the databases being opened", "PATH")
-    for name, description in (("config", "KeePassXC global settings INI file (empty uses the default)"),
-                              ("localconfig", "KeePassXC local settings INI file (empty uses the default)")):
-        app.add_main_option(name, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING, description, "PATH")
+                        _tr("Key file for the databases being opened"), "PATH")
+    for name, description in (("config", _mark("KeePassXC global settings INI file (empty uses the default)")),
+                              ("localconfig", _mark("KeePassXC local settings INI file (empty uses the default)"))):
+        app.add_main_option(name, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _tr(description), "PATH")
     app.add_main_option(GLib.OPTION_REMAINING, 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING_ARRAY,
-                        "Databases to open", "FILE…")
+                        _tr("Databases to open"), "FILE…")
     app.connect("handle-local-options", local_options)
 
 

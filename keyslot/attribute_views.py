@@ -1,4 +1,5 @@
 """Optional name-only custom attribute suggestions from the unlocked vault."""
+from .i18n import tr as _tr
 import json
 from gi.repository import Adw, GLib, Gtk
 from .backend import VaultError
@@ -31,8 +32,8 @@ def setting(startup, value=None):
 
 
 def preferences(session, page, dialog):
-    group = Adw.PreferencesGroup(title="Editing")
-    row = Adw.SwitchRow(title="Suggest Attribute Names", subtitle="Offer names used by other entries; values are never suggested", sensitive=False)
+    group = Adw.PreferencesGroup(title=_tr("Editing"))
+    row = Adw.SwitchRow(title=_tr("Suggest Attribute Names"), subtitle=_tr("Offer names used by other entries; values are never suggested"), sensitive=False)
     updating = [True]
     closed = [False]
     dialog.connect("closed", lambda *_: closed.__setitem__(0, True))
@@ -54,7 +55,7 @@ def preferences(session, page, dialog):
         value = row.get_active()
         if session.busy:
             loaded(not value)
-            session.toast("Wait for the current operation to finish")
+            session.toast(_tr("Wait for the current operation to finish"))
             return
         row.set_sensitive(False)
         def error(message):
@@ -77,7 +78,7 @@ def suggestions(session, dialog, entry, field):
     current = _lifetime(session, dialog)
     content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, width_request=300,
                       margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
-    search = Gtk.SearchEntry(placeholder_text="Find an attribute name")
+    search = Gtk.SearchEntry(placeholder_text=_tr("Find an attribute name"))
     content.append(search)
     rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"], valign=Gtk.Align.START)
     scrolled = Gtk.ScrolledWindow(child=rows, hscrollbar_policy=Gtk.PolicyType.NEVER,
@@ -86,11 +87,11 @@ def suggestions(session, dialog, entry, field):
     status = Gtk.Label(wrap=True, xalign=0, css_classes=["dim-label"])
     content.append(status)
     navigation = Gtk.Box(spacing=8, homogeneous=True)
-    previous, following = Gtk.Button(label="Previous"), Gtk.Button(label="Next")
+    previous, following = Gtk.Button(label=_tr("Previous")), Gtk.Button(label=_tr("Next"))
     navigation.append(previous); navigation.append(following)
     content.append(navigation)
     popover = Gtk.Popover(child=content)
-    menu = Gtk.MenuButton(icon_name="pan-down-symbolic", tooltip_text="Suggest Attribute Names",
+    menu = Gtk.MenuButton(icon_name="pan-down-symbolic", tooltip_text=_tr("Suggest Attribute Names"),
                           popover=popover, valign=Gtk.Align.CENTER)
     field.add_suffix(menu)
     state = {"serial": 0, "offset": 0, "enabled": None}
@@ -107,7 +108,7 @@ def suggestions(session, dialog, entry, field):
         child = rows.get_first_child()
         while child:
             following_child = child.get_next_sibling(); rows.remove(child); child = following_child
-        status.set_label("Looking for names…")
+        status.set_label(_tr("Looking for names…"))
         def operation():
             enabled = state["enabled"] if state["enabled"] is not None else setting(session.application.startup)
             return session.vault.attribute_suggestions(entry, query, offset) if enabled else None
@@ -116,7 +117,7 @@ def suggestions(session, dialog, entry, field):
                 return
             state["enabled"] = data is not None
             if data is None:
-                status.set_label("Attribute suggestions are disabled in Preferences.")
+                status.set_label(_tr("Attribute suggestions are disabled in Preferences."))
                 return
             def selected(name):
                 if current():

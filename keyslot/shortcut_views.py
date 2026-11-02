@@ -1,4 +1,5 @@
 """Shortcut recording, staged editing and help from the active bindings."""
+from .i18n import tr as _tr, trf as _trf
 from .application import Adw, Gdk, Gtk, button
 from .backend import VaultError
 from .database_views import _dialog, _save
@@ -7,21 +8,21 @@ from .shortcuts import BY_ACTION, MODIFIERS, RESERVED, SPECS, conflicts, effecti
 
 def help_dialog(session):
     dialog = Adw.ShortcutsDialog()
-    section = Adw.ShortcutsSection(title="Application")
+    section = Adw.ShortcutsSection(title=_tr("Application"))
     for spec in SPECS:
         if key := session.application.shortcuts.bindings[spec.action]:
-            section.add(Adw.ShortcutsItem(title=spec.title, accelerator=key))
+            section.add(Adw.ShortcutsItem(title=_tr(spec.title), accelerator=key))
     dialog.add(section)
-    selection = Adw.ShortcutsSection(title="Entry List")
+    selection = Adw.ShortcutsSection(title=_tr("Entry List"))
     for key, title in RESERVED.items():
-        selection.add(Adw.ShortcutsItem(title=title, accelerator=key))
+        selection.add(Adw.ShortcutsItem(title=_tr(title), accelerator=key))
     dialog.add(selection)
-    from .autotype_fields import TYPES, SELECTOR_KEYS
-    autotype = Adw.ShortcutsSection(title="Auto-Type Selector")
-    autotype.add(Adw.ShortcutsItem(title="Toggle Search All Unlocked Databases", accelerator="<Control>f"))
+    from .autotype_fields import TYPE_LABELS, COPY_LABELS, TYPES, SELECTOR_KEYS
+    autotype = Adw.ShortcutsSection(title=_tr("Auto-Type Selector"))
+    autotype.add(Adw.ShortcutsItem(title=_tr("Toggle Search All Unlocked Databases"), accelerator="<Control>f"))
     for name, key in SELECTOR_KEYS.items():
-        autotype.add(Adw.ShortcutsItem(title="Type " + TYPES[name][0], accelerator=key))
-        autotype.add(Adw.ShortcutsItem(title="Copy " + TYPES[name][0],
+        autotype.add(Adw.ShortcutsItem(title=_tr(TYPE_LABELS[name]), accelerator=key))
+        autotype.add(Adw.ShortcutsItem(title=_tr(COPY_LABELS[name]),
                                      accelerator=key.replace("<Control>", "<Control><Shift>")))
     dialog.add(autotype)
     session.present_dialog(dialog)
@@ -29,9 +30,9 @@ def help_dialog(session):
 
 def record(session, spec, chosen):
     manager = session.application.shortcuts
-    dialog, _header, box = _dialog("Set Keyboard Shortcut", width=420, height=280)
-    box.append(Gtk.Label(label=spec.title, wrap=True, css_classes=["title-2"]))
-    box.append(Gtk.Label(label="Press a key combination. Use Escape to cancel.", wrap=True))
+    dialog, _header, box = _dialog(_tr("Set Keyboard Shortcut"), width=420, height=280)
+    box.append(Gtk.Label(label=_tr(spec.title), wrap=True, css_classes=["title-2"]))
+    box.append(Gtk.Label(label=_tr("Press a key combination. Use Escape to cancel."), wrap=True))
     status = Gtk.Label(wrap=True, css_classes=["error"])
     box.append(status)
     epoch = session.epoch
@@ -80,9 +81,9 @@ def show(session, snapshot=None):
     if snapshot is None:
         session.run_job(manager.store.read, lambda value: show(session, value))
         return
-    dialog, header, box = _dialog("Keyboard Shortcuts", width=560, height=640)
-    box.append(Gtk.Label(label="Choose an action to change its shortcut. Changes apply when you save. Desktop auto-type shortcuts are configured separately.", wrap=True, xalign=0))
-    desktop = Gtk.Button(label="Desktop Auto-Type Shortcuts…", halign=Gtk.Align.START)
+    dialog, header, box = _dialog(_tr("Keyboard Shortcuts"), width=560, height=640)
+    box.append(Gtk.Label(label=_tr("Choose an action to change its shortcut. Changes apply when you save. Desktop auto-type shortcuts are configured separately."), wrap=True, xalign=0))
+    desktop = Gtk.Button(label=_tr("Desktop Auto-Type Shortcuts…"), halign=Gtk.Align.START)
     from .autotype_views import open_shortcut_preferences
     desktop.connect("clicked", lambda button: open_shortcut_preferences(session, button))
     box.append(desktop)
@@ -91,7 +92,7 @@ def show(session, snapshot=None):
     rows = {}
     status = Gtk.Label(wrap=True, xalign=0, css_classes=["error"], visible=False)
     box.append(status)
-    search = Gtk.SearchEntry(placeholder_text="Search actions")
+    search = Gtk.SearchEntry(placeholder_text=_tr("Search actions"))
     box.append(search)
     group = Adw.PreferencesGroup()
     box.append(group)
@@ -104,8 +105,8 @@ def show(session, snapshot=None):
             label.set_accelerator(bindings[action])
             problem = snapshot["problems"].get(action) if action not in changed else None
             collision = conflicts(bindings, action, bindings[action])
-            row.set_subtitle(problem or ("Conflicts with another shortcut" if collision else
-                "Default" if value is None else "Disabled" if value == "" else "Custom"))
+            row.set_subtitle(problem or (_tr("Conflicts with another shortcut") if collision else
+                _tr("Default") if value is None else _tr("Disabled") if value == "" else _tr("Custom")))
             reset.set_sensitive(value is not None or bool(problem))
             disable.set_sensitive(value != "" or bool(problem))
         save.set_sensitive(bool(changed) and not any(conflicts(bindings, action, key) for action, key in bindings.items()))
@@ -122,17 +123,17 @@ def show(session, snapshot=None):
             return
         collisions = conflicts(effective(draft), action, key)
         if any(name not in BY_ACTION for name in collisions):
-            status.set_label("This combination is reserved for entry selection or navigation.")
+            status.set_label(_tr("This combination is reserved for entry selection or navigation."))
             status.set_visible(True)
             return
         status.set_visible(False)
         if not collisions:
             stage(action, key)
             return
-        alert = Adw.AlertDialog(heading="Replace Existing Shortcut?", body="This combination is assigned to: " +
-            ", ".join(BY_ACTION[name].title for name in collisions) + ". Their shortcuts will be disabled when you save.")
-        alert.add_response("cancel", "Cancel")
-        alert.add_response("replace", "Replace")
+        alert = Adw.AlertDialog(heading=_tr("Replace Existing Shortcut?"), body=_trf("This combination is assigned to: {actions}. Their shortcuts will be disabled when you save.",
+                actions=", ".join(_tr(BY_ACTION[name].title) for name in collisions)))
+        alert.add_response("cancel", _tr("Cancel"))
+        alert.add_response("replace", _tr("Replace"))
         alert.set_close_response("cancel")
         alert.set_default_response("cancel")
         def replace(_dialog, response):
@@ -143,17 +144,17 @@ def show(session, snapshot=None):
         alert.connect("response", replace)
         session.present_dialog(alert)
     for spec in SPECS:
-        row = Adw.ActionRow(title=spec.title, activatable=True)
-        label = Adw.ShortcutLabel(valign=Gtk.Align.CENTER, disabled_text="Disabled")
+        row = Adw.ActionRow(title=_tr(spec.title), activatable=True)
+        label = Adw.ShortcutLabel(valign=Gtk.Align.CENTER, disabled_text=_tr("Disabled"))
         row.add_suffix(label)
-        reset = button("edit-undo-symbolic", "Restore Default for " + spec.title, lambda action=spec.action: stage(action, None))
-        disable = button("edit-clear-symbolic", "Disable Shortcut for " + spec.title, lambda action=spec.action: stage(action, ""))
+        reset = button("edit-undo-symbolic", _trf("Restore Default for {action}", action=_tr(spec.title)), lambda action=spec.action: stage(action, None))
+        disable = button("edit-clear-symbolic", _trf("Disable Shortcut for {action}", action=_tr(spec.title)), lambda action=spec.action: stage(action, ""))
         row.add_suffix(reset)
         row.add_suffix(disable)
         row.connect("activated", lambda _row, spec=spec: record(session, spec, lambda key: choose(spec.action, key)))
         group.add(row)
         rows[spec.action] = row, label, reset, disable
-    search.connect("search-changed", lambda *_: [row.set_visible(search.get_text().casefold() in BY_ACTION[action].title.casefold())
+    search.connect("search-changed", lambda *_: [row.set_visible(search.get_text().casefold() in _tr(BY_ACTION[action].title).casefold())
                                                 for action, (row, *_rest) in rows.items()])
     def reset_all(*_):
         for spec in SPECS:
@@ -164,7 +165,7 @@ def show(session, snapshot=None):
                 changed.discard(spec.action)
         status.set_visible(False)
         refresh()
-    reset = Gtk.Button(label="Restore All Defaults")
+    reset = Gtk.Button(label=_tr("Restore All Defaults"))
     reset.connect("clicked", reset_all)
     box.append(reset)
     def submit(*_):
@@ -175,7 +176,7 @@ def show(session, snapshot=None):
             manager.apply(value)
             if current():
                 dialog.close()
-            session.toast("Keyboard shortcuts saved")
+            session.toast(_tr("Keyboard shortcuts saved"))
         session.run_job(lambda: manager.store.save(changes, snapshot), completed)
     save = _save(header, submit)
     refresh()

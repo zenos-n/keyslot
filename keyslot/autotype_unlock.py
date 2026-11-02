@@ -1,4 +1,5 @@
 """One destination-bound unlock request; never a credential or typing approval."""
+from .i18n import tr as _tr
 import os
 import time
 from collections import Counter
@@ -71,7 +72,7 @@ class UnlockRequest:
         session = self.owner()
         self.cancel()
         if session and session.active:
-            session.toast("Auto-Type unlock request expired. Invoke Auto-Type again.")
+            session.toast(_tr("Auto-Type unlock request expired. Invoke Auto-Type again."))
         return GLib.SOURCE_REMOVE
 
     def reset(self):
@@ -108,7 +109,7 @@ class UnlockRequest:
         names = Counter(path.name for _reference, path in choices)
         labels = [path.name if names[path.name] == 1 else f"{path.name} · {path.parent}"
                   for _reference, path in choices]
-        row = Adw.ComboRow(title="Vault", model=Gtk.StringList.new(labels), selected=selected,
+        row = Adw.ComboRow(title=_tr("Vault"), model=Gtk.StringList.new(labels), selected=selected,
                            subtitle=str(self.path.parent), use_subtitle=False, use_markup=False)
         group = Adw.PreferencesGroup()
         group.add(row)
@@ -131,14 +132,14 @@ class UnlockRequest:
         if (not session or session not in self.app.sessions or session.jobs.closed or session.vault.unlocked
                 or session.busy or session.vault.finishing or session.file_requests
                 or any(dialog is not session.unlock_prompt for dialog in session.dialogs)):
-            owner.toast("That vault is no longer available to unlock. Finish its current operation and try again.")
+            owner.toast(_tr("That vault is no longer available to unlock. Finish its current operation and try again."))
             return
         try:
             if not session.path or Path(session.path).resolve() != path:
-                owner.toast("That vault changed. Open it again before using Auto-Type.")
+                owner.toast(_tr("That vault changed. Open it again before using Auto-Type."))
                 return
         except OSError:
-            owner.toast("That vault path is no longer available.")
+            owner.toast(_tr("That vault path is no longer available."))
             return
         target, automatic, expires = self.target, self.allow_automatic, self.expires
         self.cancel()
@@ -151,7 +152,7 @@ class UnlockRequest:
             self.cancel()
             return False
         self.dialog = dialog
-        dialog.set_title("Unlock for Auto-Type")
+        dialog.set_title(_tr("Unlock for Auto-Type"))
         dialog.connect("closed", lambda *_: self.cancel() if self.dialog is dialog else None)
         self.owner().present_unlock_prompt(dialog)
         return not self.cancelled
@@ -218,24 +219,24 @@ def request(session, *, allow_automatic=True, global_shortcut=False, target=None
     if global_shortcut and any(item.host_window.is_active() for item in app.sessions):
         return
     if app.autotype_unlock or app.autotype_flow:
-        session.toast("Auto-Type is already in progress")
+        session.toast(_tr("Auto-Type is already in progress"))
         return
     if (not session.path or session.busy or session.vault.finishing or session.file_requests
             or any(dialog is not session.unlock_prompt for dialog in session.dialogs)):
         app.select_session(session)
-        session.toast("Open a vault and finish the current operation before using Auto-Type")
+        session.toast(_tr("Open a vault and finish the current operation before using Auto-Type"))
         return
     if app.desktop_lock and app.desktop_lock.blocked:
         return
     if expires is not None and time.monotonic() >= expires:
-        session.toast("Auto-Type unlock request expired. Invoke Auto-Type again.")
+        session.toast(_tr("Auto-Type unlock request expired. Invoke Auto-Type again."))
         return
     if app.active_session is None:
         app.active_session, app.window = session, session.host_window
     try:
         pending = UnlockRequest(session, allow_automatic, expires, expected_path)
     except OSError:
-        session.error("The vault path is no longer available. Open it again before using Auto-Type.")
+        session.error(_tr("The vault path is no longer available. Open it again before using Auto-Type."))
         return
     if captured:
         pending.open(target)

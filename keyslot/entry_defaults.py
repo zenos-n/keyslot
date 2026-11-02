@@ -1,4 +1,5 @@
 """New-entry preferences and cancellable use of the saved native generator."""
+from .i18n import mark as _mark, tr as _tr
 import threading
 
 from gi.repository import Adw, Gio, Gtk
@@ -9,12 +10,12 @@ from . import generator_views
 
 def preferences(session, page):
     settings = session.application.startup
-    group = Adw.PreferencesGroup(title="New Entries")
+    group = Adw.PreferencesGroup(title=_tr("New Entries"))
     updating = False
     for field, title, subtitle in (
-        ("inherit_group_icon", "Use the Group Icon", "Use the selected group's icon until you choose another"),
-        ("generate_password_on_create", "Generate a Password Automatically", "Use your saved password or passphrase generator settings")):
-        row = Adw.SwitchRow(title=title, subtitle=subtitle, active=getattr(settings, field))
+        ("inherit_group_icon", _mark("Use the Group Icon"), _mark("Use the selected group's icon until you choose another")),
+        ("generate_password_on_create", _mark("Generate a Password Automatically"), _mark("Use your saved password or passphrase generator settings"))):
+        row = Adw.SwitchRow(title=_tr(title), subtitle=_tr(subtitle), active=getattr(settings, field))
         def changed(row, _property, field=field):
             nonlocal updating
             if updating:
@@ -43,14 +44,14 @@ class Generation:
         self.status = Gtk.Label(xalign=0, wrap=True, visible=False, css_classes=["caption"])
         box.append(self.status)
         menu = Gio.Menu()
-        menu.append("Generator Options…", "entry-generator.options")
+        menu.append(_tr("Generator Options…"), "entry-generator.options")
         actions = Gio.SimpleActionGroup()
         action = Gio.SimpleAction.new("options", None)
         action.connect("activate", lambda *_: self.configure())
         actions.add_action(action)
         dialog.insert_action_group("entry-generator", actions)
         self.button = Adw.SplitButton(icon_name="view-refresh-symbolic", menu_model=menu,
-            tooltip_text="Generate Password", dropdown_tooltip="Generator Options", valign=Gtk.Align.CENTER)
+            tooltip_text=_tr("Generate Password"), dropdown_tooltip="Generator Options", valign=Gtk.Align.CENTER)
         self.button.connect("clicked", lambda *_: self.request())
         secret.add_suffix(self.button)
         secret.connect("changed", self.changed)

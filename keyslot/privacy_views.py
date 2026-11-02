@@ -1,4 +1,5 @@
 """Selected-entry previews: explicit reveal, bounded native values and lock-safe delivery."""
+from .i18n import mark as _mark, tr as _tr, trf as _trf
 import weakref
 from gi.repository import Adw, GLib, Gtk
 from .backend import VaultError
@@ -17,11 +18,11 @@ class Field:
             self.row.add_css_class("property")
             if name == "Password":
                 self.row.add_css_class("monospace")
-        self.toggle = Gtk.ToggleButton(icon_name="view-reveal-symbolic", tooltip_text="Show " + title,
+        self.toggle = Gtk.ToggleButton(icon_name="view-reveal-symbolic", tooltip_text=_trf("Show {field}", field=title),
                                        valign=Gtk.Align.CENTER, active=not hidden, visible=hidden)
         self.toggle.connect("toggled", self._toggled)
         self.row.add_suffix(self.toggle)
-        copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Copy " + title, valign=Gtk.Align.CENTER)
+        copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text=_trf("Copy {field}", field=title), valign=Gtk.Align.CENTER)
         copy.connect("clicked", lambda *_: controller.session.run_job(
             lambda: controller.session.vault.attribute(entry, name), controller.session.copy_entry))
         self.row.add_suffix(copy)
@@ -30,7 +31,7 @@ class Field:
             view = Gtk.TextView(editable=False, cursor_visible=False, wrap_mode=Gtk.WrapMode.WORD_CHAR,
                 left_margin=12, right_margin=12, top_margin=12, bottom_margin=12,
                 monospace=controller.session.application.startup.monospace_notes)
-            view.update_property([Gtk.AccessibleProperty.LABEL], ["Notes"])
+            view.update_property([Gtk.AccessibleProperty.LABEL], [_tr("Notes")])
             self.buffer = view.get_buffer()
             self.buffer.set_enable_undo(False)
             view.connect("copy-clipboard", self._copy_selection, "copy-clipboard")
@@ -44,7 +45,7 @@ class Field:
             self.widget = self.row
         self.mask()
         if self.wanted:
-            self._text("Loading…")
+            self._text(_tr("Loading…"))
         controller.add(self)
 
     def _text(self, value, status=""):
@@ -75,10 +76,10 @@ class Field:
         self.serial += 1
         self.wanted, self.loaded = self.toggle.get_active(), False
         self.toggle.set_icon_name("view-conceal-symbolic" if self.wanted else "view-reveal-symbolic")
-        self.toggle.set_tooltip_text(("Hide " if self.wanted else "Show ") + self.title)
+        self.toggle.set_tooltip_text(_trf("Hide {field}", field=self.title) if self.wanted else _trf("Show {field}", field=self.title))
         self.mask()
         if self.wanted:
-            self._text("Loading…")
+            self._text(_tr("Loading…"))
         self.controller.schedule()
 
     def conceal(self, *, closing=False):
@@ -88,7 +89,7 @@ class Field:
         self.muting = True
         self.toggle.set_active(False)
         self.toggle.set_icon_name("view-reveal-symbolic")
-        self.toggle.set_tooltip_text("Show " + self.title)
+        self.toggle.set_tooltip_text(_trf("Show {field}", field=self.title))
         self.muting = False
         self.mask()
 
@@ -238,11 +239,11 @@ def refresh(app):
 
 def preferences(session, page):
     settings = session.application.startup
-    group = Adw.PreferencesGroup(title="Entry Privacy", description="Hidden fields can be revealed individually. Password previews stay masked by default.")
-    for name, title in (("hide_usernames", "Hide Usernames"), ("hide_notes", "Hide Notes"),
-                        ("hide_password_preview", "Hide Password Previews"), ("monospace_notes", "Use Monospace for Notes"),
-                        ("password_empty_placeholder", "Mask Empty Passwords")):
-        row = Adw.SwitchRow(title=title, active=getattr(settings, name))
+    group = Adw.PreferencesGroup(title=_tr("Entry Privacy"), description=_tr("Hidden fields can be revealed individually. Password previews stay masked by default."))
+    for name, title in (("hide_usernames", _mark("Hide Usernames")), ("hide_notes", _mark("Hide Notes")),
+                        ("hide_password_preview", _mark("Hide Password Previews")), ("monospace_notes", _mark("Use Monospace for Notes")),
+                        ("password_empty_placeholder", _mark("Mask Empty Passwords"))):
+        row = Adw.SwitchRow(title=_tr(title), active=getattr(settings, name))
         changing = [False]
         def changed(row, _property, name=name, changing=changing):
             if changing[0]:

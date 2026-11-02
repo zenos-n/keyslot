@@ -1,4 +1,5 @@
 """Revision-bound native history inspection; protected values are fetched on demand."""
+from .i18n import mark as _mark, ntrf as _ntrf, tr as _tr, trf as _trf
 from pathlib import Path
 
 import gi
@@ -7,9 +8,9 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk, Pango
 from .database_views import _dialog
 
-SECTIONS = {"attributes": "Fields", "properties": "Entry Properties", "autotype": "Auto-Type",
-            "data": "Custom Data", "attachments": "Attachments"}
-NAMES = {"UserName": "Username", "URL": "Website"}
+SECTIONS = {"attributes": _mark('Fields'), "properties": _mark('Entry Properties'), "autotype": _mark('Auto-Type'),
+            "data": _mark('Custom Data'), "attachments": _mark('Attachments')}
+NAMES = {"Title": _mark("Title"), "Password": _mark("Password"), "Notes": _mark("Notes"), "UserName": _mark('Username'), "URL": _mark('Website')}
 
 
 def _modified(item):
@@ -27,7 +28,7 @@ def _confirm(app, dialogs, title, body, label, operation):
     if app.busy:
         return
     alert = Adw.AlertDialog(heading=title, body=body)
-    alert.add_response("cancel", "Cancel")
+    alert.add_response("cancel", _tr("Cancel"))
     alert.add_response("apply", label)
     alert.set_default_response("cancel")
     alert.set_close_response("cancel")
@@ -49,26 +50,26 @@ def show(app, entry, history=None):
         app.run_job(lambda: app.vault.history(entry), lambda items: show(app, entry, items))
         return
     if not history:
-        app.toast("This entry has no saved versions")
+        app.toast(_tr("This entry has no saved versions"))
         return
     revision = history[0]["revision"]
-    dialog, header, box = _dialog("Entry History", height=480)
-    group = Adw.PreferencesGroup(description="Inspect a version to compare its fields and attachments. Restoring keeps the current version in history.")
+    dialog, header, box = _dialog(_tr("Entry History"), height=480)
+    group = Adw.PreferencesGroup(description=_tr("Inspect a version to compare its fields and attachments. Restoring keeps the current version in history."))
     box.append(group)
     for item in reversed(history):
         index = item["index"]
         row = Adw.ActionRow(title=GLib.markup_escape_text(item["title"] or "Untitled"), subtitle=_modified(item), activatable=True)
         row.connect("activated", lambda _row, i=index: compare(app, entry, history, i, dialog))
-        row.add_suffix(_button("view-reveal-symbolic", "Inspect and Compare Version",
+        row.add_suffix(_button("view-reveal-symbolic", _tr("Inspect and Compare Version"),
                                lambda i=index: compare(app, entry, history, i, dialog)))
-        row.add_suffix(_button("edit-undo-symbolic", "Restore This Version", lambda i=index: _confirm(app, [dialog],
+        row.add_suffix(_button("edit-undo-symbolic", _tr("Restore This Version"), lambda i=index: _confirm(app, [dialog],
             "Restore History Version?", "This replaces the entry with the selected version. The current version is kept in history.",
             "Restore", lambda: app.vault.restore_history(entry, i, revision))))
-        row.add_suffix(_button("user-trash-symbolic", "Delete This Version", lambda i=index: _confirm(app, [dialog],
+        row.add_suffix(_button("user-trash-symbolic", _tr("Delete This Version"), lambda i=index: _confirm(app, [dialog],
             "Delete History Version?", "This saved version will be removed from the database.", "Delete",
             lambda: app.vault.remove_history(entry, i, revision))))
         group.add(row)
-    delete_all = Gtk.Button(label="Delete All History…", css_classes=["destructive-action"], halign=Gtk.Align.CENTER)
+    delete_all = Gtk.Button(label=_tr("Delete All History…"), css_classes=["destructive-action"], halign=Gtk.Align.CENTER)
     delete_all.connect("clicked", lambda *_: _confirm(app, [dialog], "Delete All Entry History?",
         "All saved versions of this entry will be removed. The current entry is kept.", "Delete All",
         lambda: app.vault.clear_history(entry, revision)))
@@ -96,12 +97,12 @@ def compare(app, entry, history, index, parent):
     revision = history[0]["revision"]
     versions = [-1] + [item["index"] for item in reversed(history)]
     labels = ["Current Version"] + [f"Version {item['index'] + 1} · {_modified(item)}" for item in reversed(history)]
-    dialog, header, box = _dialog("Compare Entry Versions", width=760, height=700)
+    dialog, header, box = _dialog(_tr("Compare Entry Versions"), width=760, height=700)
     controls = Adw.PreferencesGroup()
-    left = Adw.ComboRow(title="Selected Version", model=Gtk.StringList.new(labels))
-    right = Adw.ComboRow(title="Compare With", model=Gtk.StringList.new(labels))
+    left = Adw.ComboRow(title=_tr("Selected Version"), model=Gtk.StringList.new(labels))
+    right = Adw.ComboRow(title=_tr("Compare With"), model=Gtk.StringList.new(labels))
     left.set_selected(versions.index(index))
-    only_changes = Adw.SwitchRow(title="Only Show Changes", active=True)
+    only_changes = Adw.SwitchRow(title=_tr("Only Show Changes"), active=True)
     for widget in (left, right, only_changes):
         controls.add(widget)
     box.append(controls)
@@ -109,7 +110,7 @@ def compare(app, entry, history, index, parent):
     box.append(summary)
     content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
     box.append(content)
-    restore = Gtk.Button(label="Restore Selected Version…", css_classes=["suggested-action"], valign=Gtk.Align.CENTER)
+    restore = Gtk.Button(label=_tr("Restore Selected Version…"), css_classes=["suggested-action"], valign=Gtk.Align.CENTER)
     header.pack_end(restore)
     state = {"closed": False, "request": 0, "data": None, "display": 0, "reload": 0}
     def clear_values():
@@ -141,39 +142,39 @@ def compare(app, entry, history, index, parent):
             if state["closed"] or app.busy:
                 return
             app.run_job(lambda: app.vault.export_history_attachment(entry, version, revision, key, path),
-                        lambda _value: app.toast("Attachment saved"))
+                        lambda _value: app.toast(_tr("Attachment saved")))
         app.choose_file(save, save=True, name=Path(key).name)
     def cell(pair, side, cell_data, section, key, version, request, field, protection_changed):
         column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True)
-        column.append(Gtk.Label(label="Selected Version" if side == "left" else "Comparison Version", xalign=0,
+        column.append(Gtk.Label(label=_tr("Selected Version") if side == "left" else _tr("Comparison Version"), xalign=0,
                                 css_classes=["caption", "dim-label"]))
         value = Gtk.Label(xalign=0, yalign=0, wrap=True, selectable=True)
         value.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
         column.append(value)
         if protection_changed and cell_data["present"]:
-            column.append(Gtk.Label(label="Field Protection Enabled" if cell_data.get("storage_protected") else "Field Protection Disabled",
+            column.append(Gtk.Label(label=_tr("Field Protection Enabled") if cell_data.get("storage_protected") else _tr("Field Protection Disabled"),
                                     xalign=0, css_classes=["caption", "dim-label"]))
         def reset():
-            value.set_label("Hidden" if cell_data["protected"] else cell_data.get("value", "") or "Empty")
+            value.set_label(_tr("Hidden") if cell_data["protected"] else cell_data.get("value", "") or _tr("Empty"))
         if not cell_data["present"]:
-            value.set_label("Not Present")
+            value.set_label(_tr("Not Present"))
         else:
             reset()
             if cell_data["protected"]:
                 actions = Gtk.Box(spacing=6)
                 shown = {"value": False, "request": 0}
-                reveal = Gtk.Button(label="Reveal", halign=Gtk.Align.START)
+                reveal = Gtk.Button(label=_tr("Reveal"), halign=Gtk.Align.START)
                 def conceal(*_):
                     if not field.get_expanded():
                         shown["request"] += 1
                         shown["value"] = False
-                        reveal.set_label("Reveal")
+                        reveal.set_label(_tr("Reveal"))
                         reset()
                 field.connect("notify::expanded", conceal)
                 def clicked(*_):
                     if shown["value"]:
                         shown["value"] = False
-                        reveal.set_label("Reveal")
+                        reveal.set_label(_tr("Reveal"))
                         reset()
                         return
                     if app.busy or state["closed"]:
@@ -184,14 +185,14 @@ def compare(app, entry, history, index, parent):
                         if state["closed"] or request != state["display"] or secret_request != shown["request"]:
                             return
                         shown["value"] = True
-                        value.set_label(text or "Empty")
-                        reveal.set_label("Hide")
+                        value.set_label(text or _tr("Empty"))
+                        reveal.set_label(_tr("Hide"))
                     app.run_job(lambda: app.vault.history_value(entry, version, revision, section, key), revealed)
                 reveal.connect("clicked", clicked)
                 actions.append(reveal)
                 column.append(actions)
             if section == "attachments":
-                save = _button("document-save-symbolic", "Save This Version’s Attachment", lambda: download(version, key))
+                save = _button("document-save-symbolic", _tr("Save This Version’s Attachment"), lambda: download(version, key))
                 column.append(save)
         pair.append(column)
     def render():
@@ -199,19 +200,19 @@ def compare(app, entry, history, index, parent):
         data = state["data"]
         if state["closed"] or data is None:
             return
-        summary.set_label(f"{data['changed']} fields differ. Protected values stay hidden until revealed.")
+        summary.set_label(_ntrf('{count} field differs. Protected values stay hidden until revealed.', '{count} fields differ. Protected values stay hidden until revealed.', data['changed']))
         for section in data["sections"]:
             rows = [row for row in section["rows"] if row["changed"] or not only_changes.get_active()]
             if not rows:
                 continue
-            group = Adw.PreferencesGroup(title=SECTIONS[section["section"]])
+            group = Adw.PreferencesGroup(title=_tr(SECTIONS[section["section"]]))
             for row in rows:
-                label = "Changed" if row["changed"] else "Unchanged"
+                label = _mark('Changed') if row["changed"] else _mark('Unchanged')
                 if not row["left"]["present"]:
-                    label = "Only in Comparison Version"
+                    label = _mark('Only in Comparison Version')
                 elif not row["right"]["present"]:
-                    label = "Only in Selected Version"
-                field = Adw.ExpanderRow(title=GLib.markup_escape_text(NAMES.get(row["key"], row["key"])), subtitle=label)
+                    label = _mark('Only in Selected Version')
+                field = Adw.ExpanderRow(title=GLib.markup_escape_text(_tr(NAMES[row["key"]]) if row["key"] in NAMES else row["key"]), subtitle=_tr(label))
                 pair = Gtk.Box(spacing=24, homogeneous=True, margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
                 for side, chooser in (("left", left), ("right", right)):
                     cell(pair, side, row[side], section["section"], row["key"], selected(chooser), state["display"], field,
@@ -220,7 +221,7 @@ def compare(app, entry, history, index, parent):
                 group.add(field)
             content.append(group)
         if not content.get_first_child():
-            content.append(Gtk.Label(label="No differences between these versions", wrap=True, css_classes=["dim-label"]))
+            content.append(Gtk.Label(label=_tr("No differences between these versions"), wrap=True, css_classes=["dim-label"]))
     def load(*_):
         if state["closed"]:
             return
@@ -245,7 +246,7 @@ def compare(app, entry, history, index, parent):
         request = state["request"]
         state["data"] = None
         clear_values()
-        summary.set_label("Loading versions…")
+        summary.set_label(_tr("Loading versions…"))
         restore.set_sensitive(selected(left) != -1)
         def done(data):
             if state["closed"] or request != state["request"]:

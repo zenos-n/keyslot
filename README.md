@@ -2,6 +2,8 @@
 
 Current finish list and exact candidate: [Replacement checklist](docs/replacement-checklist.md).
 GTK language work is limited to English, Polish and Romanian for now.
+The [gettext catalogs](docs/localization.md) are in progress; untranslated
+messages fall back to English.
 
 Browser password-access approvals can use a compact GNOME Shell popup with
 companion0.4.0 enabled. Fully Trust This Browser remembers one paired connection

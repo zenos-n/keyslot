@@ -1,4 +1,5 @@
 """Explicit saves, closing decisions and encrypted interrupted-save recovery."""
+from .i18n import tr as _tr, trf as _trf
 import os
 from pathlib import Path
 
@@ -10,7 +11,7 @@ def before_close(session, done, cancelled=lambda: None):
         done()
         return
     if session.busy:
-        session.toast("Wait for the current operation to finish")
+        session.toast(_tr("Wait for the current operation to finish"))
         cancelled()
         return
     def save():
@@ -19,11 +20,11 @@ def before_close(session, done, cancelled=lambda: None):
     if session.application.startup.auto_save_on_exit:
         save()
         return
-    dialog = Adw.AlertDialog(heading="Save Changes?",
-        body="This vault has unsaved changes. Save them before closing or locking?")
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("discard", "Discard")
-    dialog.add_response("save", "Save")
+    dialog = Adw.AlertDialog(heading=_tr("Save Changes?"),
+        body=_tr("This vault has unsaved changes. Save them before closing or locking?"))
+    dialog.add_response("cancel", _tr("Cancel"))
+    dialog.add_response("discard", _tr("Discard"))
+    dialog.add_response("save", _tr("Save"))
     dialog.set_default_response("save")
     dialog.set_close_response("cancel")
     dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -60,13 +61,13 @@ def offer_recovery(session, path, opened):
             opened()
             return
         from .application import Gtk, GLib, margins, scroll, button
-        dialog = Adw.Dialog(title="Recover Unsaved Changes", content_width=480)
+        dialog = Adw.Dialog(title=_tr("Recover Unsaved Changes"), content_width=480)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
         box.append(Gtk.Label(label=Path(path).name, css_classes=["title-2"], wrap=True))
-        box.append(Gtk.Label(label="Encrypted copies contain changes left after an interrupted or deferred save. Open a working copy to review it; the recovery original stays intact.", wrap=True))
-        group = Adw.PreferencesGroup(title="Recovery Copies")
+        box.append(Gtk.Label(label=_tr("Encrypted copies contain changes left after an interrupted or deferred save. Open a working copy to review it; the recovery original stays intact."), wrap=True))
+        group = Adw.PreferencesGroup(title=_tr("Recovery Copies"))
         def recover(item):
             dialog.close()
             def cloned(copy):
@@ -76,16 +77,16 @@ def offer_recovery(session, path, opened):
             session.run_job(lambda: session.vault.recovery_action("clone", item["manifest"], Path(path).resolve()), cloned)
         for index, item in enumerate(records, 1):
             date = GLib.DateTime.new_from_unix_local(int(item["modified"]) // 1000)
-            row = Adw.ActionRow(title=date.format("%c") if date else f"Recovery Copy {index}", subtitle="Open an encrypted working copy")
-            open_button = button("document-open-symbolic", "Open Recovery Copy", lambda item=item: recover(item))
+            row = Adw.ActionRow(title=date.format("%c") if date else _trf('Recovery Copy {arg0}', arg0=index), subtitle=_tr("Open an encrypted working copy"))
+            open_button = button("document-open-symbolic", _tr('Open Recovery Copy'), lambda item=item: recover(item))
             row.add_suffix(open_button)
             row.set_activatable_widget(open_button)
             group.add(row)
         box.append(group)
-        saved = Gtk.Button(label="Open Saved Vault")
+        saved = Gtk.Button(label=_tr("Open Saved Vault"))
         saved.connect("clicked", lambda *_: (dialog.close(), opened()))
         box.append(saved)
-        discard = Gtk.Button(label="Discard Unsaved Copies…", css_classes=["destructive-action"])
+        discard = Gtk.Button(label=_tr("Discard Unsaved Copies…"), css_classes=["destructive-action"])
         discard.connect("clicked", lambda *_: (dialog.close(), confirm_discard(session, path, records, opened)))
         box.append(discard)
         toolbar.set_content(scroll(box, natural=True))
@@ -96,10 +97,10 @@ def offer_recovery(session, path, opened):
 
 
 def confirm_discard(session, path, records, opened):
-    dialog = Adw.AlertDialog(heading="Discard Unsaved Copies?",
-        body="This permanently removes the unsaved recovery copies for this vault. The saved vault is unchanged.")
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("discard", "Discard")
+    dialog = Adw.AlertDialog(heading=_tr("Discard Unsaved Copies?"),
+        body=_tr("This permanently removes the unsaved recovery copies for this vault. The saved vault is unchanged."))
+    dialog.add_response("cancel", _tr("Cancel"))
+    dialog.add_response("discard", _tr("Discard"))
     dialog.set_close_response("cancel")
     dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
     def discard():
@@ -126,17 +127,17 @@ def show_recoveries(application):
     if not session.active:
         application.select_session(session)
     if session.busy or session.vault.finishing or session.dialogs or session.file_requests:
-        session.toast("Finish the current operation or dialog first")
+        session.toast(_tr("Finish the current operation or dialog first"))
         return
     def found(records):
         if not records:
-            session.toast("No unsaved recovery copies")
+            session.toast(_tr("No unsaved recovery copies"))
             return
-        dialog = Adw.Dialog(title="Recover Unsaved Changes", content_width=540)
+        dialog = Adw.Dialog(title=_tr("Recover Unsaved Changes"), content_width=540)
         toolbar = Adw.ToolbarView()
         toolbar.add_top_bar(Adw.HeaderBar())
         box = margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), 24)
-        box.append(Gtk.Label(label="Open an independent encrypted working copy. The recovery original stays intact until you save the working copy to a normal location.", wrap=True))
+        box.append(Gtk.Label(label=_tr("Open an independent encrypted working copy. The recovery original stays intact until you save the working copy to a normal location."), wrap=True))
         group = Adw.PreferencesGroup()
         def recover(item):
             dialog.close()
@@ -152,8 +153,8 @@ def show_recoveries(application):
             date = GLib.DateTime.new_from_unix_local(int(item["modified"]) // 1000)
             subtitle = item["source"] + ("\n" + date.format("%c") if date else "")
             row = Adw.ActionRow(title=Path(item["source"]).name, subtitle=subtitle)
-            row.add_suffix(button("document-open-symbolic", "Open Recovery Copy", lambda item=item: recover(item)))
-            row.add_suffix(button("user-trash-symbolic", "Discard Recovery Copy", lambda item=item: discard(item)))
+            row.add_suffix(button("document-open-symbolic", _tr('Open Recovery Copy'), lambda item=item: recover(item)))
+            row.add_suffix(button("user-trash-symbolic", _tr('Discard Recovery Copy'), lambda item=item: discard(item)))
             group.add(row)
         box.append(group)
         toolbar.set_content(scroll(box, natural=True))
@@ -167,7 +168,7 @@ def save_as(session, destination=None):
         return
     if destination is None:
         if session.dialogs or session.file_requests:
-            session.toast("Finish the current dialog before saving the vault")
+            session.toast(_tr("Finish the current dialog before saving the vault"))
             return
         session.choose_file(lambda path: save_as(session, path), save=True,
                             name=session.vault.path.name, kdbx=True)
@@ -178,7 +179,7 @@ def save_as(session, destination=None):
         def save():
             others = [item for item in session.application.sessions if item is not session and item.path == target]
             if any(item.vault.unlocked or item.busy or item.vault.finishing or item.dialogs or item.file_requests for item in others):
-                session.error("The destination is open in another window. Lock it and finish its current operation before replacing it.")
+                session.error(_tr("The destination is open in another window. Lock it and finish its current operation before replacing it."))
                 return
             for item in others:
                 session.application.close_session(item, confirmed=True)
@@ -203,10 +204,10 @@ def save_as(session, destination=None):
         if not info["exists"]:
             save()
             return
-        dialog = Adw.AlertDialog(heading="Replace Existing Vault?",
-            body=f"Replace {target} with this vault’s current contents? The existing file’s version will be kept as an encrypted backup.")
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("replace", "Replace")
+        dialog = Adw.AlertDialog(heading=_tr("Replace Existing Vault?"),
+            body=_trf('Replace {arg0} with this vault’s current contents? The existing file’s version will be kept as an encrypted backup.', arg0=target))
+        dialog.add_response("cancel", _tr("Cancel"))
+        dialog.add_response("replace", _tr("Replace"))
         dialog.set_close_response("cancel")
         dialog.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.connect("response", lambda _d, response: save() if response == "replace" else None)

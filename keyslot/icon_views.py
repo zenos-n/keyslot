@@ -1,4 +1,5 @@
 """Reviewed icon-library cleanup and cancellable, previewed website icon downloads."""
+from .i18n import ntrf as _ntrf, tr as _tr, trf as _trf
 import base64
 from concurrent.futures import ThreadPoolExecutor
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
@@ -27,16 +28,16 @@ def cleanup(session, keep, done):
         token = data["token"]
         if not data["count"]:
             _release(session, token)
-            session.toast("No unused icons")
+            session.toast(_tr("No unused icons"))
             return
         body = f"Remove {data['count']} icons unused by entries, groups, saved versions and the recycle bin? Icons selected in open editors are kept."
         if data["names"]:
             body += "\n\n" + "\n".join(name or "Custom Icon" for name in data["names"])
         if not session.vault.auto_save:
             body += "\n\nThese changes remain unsaved until you save the vault."
-        alert = Adw.AlertDialog(heading="Remove Unused Icons?", body=body, body_use_markup=False)
-        alert.add_response("cancel", "Cancel")
-        alert.add_response("remove", "Remove")
+        alert = Adw.AlertDialog(heading=_tr("Remove Unused Icons?"), body=body, body_use_markup=False)
+        alert.add_response("cancel", _tr("Cancel"))
+        alert.add_response("remove", _tr("Remove"))
         alert.set_default_response("cancel")
         alert.set_close_response("cancel")
         alert.set_response_appearance("remove", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -123,15 +124,15 @@ class Favicon:
         self.session, self.callback = session, callback
         self.token, self.serial, self.closed, self.phase = "", 0, False, "idle"
         self.worker = IconWorker(session)
-        self.dialog, header, box = _dialog("Download Website Icon", width=500, height=460)
-        self.options = Adw.PreferencesGroup(description="Download an icon without browser cookies or saved login credentials.")
-        self.website = Adw.EntryRow(title="Website", text=website)
+        self.dialog, header, box = _dialog(_tr("Download Website Icon"), width=500, height=460)
+        self.options = Adw.PreferencesGroup(description=_tr("Download an icon without browser cookies or saved login credentials."))
+        self.website = Adw.EntryRow(title=_tr("Website"), text=website)
         self.website.connect("entry-activated", lambda *_: self.prepare())
-        self.path = Adw.SwitchRow(title="Use Website Path", subtitle="Also try favicon.ico beside this URL's path")
-        self.fallback = Adw.SwitchRow(title="Use DuckDuckGo Icon Service", active=settings["fallback"],
-                                      subtitle="Also send the website's domain to this service")
+        self.path = Adw.SwitchRow(title=_tr("Use Website Path"), subtitle=_tr("Also try favicon.ico beside this URL's path"))
+        self.fallback = Adw.SwitchRow(title=_tr("Use DuckDuckGo Icon Service"), active=settings["fallback"],
+                                      subtitle=_tr("Also send the website's domain to this service"))
         self.timeout = Adw.SpinRow.new_with_range(1, 300, 1)
-        self.timeout.set_title("Timeout (Seconds)")
+        self.timeout.set_title(_tr("Timeout (Seconds)"))
         self.timeout.set_value(settings["timeout"])
         for row in (self.website, self.path, self.fallback, self.timeout):
             self.options.add(row)
@@ -140,10 +141,10 @@ class Favicon:
         box.append(self.preview)
         self.status = Gtk.Label(xalign=0, wrap=True)
         box.append(self.status)
-        self.stop_button = Gtk.Button(label="Cancel Download", visible=False, halign=Gtk.Align.CENTER)
+        self.stop_button = Gtk.Button(label=_tr("Cancel Download"), visible=False, halign=Gtk.Align.CENTER)
         self.stop_button.connect("clicked", lambda *_: self.stop())
         box.append(self.stop_button)
-        self.action = Gtk.Button(label="Review Download…", css_classes=["suggested-action"], valign=Gtk.Align.CENTER)
+        self.action = Gtk.Button(label=_tr("Review Download…"), css_classes=["suggested-action"], valign=Gtk.Align.CENTER)
         self.action.connect("clicked", lambda *_: self.finish() if self.phase == "preview" else self.prepare())
         header.pack_end(self.action)
         self.dialog._clear_sensitive_fields = self.close
@@ -163,9 +164,9 @@ class Favicon:
         self.phase = phase
         self.options.set_sensitive(phase == "idle")
         self.action.set_sensitive(phase in ("idle", "preview"))
-        self.action.set_label("Use Icon" if phase == "preview" else "Review Download…")
+        self.action.set_label(_tr("Use Icon") if phase == "preview" else _tr("Review Download…"))
         self.stop_button.set_visible(phase in ("preparing", "review", "downloading", "preview"))
-        self.stop_button.set_label("Choose Another Website" if phase == "preview" else "Cancel Download")
+        self.stop_button.set_label(_tr("Choose Another Website") if phase == "preview" else _tr("Cancel Download"))
 
     def prepare(self):
         if self.closed or self.session.busy or self.phase != "idle":
@@ -176,7 +177,7 @@ class Favicon:
         self.preview.clear()
         self.preview.set_visible(False)
         self.state("preparing")
-        self.status.set_label("Preparing download review…")
+        self.status.set_label(_tr("Preparing download review…"))
         url, path, fallback, timeout = self.website.get_text(), self.path.get_active(), self.fallback.get_active(), int(self.timeout.get_value())
         def ready(data):
             if self.closed or serial != self.serial:
@@ -188,9 +189,9 @@ class Favicon:
                     "the entered query string and fragment are removed. The sites receive your IP address.\n\n" + "\n".join(data["urls"]))
             if data["insecure"]:
                 body += "\n\nThe selected HTTP website is unencrypted."
-            alert = Adw.AlertDialog(heading="Download Website Icon?", body=body, body_use_markup=False)
-            alert.add_response("cancel", "Cancel")
-            alert.add_response("download", "Download")
+            alert = Adw.AlertDialog(heading=_tr("Download Website Icon?"), body=body, body_use_markup=False)
+            alert.add_response("cancel", _tr("Cancel"))
+            alert.add_response("download", _tr("Download"))
             alert.set_default_response("cancel")
             alert.set_close_response("cancel")
             alert.set_response_appearance("download", Adw.ResponseAppearance.SUGGESTED)
@@ -241,16 +242,16 @@ class Favicon:
                     return
                 self.preview.set_visible(True)
                 self.state("preview")
-                self.status.set_label("Preview the icon, then choose Use Icon to add it to the vault. The entry or group changes when you save its editor.")
+                self.status.set_label(_tr("Preview the icon, then choose Use Icon to add it to the vault. The entry or group changes when you save its editor."))
             else:
-                self.status.set_label(f"Trying website icons… {data['attempts']} requests attempted.")
+                self.status.set_label(_ntrf('Trying website icons… {count} request attempted.', 'Trying website icons… {count} requests attempted.', data['attempts']))
                 GLib.idle_add(self.next, serial)
         def failed(message):
             if not self.closed and serial == self.serial:
                 self.release()
                 self.state("idle")
                 self.status.set_label(message)
-        self.status.set_label("Downloading website icon…")
+        self.status.set_label(_tr("Downloading website icon…"))
         self.worker.step(token, ready, failed)
         return False
 
@@ -284,7 +285,7 @@ class Favicon:
         self.state("idle")
         self.preview.clear()
         self.preview.set_visible(False)
-        self.status.set_label("Download cancelled.")
+        self.status.set_label(_tr("Download cancelled."))
 
     def close(self, *_):
         if self.closed:
