@@ -74,7 +74,7 @@ races, multiple vaults, duplicate names, stale/busy/closed choices, repeated
 vault/provider switches with the original deadline, old-provider callbacks,
 Copy/lock clearing and relock on/off. Saved sorting and portal permission/connection
 settings are implemented; their manual acceptance, protected/reference ordering,
-[portal Copy](autotype-clipboard.md) manual acceptance, global shortcut preferences, the native2.8 migration's manual acceptance,
+[portal Copy](autotype-clipboard.md) manual acceptance, [desktop shortcut recorder](autotype-shortcuts.md) manual acceptance, the native2.8 migration's manual acceptance,
 platform/accessibility acceptance and broader parity remain open. No production
 readiness or complete replacement claim is established.
 

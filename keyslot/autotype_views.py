@@ -603,10 +603,41 @@ def _execute(session, target, data, picks, choice, flow):
         flow.cancel()
 
 
+def open_shortcut_preferences(session, control):
+    if session.jobs.closed:
+        return
+    control.set_sensitive(False)
+    def finished(connection, result):
+        problem = False
+        try:
+            connection.call_finish(result)
+        except GLib.Error:
+            problem = True
+        if session.jobs.closed or control.get_root() is None:
+            return
+        control.set_sensitive(True)
+        if problem:
+            session.error("Could not open Keyslot companion preferences. Close other extension preferences and check that the updated companion is installed.")
+    try:
+        session.application.connection.call("org.gnome.Shell.Extensions", "/org/gnome/Shell/Extensions",
+            "org.gnome.Shell.Extensions", "OpenExtensionPrefs",
+            GLib.Variant("(ssa{sv})", ("keyslot@neg-zero", "", {})), GLib.VariantType.new("()"),
+            Gio.DBusCallFlags.NONE, 5000, None, finished)
+    except GLib.Error:
+        control.set_sensitive(True)
+        session.error("Could not reach GNOME extension preferences. Check that the Keyslot companion is installed.")
+
+
 def add_preferences(session, page):
     config = session.application.startup
     group = Adw.PreferencesGroup(title="Auto-Type",
-        description="GNOME companion shortcut: Ctrl+Alt+K. Wayland asks the desktop for keyboard permission.")
+        description="The GNOME companion defaults to Ctrl+Alt+K. Wayland asks the desktop for keyboard permission.")
+    shortcut = Adw.ActionRow(title="Desktop Auto-Type Shortcuts…",
+        subtitle="Configure the GNOME companion’s shortcuts")
+    shortcut.add_suffix(Gtk.Image(icon_name="go-next-symbolic", valign=Gtk.Align.CENTER))
+    shortcut.set_activatable(True)
+    shortcut.connect("activated", lambda row: open_shortcut_preferences(session, row))
+    group.add(shortcut)
     values = config.autotype
     widgets = {}
     for key, title in (("match_title", "Match Entry Titles"), ("match_url", "Match Websites"),

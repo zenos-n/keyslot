@@ -83,3 +83,5 @@ sort controls and [portal permission lifetimes](autotype-permissions.md) are imp
 protected/reference display collation, [portal Copy](autotype-clipboard.md) manual acceptance and wider
 platform/accessibility acceptance remain separate work. The core now uses [2.8/Qt6](../engine/Native28.md); GTK behavior and production
 readiness remain unproven.
+
+Desktop shortcut aliases/disable/reset are now editable in the [GNOME companion](autotype-shortcuts.md); recorder, focus and platform acceptance remains manual.

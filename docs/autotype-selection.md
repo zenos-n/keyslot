@@ -57,3 +57,5 @@ acceptance remains for0/default/max settings, old/private/INI profiles, direct
 versus default/custom sequences, search/Enter timing and keyboard accessibility,
 multiple vaults, success/failure/cancel/lock/reload/close/expiry and X11/Wayland
 destination/focus behavior. This does not establish production readiness.
+
+Desktop shortcut aliases/disable/reset are now editable in the [GNOME companion](autotype-shortcuts.md); recorder, focus and platform acceptance remains manual.

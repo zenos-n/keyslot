@@ -831,7 +831,10 @@ applies the staged changes to all windows. The shortcuts help follows the active
 bindings. Common entry actions now include edit, duplicate, delete, username,
 password, website and TOTP copying. Ctrl+U copies a website; Ctrl+Shift+U opens it.
 Entry actions yield to text editing and open dialogs. The desktop auto-type
-shortcut remains in the auto-type preferences.
+shortcut is configured in the separate GNOME companion. Open Desktop Auto-Type
+Shortcuts from Auto-Type preferences or the Keyboard Shortcuts editor to add,
+change, remove, disable or reset bindings. See [Desktop shortcuts](docs/autotype-shortcuts.md)
+for installation and manual acceptance limits.
 
 With a KeePassXC configuration profile, shared actions use its `Shortcuts` keys;
 Keyslot-only actions use their own namespace. Reset removes only the selected

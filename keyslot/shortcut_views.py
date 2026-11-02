@@ -82,6 +82,10 @@ def show(session, snapshot=None):
         return
     dialog, header, box = _dialog("Keyboard Shortcuts", width=560, height=640)
     box.append(Gtk.Label(label="Choose an action to change its shortcut. Changes apply when you save. Desktop auto-type shortcuts are configured separately.", wrap=True, xalign=0))
+    desktop = Gtk.Button(label="Desktop Auto-Type Shortcuts…", halign=Gtk.Align.START)
+    from .autotype_views import open_shortcut_preferences
+    desktop.connect("clicked", lambda button: open_shortcut_preferences(session, button))
+    box.append(desktop)
     draft = dict(snapshot["values"])
     changed = set()
     rows = {}

@@ -60,7 +60,7 @@ locked vault windows without changing the destination or restarting expiry.
 Saved [sort controls](autotype-search.md) and [portal permission lifetimes](autotype-permissions.md)
 are implemented. Remaining Auto-Type work includes protected/reference display
 ordering, [portal Copy](autotype-clipboard.md) manual acceptance,
-global shortcut preferences and broader backend/accessibility acceptance.
+[desktop shortcut recorder](autotype-shortcuts.md) manual acceptance and broader backend/accessibility acceptance.
 Runtime/Python compilation only; no tests/harnesses or automated GTK, typing,
 keyboard, portal, settings or vault behavior runs were added or performed.
 Manual acceptance must cover the policy table, sender fallback, multiple vaults,
