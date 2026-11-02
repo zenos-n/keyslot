@@ -847,7 +847,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy", "autotype-sort"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
         if (method == "backup.policy") {
             const bool enabled = boolean(args, "enabled");
@@ -1521,6 +1521,7 @@ public:
                 if (method == "autotype.targets") return autotype.targets();
                 if (method == "autotype.matches") return autotype.matches(db, args);
                 if (method == "autotype.search") return autotype.search(db, args);
+                if (method == "autotype.sort") return autotype.sort(args);
                 if (method == "autotype.finish") { unchanged(); return autotype.finish(db, args, hash); }
                 if (method == "autotype.group.settings") return autotype.settings(group(text(args, "group")));
                 if (method == "autotype.group.save") {

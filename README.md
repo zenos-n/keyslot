@@ -392,9 +392,9 @@ manual acceptance requirements.
 
 The Auto-Type selector can sort by Group, Title, Username or Sequence in either
 direction. Its header menu remembers the stock KeePassXC sort keys, preserves
-selection while reordering, and leaves protected fields masked. See
-[Chooser Search](docs/autotype-search.md) for locale/reference differences and
-manual acceptance limits.
+selection while reordering, and uses the same Qt locale-aware, case-insensitive
+proxy as the stock chooser. See [Chooser Search](docs/autotype-search.md) for
+resolved/protected display behavior and manual acceptance limits.
 
 Auto-Type can remember its last successful entry/sequence selection for0–60
 seconds, with keyboard selection and Continue/Enter support. The setting uses

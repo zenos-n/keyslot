@@ -661,3 +661,19 @@ cache invalidation on identity change. See [KeeShare Identity](keeshare-identity
 The fixed4a65093 manual candidate is unchanged. Native/runtime compilation only;
 no tests or identity/keygen/GTK/share/vault behavior checks. Manual acceptance
 remains, including concurrent writers/cancellation/profile/permission failures.
+
+R03 native Auto-Type ordering replaces GTK/GLib casefolded collation with the
+stock QSortFilterProxyModel's locale-aware/case-insensitive configuration over
+raw native-resolved display keys. A private capability-gated request sorts all
+vault results together and returns only source indices, validated as an exact
+permutation before rendering. No new field read, UUID binding, typing approval
+or execution policy. Column/order join async freshness guards; sort changes clear
+stale actions and restore the selected owner/entry/sequence when eligible, while
+search/scope changes drop it. Pending selection clears before close/lock. No
+extra tie-breaker, per-vault concatenation or cached GTK sort strings. Equal-key
+ordering follows the Qt proxy over captured source order; exact upstream session
+traversal remains unproven. This supersedes the earlier GLib-sort descriptions
+above. Native/runtime/Python compilation and static source/artifact review only;
+no tests/harnesses or automated locale/search/GTK/vault/input behavior runs.
+Manual locale/case/accent/numeric-looking/empty/equal-key/multivault/order/selection/
+Enter/Copy/failure/queue/lock/accessibility acceptance remains. Full goal incomplete.

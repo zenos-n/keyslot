@@ -12,6 +12,8 @@
 #include <QJsonArray>
 #include <QMap>
 #include <QRegularExpression>
+#include <QSortFilterProxyModel>
+#include <QStringListModel>
 #include <QThread>
 #include <unistd.h>
 #include "autotype/xcb/AutoTypeXCB.h"
@@ -206,6 +208,27 @@ QJsonObject KeyslotAutoType::search(const QSharedPointer<Database>& db, const QJ
             {"group", entry->group()->name()}, {"title", displayTitle}, {"username", displayUsername}});
     }
     return {{"matches", result}};
+}
+QJsonObject KeyslotAutoType::sort(const QJsonObject& args) const {
+    const auto order = number(args.value("order"), 0, 1);
+    if (!args.value("values").isArray())
+        reject("invalid_request", "An auto-type text setting is invalid.");
+    QStringList values;
+    for (const auto& value : args.value("values").toArray()) {
+        if (!value.isString()) reject("invalid_request", "An auto-type text setting is invalid.");
+        values.append(value.toString());
+    }
+    QStringListModel model(values);
+    QSortFilterProxyModel proxy;
+    proxy.setSourceModel(&model);
+    proxy.setDynamicSortFilter(true);
+    proxy.setSortLocaleAware(true);
+    proxy.setSortCaseSensitivity(Qt::CaseInsensitive);
+    proxy.sort(0, static_cast<Qt::SortOrder>(order));
+    QJsonArray indices;
+    for (int row = 0; row < proxy.rowCount(); ++row)
+        indices.append(proxy.mapToSource(proxy.index(row, 0)).row());
+    return {{"indices", indices}};
 }
 QJsonObject KeyslotAutoType::prepare(const QSharedPointer<Database>& db, Entry* entry,
                                     const QJsonObject& args, const QByteArray& fingerprint) {

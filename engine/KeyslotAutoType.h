@@ -36,6 +36,7 @@ public:
     QJsonObject targets();
     QJsonObject matches(const QSharedPointer<Database>& db, const QJsonObject& args);
     QJsonObject search(const QSharedPointer<Database>& db, const QJsonObject& args);
+    QJsonObject sort(const QJsonObject& args) const;
     QJsonObject prepare(const QSharedPointer<Database>& db, Entry* entry, const QJsonObject& args,
                         const QByteArray& fingerprint);
     QJsonObject finish(const QSharedPointer<Database>& db, const QJsonObject& args, const QByteArray& fingerprint);

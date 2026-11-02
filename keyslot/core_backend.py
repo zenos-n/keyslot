@@ -697,7 +697,7 @@ class Vault:
 
     def autotype_search(self, query, title, *, all_entries=False, match_title=True, match_url=True, hide_expired=False):
         with self._mutex:
-            if not {"autotype-search", "autotype-display"} <= self.capabilities:
+            if not {"autotype-search", "autotype-display", "autotype-sort"} <= self.capabilities:
                 raise VaultError("Update the native engine before displaying Auto-Type search results.")
             data = self._rpc("autotype.search", query=query, title=title, all=all_entries,
                              match_title=match_title, match_url=match_url, hide_expired=hide_expired)
@@ -706,6 +706,22 @@ class Vault:
                            or any(not isinstance(value, str) for value in item.values()) for item in data["matches"])):
                 raise VaultError("The engine returned invalid Auto-Type search results.")
             return data["matches"]
+
+    def autotype_sort(self, values, order=0):
+        with self._mutex:
+            if "autotype-sort" not in self.capabilities:
+                raise VaultError("Update the native engine before displaying Auto-Type search results.")
+            if (not isinstance(values, list) or any(not isinstance(value, str) for value in values)
+                    or type(order) is not int or order not in (0, 1)):
+                raise VaultError("Choose supported Auto-Type sorting and keyboard permission settings.")
+            data = self._rpc("autotype.sort", values=values, order=order)
+            if not isinstance(data, dict) or set(data) != {"indices"} or not isinstance(data["indices"], list):
+                raise VaultError("The engine returned invalid Auto-Type search results.")
+            indices = data["indices"]
+            if (len(indices) != len(values) or any(type(index) is not int or not 0 <= index < len(values) for index in indices)
+                    or len(set(indices)) != len(values)):
+                raise VaultError("The engine returned invalid Auto-Type search results.")
+            return indices
 
     def autotype_prepare(self, entry, target, sequence="", delay=25, start_delay=500, *, field=None):
         with self._mutex:

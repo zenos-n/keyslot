@@ -214,7 +214,8 @@ def _prepare(session, entry, target, sequence, flow, *, confirm, field=None):
 def _choose_match(session, target, matches, contexts, *, flow):
     dialog, header, box = _dialog(_tr("Auto-Type"), height=520)
     current = _guarded_lifetime(session, dialog, lambda: clear_rows())
-    state = {"rendered": None, "pending": False, "serial": 0, "timer": 0, "activate": None, "copying": False}
+    state = {"rendered": None, "pending": False, "serial": 0, "timer": 0, "activate": None, "copying": False, "selection": None}
+    sort_generation = session.vault.generation
     destination = Adw.PreferencesGroup(title=_tr("Destination"))
     destination.add(Adw.ActionRow(title=target["title"], use_markup=False, title_lines=3))
     box.append(destination)
@@ -240,10 +241,6 @@ def _choose_match(session, target, matches, contexts, *, flow):
         "Window matches: filter group, title or username with wildcards."), wrap=True, xalign=0, css_classes=["dim-label"]))
     rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, activate_on_single_click=False,
                       css_classes=["boxed-list"], valign=Gtk.Align.START)
-    def compare(left, right, *_):
-        result = GLib.utf8_collate(left.sort_values[sort_column.get_selected()], right.sort_values[sort_column.get_selected()])
-        return (-result if sort_order.get_selected() else result) if result else left.sort_index - right.sort_index
-    rows.set_sort_func(compare)
     box.append(rows)
     status = Gtk.Label(label=_tr("No matching entries. Search to choose another entry."), wrap=True)
     box.append(status)
@@ -258,7 +255,7 @@ def _choose_match(session, target, matches, contexts, *, flow):
                     and owner.vault.snapshot is snapshot())
         return False
     def query_key():
-        return search.get_text(), scope.get_active()
+        return search.get_text(), scope.get_active(), sort_column.get_selected(), sort_order.get_selected()
     def ready():
         return current() and flow.valid() and not state["copying"] and state["rendered"] == query_key()
     def prepare(owner, entry, sequence, field=None):
@@ -370,11 +367,11 @@ def _choose_match(session, target, matches, contexts, *, flow):
     rows.connect("row-selected", selected)
     update_fields()
     def clear_rows():
+        state["selection"] = None
         while row := rows.get_first_child():
             row.set_activatable(False)
             row.set_title("")
             row.set_subtitle("")
-            row.sort_values = ("", "", "", "")
             rows.remove(row)
             row.choice = None
         info.clear()
@@ -382,9 +379,10 @@ def _choose_match(session, target, matches, contexts, *, flow):
     def display(choices, key):
         if not current() or not flow.valid() or key != query_key():
             return
+        selection = state["selection"]
         clear_rows()
         state["rendered"] = key
-        remembered_row = fallback_row = None
+        selected_row = remembered_row = fallback_row = None
         recent = session.application.autotype_recent
         remembered = recent.current()
         count = 0
@@ -393,23 +391,21 @@ def _choose_match(session, target, matches, contexts, *, flow):
                 continue
             title = metadata["title"].replace("\0", "")
             username = metadata["username"].replace("\0", "")
-            group_name = metadata["group"].replace("\0", "")
             row = Adw.ActionRow(title=title or _tr("Untitled Entry"), subtitle=" · ".join(filter(None,
                 (username, owner.vault.snapshot.name, entry.group_path, sequence))), use_markup=False, title_lines=2,
                 subtitle_lines=2, activatable=True)
             row.connect("activated", lambda _row, owner=owner, entry=entry, sequence=sequence: prepare(owner, entry, sequence))
             row.choice = (owner, entry, sequence)
-            row.sort_values = tuple(value.replace("\0", "").casefold() for value in
-                (group_name, title, username, sequence))
-            row.sort_index = count
             rows.append(row)
+            if selection and selection[0] is owner and selection[1].uuid == entry.uuid and selection[2] == sequence:
+                selected_row = row
             if remembered and remembered["owner"]() is owner and remembered["uuid"] == entry.uuid:
                 if fallback_row is None:
                     fallback_row = row
                 if remembered["digest"] == recent.digest(sequence):
                     remembered_row = row
             count += 1
-        choice = (remembered_row or fallback_row) if remembered and recent.current() is remembered else None
+        choice = selected_row or ((remembered_row or fallback_row) if remembered and recent.current() is remembered else None)
         if choice:
             rows.select_row(choice)
         elif key[0]:
@@ -444,7 +440,13 @@ def _choose_match(session, target, matches, contexts, *, flow):
                     continue
                 entries = {item.uuid: item for item in snapshot.entries if not item.recycled and item.addressable}
                 result.extend((owner, entries[item["entry"]], item["sequence"], item) for item in values if item["entry"] in entries)
-            return result
+            if not flow.valid():
+                result.clear()
+                return result
+            column = ("group", "title", "username", "sequence")[key[2]]
+            with session.vault.operation(sort_generation):
+                indices = session.vault.autotype_sort([item[3][column] for item in result], key[3])
+            return [result[index] for index in indices]
         def completed(choices):
             state["pending"] = False
             try:
@@ -473,13 +475,14 @@ def _choose_match(session, target, matches, contexts, *, flow):
             state["pending"] = False
             state["timer"] = GLib.timeout_add(200, request)
         return GLib.SOURCE_REMOVE
-    def changed(*_):
+    def changed(*_, selection=None):
         state["serial"] += 1
         state["rendered"] = state["activate"] = None
         stop_timer()
         clear_rows()
         if not current() or not flow.valid():
             return
+        state["selection"] = selection
         status.set_label(_tr("Searching…"))
         status.set_visible(True)
         state["timer"] = GLib.timeout_add(150 if scope.get_active() else 1, request)
@@ -499,7 +502,8 @@ def _choose_match(session, target, matches, contexts, *, flow):
             config.save(config.remember, config.login, config.vault,
                         autotype=dict(config.autotype, sort_column=selected_sort[0], sort_order=selected_sort[1]))
             sort_button.set_icon_name("view-sort-descending-symbolic" if selected_sort[1] else "view-sort-ascending-symbolic")
-            rows.invalidate_sort()
+            row = rows.get_selected_row()
+            changed(selection=row.choice if row else state["selection"])
         except (OSError, ValueError, VaultError) as exc:
             updating_sort = True
             sort_column.set_selected(old[0])

@@ -37,8 +37,9 @@ intent. Type and field actions cannot act on old rows. Remembered selection
 compares each actual sequence digest, including custom associations, and falls
 back to the same entry’s first available sequence if the old sequence is absent,
 as upstream does. Neither search results nor remembering bypass native preparation, one-use
-approval, PICKCHARS, portal or focus checks. Resolved search-field values stay
-native; replies contain entry UUIDs and unexpanded sequence templates only.
+approval, PICKCHARS, portal or focus checks. The live chooser receives only its
+explicit native display projection plus entry UUIDs/unexpanded sequences; general
+snapshots and automatic matching keep their narrower existing schemas.
 Queries are not written to preferences.
 
 The selector's **Sort Entries** header button offers Group, Title, Username or
@@ -48,17 +49,23 @@ Ascending as the native defaults. Existing private options gain only those
 defaults; malformed sort settings are rejected. Other Auto-Type preferences
 preserve these keys when saved.
 
-Sorting uses case-insensitive GLib locale collation over the row's native-
-projected resolved title/username, immediate group name and unexpanded sequence.
-The [chooser-only projection](autotype-display.md) now includes protected
-usernames and reference values as the stock model does, while general entry
-snapshots keep their existing protected-field omissions. Exact locale/case
-ordering can still differ between GLib and Qt; identical native collation is
-not claimed. Changing order retains the selected row and its field actions,
-cancels any pending Enter intent and does not initiate typing. Sort controls are
-disabled during Copy. Save failures restore the prior choice and use the existing
-error/cancellation policy. Search refreshes continue to check query, scope,
-serial and vault contexts; ordering never changes the entry/sequence identity.
+Sorting uses native `QSortFilterProxyModel` with the same locale-aware,
+case-insensitive settings as stock AutoTypeMatchView. It orders the raw native-
+resolved display keys across all results and returns only a source-index
+permutation. GTK appends that order without casefolding, GLib comparison or a
+second tie-breaker. The [chooser projection](autotype-display.md) includes
+protected usernames and reference values as the stock model does; general entry
+snapshots retain their existing protected-field omissions. Equal keys preserve
+the Qt proxy's ordering of the captured input, without claiming identical stock
+multi-vault traversal order.
+
+Changing order starts a fresh asynchronous collection, retains the selected
+owner/entry/sequence when still eligible, cancels pending Enter intent and does
+not initiate typing. Type/Copy cannot use the old rows. Sort controls are disabled
+during Copy. Save failures restore the prior setting; query, scope, sort options,
+serial and vault contexts guard display and actions. Late callbacks after close
+or lock cannot repopulate rows. The private `autotype-sort` capability and strict
+index-permutation validation prevent silent fallback to a different comparator.
 
 This is an independent GPL3-only integration of behavior documented by
 KeePassXC Team/Felix Geyer GPL2-or-3 sources:
@@ -66,8 +73,6 @@ KeePassXC Team/Felix Geyer GPL2-or-3 sources:
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoTypeSelectDialog.cpp
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoTypeMatchView.cpp
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoTypeMatchModel.cpp
-- https://docs.gtk.org/gtk4/method.ListBox.set_sort_func.html
-- https://docs.gtk.org/gtk4/method.ListBox.invalidate_sort.html
 - https://github.com/keepassxreboot/keepassxc/blob/2.7.12/src/core/EntrySearcher.cpp
 
 Native/runtime/Python compilation only. No tests/harnesses added or run; no
@@ -79,7 +84,7 @@ selection memory, Enter/edit/scope/lock/reload/close/error/queue races and real
 X11/Wayland focus/keyboard behavior. [Locked-vault resumption](autotype-unlock.md) now uses existing providers and
 immediate temporary-vault relocking and a chooser for other locked vaults. Saved
 sort controls and [portal permission lifetimes](autotype-permissions.md) are implemented;
-[resolved chooser display](autotype-display.md) manual acceptance and exact Qt/GLib locale collation, [portal Copy](autotype-clipboard.md) manual acceptance and wider
+[resolved chooser display/native sorting](autotype-display.md) manual acceptance, [portal Copy](autotype-clipboard.md) manual acceptance and wider
 platform/accessibility acceptance remain separate work. The core now uses [2.8/Qt6](../engine/Native28.md); GTK behavior and production
 readiness remain unproven.
 
