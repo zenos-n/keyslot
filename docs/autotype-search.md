@@ -48,14 +48,13 @@ Ascending as the native defaults. Existing private options gain only those
 defaults; malformed sort settings are rejected. Other Auto-Type preferences
 preserve these keys when saved.
 
-Sorting uses case-insensitive GLib locale collation over the row's existing
-metadata and unexpanded sequence. Group sorting uses the group's name rather
-than its full path. Protected usernames stay absent from the metadata; resolved
-reference values remain native and are not fetched just for sorting. Thus
-reference-bearing or protected display fields may order differently from the
-stock Qt selector, and exact locale ordering can differ between GLib and Qt.
-These display/ordering differences remain a parity gap, not a claim of identical
-native collation. Changing order retains the selected row and its field actions,
+Sorting uses case-insensitive GLib locale collation over the row's native-
+projected resolved title/username, immediate group name and unexpanded sequence.
+The [chooser-only projection](autotype-display.md) now includes protected
+usernames and reference values as the stock model does, while general entry
+snapshots keep their existing protected-field omissions. Exact locale/case
+ordering can still differ between GLib and Qt; identical native collation is
+not claimed. Changing order retains the selected row and its field actions,
 cancels any pending Enter intent and does not initiate typing. Sort controls are
 disabled during Copy. Save failures restore the prior choice and use the existing
 error/cancellation policy. Search refreshes continue to check query, scope,
@@ -80,8 +79,10 @@ selection memory, Enter/edit/scope/lock/reload/close/error/queue races and real
 X11/Wayland focus/keyboard behavior. [Locked-vault resumption](autotype-unlock.md) now uses existing providers and
 immediate temporary-vault relocking and a chooser for other locked vaults. Saved
 sort controls and [portal permission lifetimes](autotype-permissions.md) are implemented;
-protected/reference display collation, [portal Copy](autotype-clipboard.md) manual acceptance and wider
+[resolved chooser display](autotype-display.md) manual acceptance and exact Qt/GLib locale collation, [portal Copy](autotype-clipboard.md) manual acceptance and wider
 platform/accessibility acceptance remain separate work. The core now uses [2.8/Qt6](../engine/Native28.md); GTK behavior and production
 readiness remain unproven.
 
 Desktop shortcut aliases/disable/reset are now editable in the [GNOME companion](autotype-shortcuts.md); recorder, focus and platform acceptance remains manual.
+
+The chooser now fetches [native-resolved display fields](autotype-display.md) for protected usernames and title/username references; automatic match results and general snapshots are unchanged. Compilation only, user manual display/lifecycle/locale acceptance remains.

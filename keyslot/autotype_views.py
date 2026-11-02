@@ -212,7 +212,7 @@ def _prepare(session, entry, target, sequence, flow, *, confirm, field=None):
 
 def _choose_match(session, target, matches, contexts, *, flow):
     dialog, header, box = _dialog("Auto-Type", height=520)
-    current = _guarded_lifetime(session, dialog)
+    current = _guarded_lifetime(session, dialog, lambda: clear_rows())
     state = {"rendered": None, "pending": False, "serial": 0, "timer": 0, "activate": None, "copying": False}
     destination = Adw.PreferencesGroup(title="Destination")
     destination.add(Adw.ActionRow(title=target["title"], use_markup=False, title_lines=3))
@@ -369,8 +369,13 @@ def _choose_match(session, target, matches, contexts, *, flow):
     rows.connect("row-selected", selected)
     update_fields()
     def clear_rows():
-        while rows.get_first_child():
-            rows.remove(rows.get_first_child())
+        while row := rows.get_first_child():
+            row.set_activatable(False)
+            row.set_title("")
+            row.set_subtitle("")
+            row.sort_values = ("", "", "", "")
+            rows.remove(row)
+            row.choice = None
         info.clear()
         proceed.set_sensitive(False)
     def display(choices, key):
@@ -382,19 +387,19 @@ def _choose_match(session, target, matches, contexts, *, flow):
         recent = session.application.autotype_recent
         remembered = recent.current()
         count = 0
-        groups = {}
-        for owner, entry, sequence in choices:
+        for owner, entry, sequence, metadata in choices:
             if not owner_current(owner):
                 continue
-            row = Adw.ActionRow(title=entry.title or "Untitled Entry", subtitle=" · ".join(filter(None,
-                (entry.username, owner.vault.snapshot.name, entry.group_path, sequence))), use_markup=False, title_lines=2,
+            title = metadata["title"].replace("\0", "")
+            username = metadata["username"].replace("\0", "")
+            group_name = metadata["group"].replace("\0", "")
+            row = Adw.ActionRow(title=title or "Untitled Entry", subtitle=" · ".join(filter(None,
+                (username, owner.vault.snapshot.name, entry.group_path, sequence))), use_markup=False, title_lines=2,
                 subtitle_lines=2, activatable=True)
             row.connect("activated", lambda _row, owner=owner, entry=entry, sequence=sequence: prepare(owner, entry, sequence))
             row.choice = (owner, entry, sequence)
-            if owner not in groups:
-                groups[owner] = {item.identity: item.name for item in owner.vault.snapshot.groups}
             row.sort_values = tuple(value.replace("\0", "").casefold() for value in
-                (groups[owner].get(entry.group, entry.group_path), entry.title, entry.username, sequence))
+                (group_name, title, username, sequence))
             row.sort_index = count
             rows.append(row)
             if remembered and remembered["owner"]() is owner and remembered["uuid"] == entry.uuid:
@@ -437,17 +442,20 @@ def _choose_match(session, target, matches, contexts, *, flow):
                 if not owner_current(owner):
                     continue
                 entries = {item.uuid: item for item in snapshot.entries if not item.recycled and item.addressable}
-                result.extend((owner, entries[item["entry"]], item["sequence"]) for item in values if item["entry"] in entries)
+                result.extend((owner, entries[item["entry"]], item["sequence"], item) for item in values if item["entry"] in entries)
             return result
         def completed(choices):
             state["pending"] = False
-            if not current() or not flow.valid():
-                return
-            if serial != state["serial"] or key != query_key():
-                stop_timer()
-                request()
-                return
-            display(choices, key)
+            try:
+                if not current() or not flow.valid():
+                    return
+                if serial != state["serial"] or key != query_key():
+                    stop_timer()
+                    request()
+                    return
+                display(choices, key)
+            finally:
+                choices.clear()
         def failed(_message):
             state["pending"] = False
             if not current() or not flow.valid():
@@ -517,10 +525,7 @@ def _choose_match(session, target, matches, contexts, *, flow):
         contexts.clear()
     dialog.connect("closed", closed)
     if flow.present(session, dialog):
-        if matches:
-            display(matches, query_key())
-        else:
-            changed()
+        changed()
         search.grab_focus()
 
 

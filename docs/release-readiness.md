@@ -626,3 +626,14 @@ Open. This keeps saved background/close behavior settings and opt-in enrollment
 unchanged. Runtime/Python compilation only; no tests, simulated login or live
 keyring/vault/GTK behavior checks. User manual fresh-login/failure/session-restore
 and already-running acceptance remains.
+
+Auto-Type chooser display now uses native-resolved title/username and immediate
+group metadata, matching AutoTypeMatchModel’s display source including protected
+usernames. Projection exists only in live selector search; automatic matching,
+general snapshots/recent cache and key plans are unchanged. Initial results wait
+for projection; exact schema/capability, owner/query/flow guards, pre-animation
+row clearing and completed-batch disposal retain lifecycle boundaries. Native/
+runtime/Python compilation only; no tests or automated reference/vault/GTK/search/
+input runs. User manual protected/reference/locale/multivault/close-lock-race/
+accessibility acceptance remains; exact Qt/GLib collation differences remain.
+See [Chooser Display](autotype-display.md).

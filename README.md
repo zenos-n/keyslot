@@ -965,3 +965,10 @@ fields have individual reveal controls. Password fields stay masked by default;
 only requested preview fields leave the native helper. Notes have a rounded,
 scrollable read-only view. Long previews show a truncation notice; Copy retrieves
 the complete native field. [Details and manual acceptance](docs/entry-privacy.md).
+
+The Auto-Type chooser now uses native-resolved title/username and immediate-group
+values for display/sorting, including protected usernames in this explicit
+chooser without widening shared metadata snapshots or automatic matching. See
+[Chooser Display](docs/autotype-display.md) for lifecycle, reference/locale and
+manual acceptance limits. Native/runtime compilation only; no tests or automated
+behavior runs.

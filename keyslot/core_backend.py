@@ -674,12 +674,12 @@ class Vault:
 
     def autotype_search(self, query, title, *, all_entries=False, match_title=True, match_url=True, hide_expired=False):
         with self._mutex:
-            if "autotype-search" not in self.capabilities:
-                raise VaultError("Update the native engine before searching the Auto-Type selector.")
+            if not {"autotype-search", "autotype-display"} <= self.capabilities:
+                raise VaultError("Update the native engine before displaying Auto-Type search results.")
             data = self._rpc("autotype.search", query=query, title=title, all=all_entries,
                              match_title=match_title, match_url=match_url, hide_expired=hide_expired)
             if (not isinstance(data, dict) or set(data) != {"matches"} or not isinstance(data["matches"], list)
-                    or any(not isinstance(item, dict) or set(item) != {"entry", "sequence"}
+                    or any(not isinstance(item, dict) or set(item) != {"entry", "sequence", "group", "title", "username"}
                            or any(not isinstance(value, str) for value in item.values()) for item in data["matches"])):
                 raise VaultError("The engine returned invalid Auto-Type search results.")
             return data["matches"]

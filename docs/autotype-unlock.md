@@ -73,7 +73,7 @@ callers, repeated requests, all cancellation/timer/authentication/animation/save
 races, multiple vaults, duplicate names, stale/busy/closed choices, repeated
 vault/provider switches with the original deadline, old-provider callbacks,
 Copy/lock clearing and relock on/off. Saved sorting and portal permission/connection
-settings are implemented; their manual acceptance, protected/reference ordering,
+settings are implemented; their manual acceptance, [resolved chooser display](autotype-display.md) manual acceptance and exact Qt/GLib locale ordering,
 [portal Copy](autotype-clipboard.md) manual acceptance, [desktop shortcut recorder](autotype-shortcuts.md) manual acceptance, the native2.8 migration's manual acceptance,
 platform/accessibility acceptance and broader parity remain open. No production
 readiness or complete replacement claim is established.
@@ -84,3 +84,5 @@ integration GPL3-only):
 - https://github.com/keepassxreboot/keepassxc/blob/2.7.12/src/gui/DatabaseTabWidget.cpp
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/autotype/AutoType.cpp
 - https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/gui/DatabaseOpenDialog.cpp
+
+The chooser now fetches [native-resolved display fields](autotype-display.md) for protected usernames and title/username references; automatic match results and general snapshots are unchanged. Compilation only, user manual display/lifecycle/locale acceptance remains.

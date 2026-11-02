@@ -39,7 +39,7 @@ This adds the selection-memory workflow, not a complete Auto-Type parity claim.
 variants. [Locked-vault resumption](autotype-unlock.md) and immediate temporary-vault
 relocking and a locked-vault chooser are implemented. [Sort controls](autotype-search.md)
 and [portal permission lifetimes](autotype-permissions.md) are implemented;
-protected/reference display ordering and broader platform behavior remain gaps.
+[resolved chooser display](autotype-display.md) manual acceptance and exact Qt/GLib locale ordering and broader platform behavior remain gaps.
 The optional [portal Copy](autotype-clipboard.md) path now implements the stock
 clipboard setting; its ownership/FD/lifecycle acceptance remains manual.
 Confirmation preferences follow the linked policy.
@@ -59,3 +59,5 @@ multiple vaults, success/failure/cancel/lock/reload/close/expiry and X11/Wayland
 destination/focus behavior. This does not establish production readiness.
 
 Desktop shortcut aliases/disable/reset are now editable in the [GNOME companion](autotype-shortcuts.md); recorder, focus and platform acceptance remains manual.
+
+The chooser now fetches [native-resolved display fields](autotype-display.md) for protected usernames and title/username references; automatic match results and general snapshots are unchanged. Compilation only, user manual display/lifecycle/locale acceptance remains.

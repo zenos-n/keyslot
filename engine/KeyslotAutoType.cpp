@@ -198,8 +198,12 @@ QJsonObject KeyslotAutoType::search(const QSharedPointer<Database>& db, const QJ
             for (const auto& sequence : entry->autoTypeSequences(title))
                 if (!sequences.contains(sequence)) sequences.append(sequence);
         }
+        if (sequences.isEmpty()) continue;
+        const auto displayTitle = entry->resolveMultiplePlaceholders(entry->title());
+        const auto displayUsername = entry->resolveMultiplePlaceholders(entry->username());
         for (const auto& sequence : sequences) result.append(QJsonObject{
-            {"entry", entry->uuid().toString(QUuid::WithoutBraces)}, {"sequence", sequence}});
+            {"entry", entry->uuid().toString(QUuid::WithoutBraces)}, {"sequence", sequence},
+            {"group", entry->group()->name()}, {"title", displayTitle}, {"username", displayUsername}});
     }
     return {{"matches", result}};
 }
