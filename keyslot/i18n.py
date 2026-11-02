@@ -4,13 +4,22 @@ from collections import Counter
 from pathlib import Path
 from string import Formatter
 
-_catalog = gettext.translation("keyslot", localedir=Path(__file__).resolve().parents[2] / "locale", fallback=True)
+_localedir = Path(__file__).resolve().parents[2] / "locale"
+_catalog = gettext.translation("keyslot", localedir=_localedir, fallback=True)
 _formatter = Formatter()
 
 
 def mark(message):
     """Mark a code-owned caption without changing its stored/internal value."""
     return message
+
+
+def select_language(language="system"):
+    """Select an explicit supported language, or defer to the desktop locale."""
+    global _catalog
+    code = language.split("_", 1)[0].split("-", 1)[0] if isinstance(language, str) else ""
+    languages = [code] if code in {"en", "pl", "ro"} else None
+    _catalog = gettext.translation("keyslot", localedir=_localedir, languages=languages, fallback=True)
 
 
 def tr(message):

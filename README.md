@@ -993,3 +993,12 @@ key handling stays native, with revision-checked atomic storage. This newer R01
 implementation is separate from the frozen manual candidate; see [identity
 controls and acceptance limits](docs/keeshare-identity.md). No tests or automated
 identity/vault/GTK behavior runs were performed.
+
+The remaining confirmed behavior preferences now include separate non-data
+close-save policy (with persistent group expansion/collapse), first-unlock
+expiry search with a configurable 0–90 day look-ahead, and stock copy/URL
+field double-click choices adapted to GNOME property rows. Language preferences
+select System, English, Polish or Romanian after restart; the companion has its
+own Polish/Romanian catalogs. See [behavior preferences](docs/behavior-preferences.md)
+and [localization](docs/localization.md) for defaults, profile keys and limits.
+Compilation and manual acceptance are separate; full replacement is not claimed.

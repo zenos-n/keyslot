@@ -14,6 +14,9 @@ class Field:
         self.wanted, self.loaded, self.closed = not hidden, False, False
         self.serial, self.empty, self.muting = 0, None, False
         self.row = Adw.ActionRow(title=title, use_markup=False)
+        if name in ("UserName", "Password"):
+            from .field_actions import add_double_click
+            add_double_click(controller.session, self.row, entry, name)
         if not notes:
             self.row.add_css_class("property")
             if name == "Password":
@@ -95,7 +98,7 @@ class Field:
 
     def display(self, value, truncated):
         self.loaded = True
-        self._text(value, "Preview truncated; Copy uses the complete field." if truncated else "")
+        self._text(value, _tr("Preview truncated; Copy uses the complete field.") if truncated else "")
 
 
 class Previews:
@@ -206,7 +209,7 @@ class Previews:
                 if not row.closed and row.wanted:
                     explicit |= not row.automatic
                     row.loaded = True
-                    row._text("Preview unavailable")
+                    row._text(_tr("Preview unavailable"))
             if explicit and self.session.active:
                 self.session.error(message)
         # Passive previews never refresh the inactivity timer or queue behind an unbounded foreground backlog.

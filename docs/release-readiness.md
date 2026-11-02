@@ -677,3 +677,17 @@ above. Native/runtime/Python compilation and static source/artifact review only;
 no tests/harnesses or automated locale/search/GTK/vault/input behavior runs.
 Manual locale/case/accent/numeric-looking/empty/equal-key/multivault/order/selection/
 Enter/Copy/failure/queue/lock/accessibility acceptance remains. Full goal incomplete.
+
+R02/R05/R06/R07 implementation batch: explicit per-app system/en/pl/ro language
+selection, complete current marked app/companion catalogs and localized metadata;
+non-data checkpoint classification and conditional close-save (including real
+KDBX group expansion state); first-ordinary-unlock native expiry search with
+stock 3-day/default-on and 0–90 look-ahead controls; Username/Password and URL
+body double-click choices using existing native/clipboard/launch guards. Atomic
+shared save-policy refresh covers subsequent helpers and close-time recovery;
+conditional non-data commit checks the flag under existing recovery locks and
+never treats an unknown/older record as non-data. UI language changes require
+restart. No tests or runtime acceptance runs; only ordinary native/runtime/
+Python/gettext compilation and static review. [Behavior preferences](behavior-preferences.md)
+and [Localization](localization.md) record implementation/strict-error adaptations;
+R08 review and manual workflow/security/platform acceptance remain incomplete.

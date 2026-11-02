@@ -555,8 +555,8 @@ def review(session, target, data, choice=None, *, flow):
         group.add(tab)
         box.append(group)
         pick_rows.append((positions, tab, item["length"]))
-    box.append(Gtk.Label(label="The selected entry will be typed into this window. Switching windows stops auto-type. "
-        + ("GNOME will ask for keyboard access." if target["backend"] == "portal" else "Release modifier keys before continuing."),
+    box.append(Gtk.Label(label=_tr("The selected entry will be typed into this window. Switching windows stops auto-type.")
+        + " " + (_tr("GNOME will ask for keyboard access.") if target["backend"] == "portal" else _tr("Release modifier keys before continuing.")),
         wrap=True, xalign=0))
     error = Gtk.Label(wrap=True, xalign=0, css_classes=["error"], visible=False)
     box.append(error)

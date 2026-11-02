@@ -1,5 +1,5 @@
 """User-initiated HIBP checks; cancellation and failures retain clearly partial findings."""
-from .i18n import tr as _tr, trf as _trf
+from .i18n import ntrf as _ntrf, tr as _tr, trf as _trf
 from gi.repository import Adw, GLib, Gtk
 from .core_backend import EngineError
 from .reports_views import _clear
@@ -87,7 +87,7 @@ class BreachReport:
         def failed(message):
             if not self.closed and serial == self.serial:
                 self.set_running(False)
-                self.status.set_label("Check not completed. " + message)
+                self.status.set_label(_tr("Check not completed.") + " " + message)
         if not self.session.run_job(lambda: self.session.vault.prepare_hibp(mode, path, excluded), ready, failed):
             self.set_running(False)
             self.status.set_label(_tr("The vault is busy. Start the check again."))
@@ -109,7 +109,7 @@ class BreachReport:
                 return
             if "error" in data:
                 self.set_running(False)
-                self.status.set_label("Incomplete check. " + data["error"])
+                self.status.set_label(_tr("Incomplete check.") + " " + data["error"])
                 self.retry.set_visible(data["retryable"])
                 return
             for item in data["rows"]:
@@ -120,11 +120,12 @@ class BreachReport:
             if data["complete"]:
                 self.token = ""
                 self.set_running(False)
-                result = ("No eligible passwords were checked." if not data["checked"] else
-                    f"{len(self.rows)} entries have exposed passwords." if self.rows else "No exposed passwords found among the checked entries.")
-                result += f" Checked {data['checked']} entries."
+                result = (_tr("No eligible passwords were checked.") if not data["checked"] else
+                    _ntrf("{count} entry has exposed passwords.", "{count} entries have exposed passwords.", len(self.rows))
+                    if self.rows else _tr("No exposed passwords found among the checked entries."))
+                result += " " + _trf("Entries checked: {arg0}.", arg0=data["checked"])
                 if data["skipped"]:
-                    result += f" {data['skipped']} entries could not be checked because of unresolved references or ambiguous identifiers."
+                    result += " " + _trf("Entries not checked because of unresolved references or ambiguous identifiers: {arg0}.", arg0=data["skipped"])
                 self.status.set_label(result)
             else:
                 self.status.set_label(_trf('Checking… {arg0:.0%} complete. {arg1} exposed entries found so far; results are incomplete.', arg0=fraction, arg1=len(self.rows)))
@@ -132,7 +133,7 @@ class BreachReport:
         def failed(message):
             if not self.closed and serial == self.serial:
                 self.set_running(False)
-                self.status.set_label("Incomplete check. " + message)
+                self.status.set_label(_tr("Incomplete check.") + " " + message)
         if not self.session.jobs.run(operation, ready, failed, interactive=False):
             GLib.timeout_add(150, self.next, serial)
         return False

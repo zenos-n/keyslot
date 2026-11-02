@@ -86,6 +86,8 @@ def select_configuration(app, options, bus):
             raise VaultError("Keyslot is already running with a different configuration. Quit it before switching profiles.")
         selected = Startup(launcher=app.startup.launcher, storage=storage)
         app.startup = selected
+        from .i18n import select_language
+        select_language(selected.language)
         options.insert_value("keyslot-config-paths", GLib.Variant("as", list(storage.paths.values())))
     except (OSError, ValueError, VaultError) as exc:
         if explicit:

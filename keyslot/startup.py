@@ -17,6 +17,19 @@ PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_pr
 WINDOW_DEFAULTS = dict(hide_window_on_copy=False, minimize_on_copy=True, drop_to_background_on_copy=False,
                        minimize_after_unlock=False, minimize_to_background=False)
 ENTRY_DEFAULTS = dict(inherit_group_icon=True, generate_password_on_create=False)
+BEHAVIOR_DEFAULTS = dict(auto_save_non_data=True, show_expiry_warning=True, expiry_warning_days=3,
+                         copy_on_double_click=False, url_double_click_action=0, language="system")
+
+
+def _behavior_options(value):
+    result = {name: value.get(name, default) for name, default in BEHAVIOR_DEFAULTS.items()}
+    if (any(type(result[name]) is not bool for name in ("auto_save_non_data", "show_expiry_warning", "copy_on_double_click"))
+            or type(result["expiry_warning_days"]) is not int or not 0 <= result["expiry_warning_days"] <= 90
+            or type(result["url_double_click_action"]) is not int or result["url_double_click_action"] not in (0, 1, 2)
+            or not isinstance(result["language"], str) or len(result["language"]) > 128 or "\0" in result["language"]):
+        raise ValueError("Choose supported saving, expiry, field-action and language settings.")
+    result["language"] = result["language"] or "system"
+    return result
 
 
 def _xdg_directory(name, fallback):
@@ -104,6 +117,8 @@ class Startup:
         self.minimize_on_url = False
         self.auto_reload = True
         self.auto_save = self.auto_save_on_exit = True
+        for name, value in BEHAVIOR_DEFAULTS.items():
+            setattr(self, name, value)
         self.backup_before_save = False
         self.backup_path_pattern = "{DB_FILENAME}.old.kdbx"
         for name, value in LOCK_DEFAULTS.items():
@@ -133,6 +148,8 @@ class Startup:
             self.auto_reload = data.get("auto_reload", True) is True
             self.auto_save = data.get("auto_save", True) is True
             self.auto_save_on_exit = data.get("auto_save_on_exit", True) is True
+            for name, value in _behavior_options(data).items():
+                setattr(self, name, value)
             self.backup_before_save = data.get("backup_before_save", False) is True
             pattern = data.get("backup_path_pattern", self.backup_path_pattern)
             if isinstance(pattern, str) and len(pattern) <= 16384 and "\0" not in pattern:
@@ -193,6 +210,7 @@ class Startup:
         except (OSError, ValueError, AttributeError):
             pass
         self.backup_policy_value = self.backup_before_save, self.backup_path_pattern
+        self.save_policy_value = self.auto_save, self.auto_save_on_exit, self.auto_save_non_data
 
     def browser_listing_allowed(self):
         with self.mutex:
@@ -227,11 +245,17 @@ class Startup:
              minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None,
              auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None,
              backup_before_save=None, backup_path_pattern=None,
+             auto_save_non_data=None, show_expiry_warning=None, expiry_warning_days=None,
+             copy_on_double_click=None, url_double_click_action=None, language=None,
              hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None,
              hide_window_on_copy=None, minimize_on_copy=None, drop_to_background_on_copy=None,
              minimize_after_unlock=None, minimize_to_background=None,
              inherit_group_icon=None, generate_password_on_create=None):
         with self.mutex:
+            behavior = _behavior_options({name: getattr(self, name) if value is None else value for name, value in (
+                ("auto_save_non_data", auto_save_non_data), ("show_expiry_warning", show_expiry_warning),
+                ("expiry_warning_days", expiry_warning_days), ("copy_on_double_click", copy_on_double_click),
+                ("url_double_click_action", url_double_click_action), ("language", language))})
             locks = {name: getattr(self, name) if value is None else value for name, value in (
                 ("lock_on_screen", lock_on_screen), ("lock_on_user_switch", lock_on_user_switch), ("lock_on_minimize", lock_on_minimize))}
             if any(type(value) is not bool for value in locks.values()):
@@ -317,6 +341,7 @@ class Startup:
                        "minimize_on_url": minimize_on_url,
                        "vault": str(vault) if vault else None}
                 data.update(locks)
+                data.update(behavior)
                 data["backup_before_save"] = backup_before_save
                 data["backup_path_pattern"] = backup_path_pattern
                 data.update(privacy)
@@ -348,6 +373,9 @@ class Startup:
             self.minimize_on_url = minimize_on_url
             self.auto_reload = auto_reload
             self.auto_save, self.auto_save_on_exit = auto_save, auto_save_on_exit
+            for name, value in behavior.items():
+                setattr(self, name, value)
+            self.save_policy_value = auto_save, auto_save_on_exit, self.auto_save_non_data
             self.backup_before_save, self.backup_path_pattern = backup_before_save, backup_path_pattern
             self.backup_policy_value = backup_before_save, backup_path_pattern
             for name, value in locks.items():

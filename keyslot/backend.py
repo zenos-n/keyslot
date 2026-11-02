@@ -74,6 +74,7 @@ class Group:
     expires: bool = False
     expiry: str = ""
     expired: bool = False
+    expanded: bool = True
 
     @property
     def identity(self):
@@ -93,6 +94,7 @@ class Snapshot:
     recovery_path: str = ""
     recovery_copy: bool = False
     recycle_bin: str = ""
+    non_data_only: bool = False
 
 
 def parse_snapshot(xml: bytes) -> Snapshot:

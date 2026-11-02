@@ -194,3 +194,13 @@ Directives: **166**. Literal/enum references: **61**; dynamic-prefix candidates:
 | `PasswordGenerator/Type` | `PasswordGenerator_Type` | [native:237](https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/core/Config.cpp#L237) | literal/enum reference | [keyslot/configuration.py:68](../keyslot/configuration.py#L68), [keyslot/configuration.py:396](../keyslot/configuration.py#L396) |
 | `Messages/NoLegacyKeyFileWarning` | `Messages_NoLegacyKeyFileWarning` | [native:240](https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/core/Config.cpp#L240) | no direct reference; review | — |
 | `Messages/HidePreReleaseWarning` | `Messages_HidePreReleaseWarning` | [native:241](https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/core/Config.cpp#L241) | no direct reference; review | — |
+
+## Implemented after the frozen inventory
+
+The table/counts above remain the original bounded review snapshot. Current
+source now maps AutoSaveNonDataChanges, GUI/ShowExpiredEntriesOnDatabaseUnlock,
+GUI/ShowExpiredEntriesOnDatabaseUnlockOffsetDays,
+Security/EnableCopyOnDoubleClick, URLDoubleClickAction and GUI/Language.
+See [behavior preferences](behavior-preferences.md) and [localization](localization.md).
+These six old “no direct reference” rows now have implementation evidence;
+manual acceptance and the rest of the finite R08 review remain open.

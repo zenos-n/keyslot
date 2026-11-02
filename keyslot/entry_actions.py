@@ -90,22 +90,24 @@ def _review(session, review):
         return False
     action = review["action"]
     if action == "duplicate":
-        heading, label = "Duplicate Entry?", "Duplicate"
-        summary = "Create a new entry in the same group."
-        summary += "\nInclude history." if review["history"] else "\nStart without history."
-        summary += "\nReference the original username and password." if review["references"] else "\nCopy the username and password."
+        heading, label = _tr("Duplicate Entry?"), _tr("Duplicate")
+        summary = _tr("Create a new entry in the same group.")
+        summary += "\n" + _tr("Include history.") if review["history"] else "\n" + _tr("Start without history.")
+        summary += "\n" + _tr("Reference the original username and password.") if review["references"] else "\n" + _tr("Copy the username and password.")
         if review["rename"]:
-            summary += "\nAppend ‘ - Clone’ to the title."
+            summary += "\n" + _tr("Append ‘ - Clone’ to the title.")
     elif action == "tag":
-        heading, label = ("Add Tag to Entries?", "Add Tag") if review["add"] else ("Remove Tag from Entries?", "Remove Tag")
-        summary = f'Tag: {review["tag"]}\nChange {review["changes"]} of {review["count"]} selected entries.'
+        heading, label = (_tr("Add Tag to Entries?"), _tr("Add Tag")) if review["add"] else (_tr("Remove Tag from Entries?"), _tr("Remove Tag"))
+        summary = _trf('Tag: {arg0}\nChange {arg1} of {arg2} selected entries.',
+                       arg0=review["tag"], arg1=review["changes"], arg2=review["count"])
     else:
-        heading, label = "Change Entry Expiry?", "Apply"
-        summary = "Never expires." if review["mode"] == "never" else f'Expires: {review["at"]}'
-        summary += f'\nChange {review["changes"]} of {review["count"]} selected entries.'
+        heading, label = _tr("Change Entry Expiry?"), _tr("Apply")
+        summary = _tr("Never expires.") if review["mode"] == "never" else _trf('Expires: {arg0}', arg0=review["at"])
+        summary += "\n" + _trf('Change {arg0} of {arg1} selected entries.',
+                                arg0=review["changes"], arg1=review["count"])
     body = "\n".join(review["names"])
     if review["count"] > len(review["names"]):
-        body += f'\n…and {review["count"] - len(review["names"])} more.'
+        body += "\n" + _trf('…and {arg0} more.', arg0=review["count"] - len(review["names"]))
     dialog = Adw.AlertDialog(heading=heading, body=body + "\n\n" + summary, body_use_markup=False)
     dialog.add_response("cancel", _tr("Cancel"))
     dialog.add_response("apply", label)

@@ -275,7 +275,7 @@ def manage(session, data=None, query="", only_owned=False):
     keys = data["keys"]
     dialog, header, box = _dialog(_tr("SSH Agent Keys"), width=600, height=min(640, 280 + len(keys) * 82))
     current = _lifetime(session, dialog)
-    box.append(Gtk.Label(label="Agent: " + data["socket"], wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, xalign=0))
+    box.append(Gtk.Label(label=_trf("Agent: {arg0}", arg0=data["socket"]), wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, xalign=0))
     clear = Gtk.Button(label=_tr("Clear Agent…"), valign=Gtk.Align.CENTER, sensitive=bool(keys))
     clear.connect("clicked", lambda *_: (dialog.close(), review_removal(session, clear=True)) if current() else None)
     header.pack_start(clear)
@@ -346,13 +346,13 @@ def review_removal(session, fingerprints=(), clear=False, data=None):
     dialog, header, box = _dialog(_tr("Clear SSH Agent") if data["clear"] else _tr("Remove SSH Keys"), width=600,
                                   height=min(640, 270 + len(data["keys"]) * 82))
     current = _lifetime(session, dialog)
-    box.append(Gtk.Label(label=("Remove all the keys shown below from this agent?" if data["clear"] else "Remove the selected keys from this agent?")
-        + " Other applications and vaults may lose access. Key files and vault entries are kept.", wrap=True, xalign=0))
-    box.append(Gtk.Label(label="Agent: " + data["socket"], wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, xalign=0, css_classes=["dim-label"]))
+    box.append(Gtk.Label(label=(_tr("Remove all the keys shown below from this agent?") if data["clear"] else _tr("Remove the selected keys from this agent?"))
+        + " " + _tr("Other applications and vaults may lose access. Key files and vault entries are kept."), wrap=True, xalign=0))
+    box.append(Gtk.Label(label=_trf("Agent: {arg0}", arg0=data["socket"]), wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, xalign=0, css_classes=["dim-label"]))
     count = len(data["keys"])
-    group = Adw.PreferencesGroup(title=f'{count} Key' + ("" if count == 1 else "s"))
+    group = Adw.PreferencesGroup(title=_ntrf("{count} Key", "{count} Keys", count))
     for info in data["keys"]:
-        who = "This Vault" if info["owned"] else "Another Vault" if info["other_vault"] else "External Key"
+        who = _tr("This Vault") if info["owned"] else _tr("Another Vault") if info["other_vault"] else _tr("External Key")
         group.add(Adw.ActionRow(title=info["comment"] or info["type"], subtitle=who + " · " + info["fingerprint"],
                                use_markup=False, title_lines=2, subtitle_lines=2))
     box.append(group)

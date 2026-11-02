@@ -97,3 +97,4 @@ keyslot/startup.py
 keyslot/system_auth.py
 keyslot/transfers.py
 keyslot/wordlists.py
+keyslot/language_preferences.py

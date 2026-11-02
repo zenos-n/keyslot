@@ -18,6 +18,8 @@ class Keyslot(Adw.Application):
         executable = Path(sys.argv[0]).resolve().parent / "keyslot"
         launcher = shutil.which("keyslot") or (str(executable) if executable.is_file() else None)
         self.startup = Startup(launcher=launcher)
+        from .i18n import select_language
+        select_language(self.startup.language)
         self.keyring = None
         self._system_auth = None
         self._system_auth_mutex = threading.Lock()

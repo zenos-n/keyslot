@@ -17,7 +17,8 @@ def before_close(session, done, cancelled=lambda: None):
     def save():
         if not session.save(done=done, failed=lambda message: (session.error(message), cancelled())):
             cancelled()
-    if session.application.startup.auto_save_on_exit:
+    if (session.application.startup.auto_save_on_exit
+            or (session.vault.snapshot.non_data_only and session.application.startup.auto_save_non_data)):
         save()
         return
     dialog = Adw.AlertDialog(heading=_tr("Save Changes?"),

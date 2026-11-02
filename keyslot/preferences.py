@@ -19,6 +19,8 @@ def show(session):
     dialog = Adw.PreferencesDialog(title=_tr("Preferences"))
     updating = [False]
     page = Adw.PreferencesPage()
+    from .language_preferences import add_preferences as language_preferences
+    language_preferences(session, page)
     group = Adw.PreferencesGroup(title=_tr("Startup"))
     remember = Adw.SwitchRow(title=_tr("Remember Last Opened Vault"),
         subtitle=_tr("Open its unlock screen when Keyslot starts"), active=settings.remember)
@@ -57,21 +59,29 @@ def show(session):
         description=_tr("Manual changes are kept in encrypted recovery copies until you save. Security locks still clear the unlocked vault immediately."))
     automatic = Adw.SwitchRow(title=_tr("Save Changes Automatically"), active=settings.auto_save)
     on_exit = Adw.SwitchRow(title=_tr("Save When Closing or Locking"), active=settings.auto_save_on_exit)
+    non_data = Adw.SwitchRow(title=_tr("Save Non-Data Changes Automatically"),
+        subtitle=_tr("Save view and ordering changes when closing or locking"), active=settings.auto_save_non_data)
     saving.add(automatic)
     saving.add(on_exit)
+    saving.add(non_data)
     updating = [False]
     def changed_saving(*_):
         if updating[0]:
             return
-        old = settings.auto_save, settings.auto_save_on_exit
-        chosen = automatic.get_active(), on_exit.get_active()
+        old = settings.save_policy_value
+        chosen = automatic.get_active(), on_exit.get_active(), non_data.get_active()
+        if chosen[0]:
+            chosen = True, True, True
         def restore_controls():
             updating[0] = True
             automatic.set_active(settings.auto_save)
             on_exit.set_active(settings.auto_save_on_exit)
+            non_data.set_active(settings.auto_save_non_data)
+            on_exit.set_sensitive(not settings.auto_save)
+            non_data.set_sensitive(not settings.auto_save)
             updating[0] = False
             saving.set_sensitive(True)
-        if session.busy:
+        if session.application.busy:
             restore_controls()
             return
         sessions = list(session.application.sessions)
@@ -80,7 +90,7 @@ def show(session):
                 for item in sessions:
                     item.vault.save_policy(*chosen)
                 settings.save(settings.remember, settings.login, settings.vault,
-                              auto_save=chosen[0], auto_save_on_exit=chosen[1])
+                              auto_save=chosen[0], auto_save_on_exit=chosen[1], auto_save_non_data=chosen[2])
             except Exception:
                 for item in sessions:
                     try:
@@ -102,10 +112,53 @@ def show(session):
                 item.emit_state()
             session.error(message)
         saving.set_sensitive(False)
-        session.run_job(apply, completed, failed)
+        if not session.run_job(apply, completed, failed):
+            restore_controls()
     automatic.connect("notify::active", changed_saving)
     on_exit.connect("notify::active", changed_saving)
+    non_data.connect("notify::active", changed_saving)
+    on_exit.set_sensitive(not settings.auto_save)
+    non_data.set_sensitive(not settings.auto_save)
     page.add(saving)
+    behavior = Adw.PreferencesGroup(title=_tr("Entry Behavior"))
+    expiry_warning = Adw.SwitchRow(title=_tr("Show Expiring Entries After Unlock"), active=settings.show_expiry_warning)
+    expiry_days = Adw.SpinRow.new_with_range(0, 90, 1)
+    expiry_days.set_title(_tr("Expiry Warning Look-Ahead (Days)"))
+    expiry_days.set_subtitle(_tr("0 shows only entries that have expired"))
+    expiry_days.set_value(settings.expiry_warning_days)
+    expiry_days.set_sensitive(settings.show_expiry_warning)
+    double_copy = Adw.SwitchRow(title=_tr("Copy Username and Password on Double-Click"),
+        subtitle=_tr("When off, double-clicking a field edits the entry"), active=settings.copy_on_double_click)
+    double_url = Adw.ComboRow(title=_tr("Website Double-Click Action"), model=Gtk.StringList.new(
+        [_tr("Open Website"), _tr("Copy Website"), _tr("Edit Entry")]), selected=settings.url_double_click_action)
+    behavior_controls = {"show_expiry_warning": expiry_warning, "expiry_warning_days": expiry_days,
+                         "copy_on_double_click": double_copy, "url_double_click_action": double_url}
+    behavior_changing = [False]
+    def behavior_changed(*_):
+        if behavior_changing[0]:
+            return
+        try:
+            settings.save(settings.remember, settings.login, settings.vault,
+                show_expiry_warning=expiry_warning.get_active(), expiry_warning_days=int(expiry_days.get_value()),
+                copy_on_double_click=double_copy.get_active(), url_double_click_action=double_url.get_selected())
+        except (OSError, ValueError, VaultError) as error:
+            behavior_changing[0] = True
+            for name, row in behavior_controls.items():
+                value = getattr(settings, name)
+                if isinstance(row, Adw.SwitchRow):
+                    row.set_active(value)
+                elif isinstance(row, Adw.SpinRow):
+                    row.set_value(value)
+                else:
+                    row.set_selected(value)
+            behavior_changing[0] = False
+            session.error(str(error))
+        expiry_days.set_sensitive(settings.show_expiry_warning)
+    for row in behavior_controls.values():
+        row.connect("notify::active" if isinstance(row, Adw.SwitchRow) else "notify::value" if isinstance(row, Adw.SpinRow)
+                    else "notify::selected", behavior_changed)
+        behavior.add(row)
+    page.add(behavior)
     backups = Adw.PreferencesGroup(title=_tr("Backups"), description=_tr(
         "Keep an encrypted copy of the previous file before saving. Relative paths use the database folder. "
         "Use {DB_FILENAME} for its name, {TIME} for the current time, or {TIME:yyyy-MM-dd_hh-mm-ss} for a custom time format."))

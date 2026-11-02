@@ -1,5 +1,5 @@
 """Group browsing and native search controls; queries and sensitive switches stay ephemeral."""
-from .i18n import tr as _tr
+from .i18n import tr as _tr, trf as _trf, ntrf as _ntrf
 import json
 from gi.repository import Adw, GLib, Gtk
 from .backend import VaultError
@@ -21,6 +21,8 @@ class SearchOptions:
             saved, problem = dict(self.defaults), str(error)
         self.saved = dict(saved)
         self.last_query = ""
+        self.expiry_query = ""
+        self.expiry_days = 0
         self.previous, self.selection = None, set()
         self.state = "idle"
         self.scope = Adw.ComboRow(title=_tr("Search Scope"), model=Gtk.StringList.new(
@@ -94,11 +96,11 @@ class SearchOptions:
             self.saved.update(changes)
             self.problem.set_visible(False)
         def failed(message):
-            self.problem.set_label("Search options could not be saved: " + message)
+            self.problem.set_label(_trf("Search options could not be saved: {message}", message=message))
             self.problem.set_visible(True)
-            self.session.toast("Search options are active but could not be saved")
+            self.session.toast(_tr("Search options are active but could not be saved"))
         if not self.session.jobs.run(save, done, failed, interactive=False):
-            failed("The vault is busy. Reopen and close these options to try again.")
+            failed(_tr("The vault is busy. Reopen and close these options to try again."))
 
     def help(self, *_):
         alert = Adw.AlertDialog(heading=_tr("Search Syntax"), body_use_markup=False, body=(
@@ -121,6 +123,7 @@ class SearchOptions:
 
     def clear(self):
         self.view.search_generation += 1
+        self.expiry_query = ""
         self.last_query, self.previous, self.selection = "", None, set()
         self.state = "idle"
         self.protected.set_active(True)
@@ -129,11 +132,20 @@ class SearchOptions:
         self.popover.popdown()
         self.message()
 
+    def show_expiry(self, days):
+        self.expiry_days = days
+        self.expiry_query = "is:expired-" + str(days)
+        self.view.search.set_text(self.expiry_query)
+        self.changed(passive=True, force=True)
+
     def changed(self, *, passive=False, force=False):
         view = self.view
         view.search_generation += 1
         generation = view.search_generation
         query = view.search.get_text().strip()
+        if query != self.expiry_query:
+            self.expiry_query = ""
+        passive = passive or bool(self.expiry_query)
         if view.snapshot and view.entry_count:
             self.previous = view.selected_entry.uuid if view.selected_entry else None
             self.selection = {entry.uuid for entry in view.selected_entries()}
@@ -146,19 +158,21 @@ class SearchOptions:
             self.message()
             view.render_entries(self.previous, self.selection)
             return
-        if self.wait.get_active() and not force and (not passive or query != self.last_query):
+        if self.wait.get_active() and not force and query != self.expiry_query and (not passive or query != self.last_query):
             self.state = "waiting"
-            self.message("Press Enter to search")
+            self.message(_tr("Press Enter to search"))
             view.render_entries()
             return
         self.last_query = query
         self.state = "pending"
-        self.message("Searching…")
+        self.message(_tr("Searching…"))
         view.render_entries()
         scope = self.scope.get_selected()
         options = dict(group=(view.selected_group or view.snapshot.root) if scope != 2 else "", recursive=scope != 0,
                        case_sensitive=self.case.get_active(), protected=self.protected.get_active(),
                        recycled=self.recycled.get_active(), force=self.disabled.get_active())
+        if query == self.expiry_query:
+            options.update(group="", recursive=True, recycled=False, force=False)
         def start():
             if generation != view.search_generation or not view.snapshot or query != view.search.get_text().strip():
                 return False
@@ -175,6 +189,9 @@ class SearchOptions:
                 view.search_matches = set(matches)
                 self.state = "ready"
                 self.message()
+                if query == self.expiry_query:
+                    self.message(_ntrf("Entries expiring within {count} day", "Entries expiring within {count} days", self.expiry_days)
+                                 if self.expiry_days else _tr("Expired Entries"))
                 view.render_entries(self.previous, self.selection)
             def failed(message):
                 if generation == view.search_generation and view.snapshot and query == view.search.get_text().strip():

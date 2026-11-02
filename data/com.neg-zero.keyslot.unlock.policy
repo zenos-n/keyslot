@@ -5,7 +5,11 @@
   <vendor_url>https://github.com/zenos-n/keyslot</vendor_url>
   <action id="com.neg-zero.keyslot.unlockDatabase">
     <description>Unlock a Keyslot vault</description>
+    <description xml:lang="pl">Odblokuj sejf Keyslot</description>
+    <description xml:lang="ro">Deblocați un seif Keyslot</description>
     <message>Authenticate to unlock your vault in Keyslot</message>
+    <message xml:lang="pl">Uwierzytelnij się, aby odblokować sejf w Keyslot</message>
+    <message xml:lang="ro">Autentificați-vă pentru a debloca seiful în Keyslot</message>
     <icon_name>keepassxc</icon_name>
     <defaults>
       <allow_any>no</allow_any>

@@ -2,7 +2,11 @@
 <component type="desktop-application">
   <id>com.neg_zero.keyslot</id>
   <name>Keyslot</name>
+  <name xml:lang="pl">Keyslot</name>
+  <name xml:lang="ro">Keyslot</name>
   <summary>A native GNOME client for KeePassXC databases</summary>
+  <summary xml:lang="pl">Natywny klient GNOME dla baz danych KeePassXC</summary>
+  <summary xml:lang="ro">Client GNOME nativ pentru bazele de date KeePassXC</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
   <developer id="com.neg-zero"><name>Keyslot Contributors</name></developer>
@@ -11,6 +15,12 @@
     <p>Browse and edit local KeePass databases with a native GTK4 and libadwaita interface. KeePassXC handles database encryption and storage.</p>
     <p>Includes search, credential copying, password generation, attachments, and a companion GNOME Quick Settings extension.</p>
     <p>This is an early development release. It does not yet provide full feature parity with KeePassXC.</p>
+    <p xml:lang="pl">Przeglądaj i edytuj lokalne bazy danych KeePass za pomocą natywnego interfejsu GTK4 i libadwaita. KeePassXC obsługuje szyfrowanie i przechowywanie baz danych.</p>
+    <p xml:lang="pl">Aplikacja zawiera wyszukiwanie, kopiowanie danych logowania, generowanie haseł, załączniki i towarzyszące rozszerzenie GNOME Quick Settings.</p>
+    <p xml:lang="pl">To wczesna wersja rozwojowa. Nie zapewnia jeszcze pełnej zgodności funkcji z KeePassXC.</p>
+    <p xml:lang="ro">Răsfoiți și editați baze de date KeePass locale cu o interfață nativă GTK4 și libadwaita. KeePassXC gestionează criptarea și stocarea bazelor de date.</p>
+    <p xml:lang="ro">Include căutare, copierea datelor de autentificare, generarea parolelor, atașamente și extensia însoțitoare GNOME Quick Settings.</p>
+    <p xml:lang="ro">Aceasta este o versiune de dezvoltare timpurie. Încă nu oferă paritate completă a funcționalităților cu KeePassXC.</p>
   </description>
   <launchable type="desktop-id">com.neg-zero.keyslot.desktop</launchable>
   <provides><binary>keyslot</binary></provides>

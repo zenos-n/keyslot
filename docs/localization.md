@@ -1,23 +1,25 @@
 # English, Polish and Romanian
 
 English is the source and fallback language. Keyslot's GTK gettext catalogs are
-limited to Polish (`pl`) and Romanian (`ro`). The currently marked GTK/diagnostic
-corpus has both translations; unmarked/dynamic messages can still appear in
-English. This does not change the existing
-upstream native-core translation assets.
+limited to Polish (`pl`) and Romanian (`ro`). The marked GTK and diagnostic
+corpus is translated; unmarked or dynamic messages can still appear in English.
+This does not change the upstream native-core translation assets.
 
-The application follows the desktop/process language environment. The separate
-`keyslot` gettext domain loads `$out/share/locale` from its installed module
-location. Meson installs the two compiled MO catalogs. No system-wide locale,
-vault setting or user's environment is modified. A per-app language selector is
-not implemented yet.
+The application follows the desktop/process language environment by default.
+Preferences also offers System Language, English, Polish and Romanian. An
+explicit choice is stored in Keyslot's startup settings and takes effect after
+restarting the application. Unknown saved language codes are preserved and use
+the desktop/process language until the user chooses a supported option. No
+system-wide locale or user's environment is modified. The separate `keyslot`
+gettext domain loads `$out/share/locale` from its installed module location;
+Meson installs the compiled MO catalogs.
 
-To review another language, first fully Quit the existing Keyslot process,
-including its background instance, then launch the updated package with
-`LANGUAGE=pl keyslot` or `LANGUAGE=ro keyslot`. A second launch that reaches an
-already-running primary process does not reload its language environment. The
-compiled catalogs alone do not demonstrate that the actual GTK layout and
-wording have been accepted in either language.
+To apply a changed language, fully Quit the existing Keyslot process, including
+its background instance, and open it again. A second launch that reaches an
+already-running primary process does not reload its catalog. The GNOME
+companion has its own gettext domain (`keyslot@neg-zero`) and ships Polish and
+Romanian catalogs with the extension. Its UI follows the desktop language
+independently of Keyslot's per-app language choice.
 
 Translation is applied at presentation boundaries. IDs, shortcut actions,
 Auto-Type sequences, reference codes, CSV delimiters, database contents and
@@ -33,13 +35,12 @@ Unknown custom history-field names stay literal; only known standard-field
 captions are translated. Native protocol/error codes stay unchanged; known
 static error messages can be translated when presented by GTK.
 
-`po/README.md` records attribution for phrases adapted from the upstream
-KeePassXC2.8.0 Polish/Romanian catalogs and the GPL-3.0-only terms of the combined
-catalogs. New Keyslot phrases are maintained alongside those translations.
+Desktop entry, AppStream metainfo, PolicyKit prompts and companion preferences
+provide Polish and Romanian labels. `po/README.md` records attribution for
+phrases adapted from the upstream KeePassXC 2.8.0 Polish/Romanian catalogs and
+the GPL-3.0-only terms of the combined catalogs. New Keyslot phrases are
+maintained alongside those translations.
 
-R02 remains open: remaining GTK messages and diagnostics, source-caption
-coverage, desktop/metainfo/polkit and companion surfaces, language-setting
-compatibility and user manual linguistic/layout/accessibility acceptance.
 Current validation is resource compilation and static source review; ordinary
 runtime packaging is separate. No tests or behavior probes are part of this
 localization work.

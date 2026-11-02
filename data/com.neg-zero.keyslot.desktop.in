@@ -1,7 +1,14 @@
 [Desktop Entry]
 Type=Application
 Name=Keyslot
+Name[pl]=Keyslot
+Name[ro]=Keyslot
 Comment=Manage KeePass databases
+Comment[pl]=Zarządzaj bazami danych KeePass
+Comment[ro]=Gestionați bazele de date KeePass
+GenericName=Password Manager
+GenericName[pl]=Menedżer haseł
+GenericName[ro]=Manager de parole
 Exec=@BINDIR@/keyslot %F
 Icon=keepassxc
 Terminal=false

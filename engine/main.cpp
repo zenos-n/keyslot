@@ -275,7 +275,8 @@ QJsonObject manualInfo(const QString& manifest, const QString& source = {})
     if (data.value("version").toInt() != 1 || !QFileInfo(original).isAbsolute()
         || (!source.isEmpty() && original != source) || !snapshot.match(name).hasMatch()
         || !sha.match(data.value("base_hash").toString()).hasMatch()
-        || !sha.match(data.value("snapshot_hash").toString()).hasMatch())
+        || !sha.match(data.value("snapshot_hash").toString()).hasMatch()
+        || (data.contains("non_data_only") && !data.value("non_data_only").isBool()))
         fail("file_error", "The recovery record is invalid or belongs to another vault.");
     const auto saved = directory.absoluteFilePath() + "/" + name;
     if (::lstat(QFile::encodeName(saved).constData(), &info) || !S_ISREG(info.st_mode)
@@ -296,7 +297,7 @@ void discardManual(const QJsonObject& data, bool strict = true)
     for (const auto& name : directory.entryList({"snapshot-*.kdbx"}, QDir::Files | QDir::NoSymLinks)) directory.remove(name);
 }
 QByteArray commitManual(const QString& manifest, const QString& source, const BackupPolicy& backupPolicy,
-                       bool ownsCheckpoint = false)
+                       bool ownsCheckpoint = false, bool onlyNonData = false)
 {
     manualInfo(manifest, source);
     QLockFile owner(manifest + ".owner");
@@ -304,6 +305,7 @@ QByteArray commitManual(const QString& manifest, const QString& source, const Ba
     QLockFile lock(manifest + ".lock");
     if (!lock.tryLock()) fail("busy", "Another process is already saving this recovery snapshot.");
     const auto data = manualInfo(manifest, source);
+    if (onlyNonData && !data.value("non_data_only").toBool()) return {};
     const auto snapshot = data.value("path").toString();
     const auto savedHash = QByteArray::fromHex(data.value("snapshot_hash").toString().toLatin1());
     const auto baseHash = QByteArray::fromHex(data.value("base_hash").toString().toLatin1());
@@ -404,7 +406,7 @@ class Engine {
     QSharedPointer<Database> db;
     QString path;
     QByteArray hash, diskHash;
-    bool autoSave = true, modified = false;
+    bool autoSave = true, autoSaveNonData = true, modified = false, nonDataOnly = false;
     BackupPolicy backupPolicy;
     QString manualManifest, manualSnapshot;
     std::unique_ptr<QLockFile> manualOwner;
@@ -471,6 +473,7 @@ class Engine {
         }
         manualSnapshot.clear();
         modified = false;
+        nonDataOnly = false;
         if (!manualManifest.isEmpty() && !QFileInfo::exists(manualManifest)) {
             const auto directory = QFileInfo(manualManifest).absolutePath();
             manualOwner.reset();
@@ -488,7 +491,7 @@ class Engine {
         if (!writer.writeDatabase(&output, db.data()) || !output.flush() || ::fsync(output.handle()) != 0)
             fail("save_error", "The encrypted recovery snapshot could not be written completely.");
     }
-    void checkpoint() {
+    void checkpoint(bool nonData = false) {
         if (manualManifest.isEmpty()) {
             QTemporaryDir directory(manualRoot(true) + "/manual-XXXXXX");
             if (!directory.isValid()) fail("file_error", "A private unsaved-vault directory could not be created.");
@@ -518,7 +521,7 @@ class Engine {
         if (digest(target) != revision) fail("file_error", "The encrypted checkpoint could not be verified.");
         const auto data = QJsonDocument(QJsonObject{{"version", 1}, {"source", path}, {"snapshot", name},
             {"base_hash", QString::fromLatin1(diskHash.toHex())},
-            {"snapshot_hash", QString::fromLatin1(revision.toHex())}}).toJson(QJsonDocument::Compact);
+            {"snapshot_hash", QString::fromLatin1(revision.toHex())}, {"non_data_only", nonData}}).toJson(QJsonDocument::Compact);
         QSaveFile journal(manualManifest);
         if (!journal.open(QIODevice::WriteOnly) || !journal.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
             || journal.write(data) != data.size() || !journal.commit())
@@ -526,7 +529,7 @@ class Engine {
         const int dir = ::open(QFile::encodeName(directory).constData(), O_RDONLY | O_DIRECTORY);
         if (dir >= 0) { ::fsync(dir); ::close(dir); }
         const auto previous = manualSnapshot;
-        manualSnapshot = target; hash = revision; modified = true;
+        manualSnapshot = target; hash = revision; modified = true; nonDataOnly = nonData;
         if (!previous.isEmpty() && previous != target) QFile::remove(previous);
         db->markAsModified();
     }
@@ -585,6 +588,7 @@ class Engine {
         const auto originalHash = hash;
         const auto originalDiskHash = diskHash;
         const auto originalModified = modified;
+        const auto originalNonDataOnly = nonDataOnly;
         QTemporaryDir recovery(qEnvironmentVariable("KEYSLOT_ENGINE_CONFIG_DIRECTORY") + "/recovery-XXXXXX");
         if (!recovery.isValid()) fail("file_error", "An encrypted recovery snapshot could not be created. The vault was not changed.");
         const auto recoveryPath = recovery.path() + "/database.kdbx";
@@ -598,10 +602,14 @@ class Engine {
             fail("file_error", "The encrypted recovery snapshot could not be prepared. The vault was not changed.");
         try {
             if (!acceptedSource.isEmpty()) diskHash = acceptedSource;
+            db->markAsClean();
             change();
+            const bool onlyNonData = (!originalModified || originalNonDataOnly)
+                && db->hasNonDataChanges() && !db->isModified();
             // Transfers certify a saved destination before deleting the source.
-            if (autoSave || forceSave) persist(false, false);
-            else checkpoint();
+            if (onlyNonData && autoSaveNonData && !forceSave) checkpoint(true);
+            else if (autoSave || forceSave) persist(false, false);
+            else checkpoint(onlyNonData);
         } catch (...) {
             const auto failure = std::current_exception();
             recovery.setAutoRemove(false);
@@ -622,6 +630,7 @@ class Engine {
             restored->setFilePath(path);
             if (originalModified) restored->markAsModified(); else restored->markAsClean();
             db = std::move(restored); hash = originalHash; diskHash = originalDiskHash; modified = originalModified;
+            nonDataOnly = originalNonDataOnly;
             recovery.setAutoRemove(true);
             try { std::rethrow_exception(failure); }
             catch (const Failure& error) {
@@ -690,6 +699,7 @@ class Engine {
         groups.append(QJsonObject{{"uuid", uid(g->uuid())}, {"parent", g->parentGroup() ? uid(g->parentGroup()->uuid()) : QString()},
                      {"path", g->fullPath()}, {"name", g->name()}, {"depth", depth}, {"recycled", g->isRecycled()},
                      {"notes", g->notes()}, {"addressable", true}, {"icon", g->iconNumber()},
+                     {"expanded", g->isExpanded()},
                      {"custom_icon", g->iconUuid().isNull() ? QString() : uid(g->iconUuid())},
                      {"tags", g->tags()}, {"searching", static_cast<int>(g->searchingEnabled())},
                      {"expires", g->timeInfo().expires()},
@@ -707,6 +717,7 @@ class Engine {
         return {{"name", db->metadata()->name()}, {"recycle_bin_enabled", db->metadata()->recycleBinEnabled()},
                 {"recycle_bin", db->metadata()->recycleBin() ? uid(db->metadata()->recycleBin()->uuid()) : QString()},
                 {"modified", modified}, {"recovery_path", modified ? manualSnapshot : QString()},
+                {"non_data_only", modified && nonDataOnly},
                 {"recovery_copy", recoveryLocation(path)},
                 {"secret_group", secretGroup.isNull() ? QString() : uid(secretGroup)},
                 {"groups", groups}, {"entries", entries}, {"root", uid(db->rootGroup()->uuid())},
@@ -847,8 +858,12 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy", "autotype-sort"}}};
-        if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy", "autotype-sort", "non-data-save"}}};
+        if (method == "save.policy") {
+            autoSave = boolean(args, "auto_save");
+            autoSaveNonData = boolean(args, "auto_save_non_data", true);
+            return db ? QJsonValue(snapshot()) : QJsonValue(true);
+        }
         if (method == "backup.policy") {
             const bool enabled = boolean(args, "enabled");
             auto pattern = text(args, "pattern");
@@ -860,7 +875,9 @@ public:
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
             const auto manifest = requestedPath(args, "manifest"), source = requestedPath(args, "source");
-            if (method == "recovery.commit") return QString::fromLatin1(commitManual(manifest, source, backupPolicy).toHex());
+            if (method == "recovery.commit" || method == "recovery.commit_non_data")
+                return QString::fromLatin1(commitManual(manifest, source, backupPolicy, false,
+                    method == "recovery.commit_non_data").toHex());
             manualInfo(manifest, source);
             QLockFile owner(manifest + ".owner");
             if (!owner.tryLock()) fail("busy", "The vault owning this recovery copy is still open.");
@@ -1985,6 +2002,12 @@ public:
                 chosen.append(e); seen.insert(e->uuid());
             }
             return transaction([&] { for (auto* e : chosen) db->recycleEntry(e); });
+        }
+        if (method == "group.expanded") {
+            auto* target = group(text(args, "group"));
+            const auto expanded = boolean(args, "expanded");
+            if (target->isExpanded() == expanded) return snapshot();
+            return transaction([&] { target->setExpanded(expanded); });
         }
         if (method == "group.save") {
             Group* existing = args.contains("group") ? group(text(args, "group")) : nullptr;

@@ -9,7 +9,7 @@ import threading
 
 from .backend import VaultError
 from .core_backend import Vault, EngineError
-from .startup import AUTO_TYPE_DEFAULTS, _autotype_options, _secret_service_options, _xdg_directory
+from .startup import AUTO_TYPE_DEFAULTS, _autotype_options, _secret_service_options, _xdg_directory, _behavior_options
 
 
 STARTUP_KEYS = {
@@ -26,6 +26,12 @@ STARTUP_KEYS = {
     "auto_reload": ("global", "AutoReloadOnChange", True),
     "auto_save": ("global", "AutoSaveAfterEveryChange", True),
     "auto_save_on_exit": ("global", "AutoSaveOnExit", True),
+    "auto_save_non_data": ("global", "AutoSaveNonDataChanges", True),
+    "show_expiry_warning": ("global", "GUI/ShowExpiredEntriesOnDatabaseUnlock", True),
+    "expiry_warning_days": ("global", "GUI/ShowExpiredEntriesOnDatabaseUnlockOffsetDays", 3),
+    "copy_on_double_click": ("global", "Security/EnableCopyOnDoubleClick", False),
+    "url_double_click_action": ("global", "URLDoubleClickAction", 0),
+    "language": ("global", "GUI/Language", "system"),
     "backup_before_save": ("global", "BackupBeforeSave", False),
     "backup_path_pattern": ("global", "BackupFilePathPattern", "{DB_FILENAME}.old.kdbx"),
     "lock_on_screen": ("global", "Security/LockDatabaseScreenLock", True),
@@ -282,6 +288,10 @@ class IniProfile:
     def read_startup(self):
         with self.mutex:
             data = {field: self._get(key, role) for field, (role, key, _default) in STARTUP_KEYS.items()}
+            try:
+                data.update(_behavior_options(data))
+            except ValueError as error:
+                raise VaultError(str(error)) from error
             data["browser_listing"] = self._get("Browser/AllowGetDatabaseEntriesRequest")
             data["remember"] = self._get("OpenPreviousDatabasesOnStartup")
             candidates = [self._get("LastActiveDatabase", "local"), *self._get("LastOpenedDatabases", "local")]

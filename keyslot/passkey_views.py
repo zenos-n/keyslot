@@ -61,12 +61,14 @@ def manage(session, data=None):
             show_info(session, entry)
         for entry in entries:
             info = metadata[entry.uuid]
-            row = Adw.ActionRow(title=(entry.title or "Untitled Entry") + (" (Expired)" if entry.expired else ""), subtitle=" · ".join(
+            title = entry.title or _tr("Untitled Entry")
+            title += " (" + _tr("Expired") + ")" if entry.expired else ""
+            row = Adw.ActionRow(title=title, subtitle=" · ".join(
                 value for value in (info["username"], info["relyingParty"], entry.group_path) if value), use_markup=False,
                 title_lines=2, subtitle_lines=2)
             row.entry = entry
             check = Gtk.CheckButton(valign=Gtk.Align.CENTER)
-            check.update_property([Gtk.AccessibleProperty.LABEL], ["Select " + (entry.title or "Untitled Entry")])
+            check.update_property([Gtk.AccessibleProperty.LABEL], [_trf("Select {arg0}", arg0=entry.title or _tr("Untitled Entry"))])
             check.connect("toggled", update)
             selected[entry.uuid] = check
             row.add_prefix(check)

@@ -91,6 +91,9 @@ class VaultSession:
         self.vault = vault or Vault()
         self.vault.auto_save = application.startup.auto_save
         self.vault.auto_save_on_exit = application.startup.auto_save_on_exit
+        self.vault.auto_save_non_data = application.startup.auto_save_non_data
+        self.vault.save_settings = application.startup
+        self.expiry_checked_paths = set()
         self.vault.backup_before_save = application.startup.backup_before_save
         self.vault.backup_path_pattern = application.startup.backup_path_pattern
         self.vault.backup_settings = application.startup
@@ -246,6 +249,11 @@ class VaultSession:
                 resume.finished(snapshot)
             else:
                 self.windows.unlocked()
+                path = str(self.vault.path)
+                if path not in self.expiry_checked_paths:
+                    self.expiry_checked_paths.add(path)
+                    if self.application.startup.show_expiry_warning:
+                        self.window.search_tools.show_expiry(self.application.startup.expiry_warning_days)
 
     def lock(self):
         self.jobs.lock()
@@ -536,9 +544,10 @@ class VaultSession:
             recovery.connect("clicked", lambda *_: save_current())
             box.append(recovery)
         seconds = self.application.startup.lock_seconds
-        duration = f"{seconds // 60} minutes" if seconds % 60 == 0 else f"{seconds} seconds"
-        lock_notice = f"Locks after {duration} of inactivity." if seconds else "Inactivity locking is disabled."
-        notice = Gtk.Label(label="Database contents stay on this computer.\n" + lock_notice,
+        duration = (_ntrf("{count} minute", "{count} minutes", seconds // 60) if seconds % 60 == 0
+                    else _ntrf("{count} second", "{count} seconds", seconds))
+        lock_notice = _trf("Locks after {duration} of inactivity.", duration=duration) if seconds else _tr("Inactivity locking is disabled.")
+        notice = Gtk.Label(label=_tr("Database contents stay on this computer.") + "\n" + lock_notice,
                            wrap=True, css_classes=["dim-label", "caption"])
         box.append(notice)
 
@@ -1207,11 +1216,13 @@ class DatabaseView(Gtk.Box):
 
     def _save_state(self, busy):
         modified = bool(self.app.vault.unlocked and self.app.vault.snapshot.modified)
+        if modified and self.app.vault.snapshot.non_data_only and self.app.application.startup.auto_save_non_data:
+            modified = False
         self.save_button.set_sensitive(modified and not busy)
         self.save_button.set_visible(not self.app.application.startup.auto_save or modified)
-        status = ["Recovery Copy"] if self.app.vault.unlocked and self.app.vault.snapshot.recovery_copy else []
+        status = [_tr("Recovery Copy")] if self.app.vault.unlocked and self.app.vault.snapshot.recovery_copy else []
         if modified:
-            status.append("Unsaved Changes")
+            status.append(_tr("Unsaved Changes"))
         self.database_title.set_subtitle(" · ".join(status))
         if action := self.app.host_window.lookup_action("save"):
             action.set_enabled(modified and not busy)
@@ -1266,12 +1277,25 @@ class DatabaseView(Gtk.Box):
         all_row.add_prefix(Gtk.Image(icon_name="view-list-symbolic"))
         self.groups.append(all_row)
         selected = all_row
+        parents = {group.parent for group in snapshot.groups if group.parent}
+        hidden, collapsed = set(), set()
         for group in snapshot.groups:
-            row = Adw.ActionRow(title=GLib.markup_escape_text(group.name or "Database"))
+            if group.parent in hidden or group.parent in collapsed:
+                hidden.add(group.identity)
+                continue
+            row = Adw.ActionRow(title=GLib.markup_escape_text(group.name or _tr("Database")))
             row.add_prefix(self.app.icons.image(group, 24))
             row.set_margin_start(min(group.depth, 6) * 10)
             row.group_path = group.identity
             row.group_name = group.name
+            if group.identity in parents:
+                toggle = button("pan-down-symbolic" if group.expanded else "pan-end-symbolic",
+                    _tr("Collapse Group") if group.expanded else _tr("Expand Group"),
+                    lambda group=group: self._toggle_group(group))
+                toggle.add_css_class("flat")
+                row.add_suffix(toggle)
+                if not group.expanded:
+                    collapsed.add(group.identity)
             from . import drag_drop
             drag_drop.group_row(self.app, row, group)
             self.groups.append(row)
@@ -1285,6 +1309,14 @@ class DatabaseView(Gtk.Box):
         else:
             self.render_entries(previous, selection)
         self.app.emit_state()
+
+    def _toggle_group(self, group):
+        if self.app.busy or not self.app.vault.unlocked:
+            return
+        def updated(snapshot):
+            self.selected_group = group.identity
+            self.show_vault(snapshot)
+        self.app.run_job(lambda: self.app.vault.set_group_expanded(group.identity, not group.expanded), updated)
 
     def _select_group(self, _list, row):
         if not row:
@@ -1326,10 +1358,10 @@ class DatabaseView(Gtk.Box):
                 continue
             subtitle = ("••••••" if self.app.application.startup.hide_usernames else entry.username) if entry.username else (
                 entry.url or entry.group_path or entry.group)
-            row = Adw.ActionRow(title=GLib.markup_escape_text(entry.title or "Untitled Entry"), subtitle=GLib.markup_escape_text(subtitle))
+            row = Adw.ActionRow(title=GLib.markup_escape_text(entry.title or _tr("Untitled Entry")), subtitle=GLib.markup_escape_text(subtitle))
             row.entry = entry
             check = Gtk.CheckButton(valign=Gtk.Align.CENTER)
-            check.update_property([Gtk.AccessibleProperty.LABEL], ["Select " + (entry.title or "Untitled Entry")])
+            check.update_property([Gtk.AccessibleProperty.LABEL], [_trf("Select {title}", title=entry.title or _tr("Untitled Entry"))])
             check.connect("toggled", self._toggle_entry, row)
             row.selection_check = check
             avatar = self.app.icons.image(entry, 32)
@@ -1554,6 +1586,8 @@ class DatabaseView(Gtk.Box):
         if entry.url:
             website = Adw.ActionRow(title=_tr("Website"), subtitle=GLib.markup_escape_text(entry.url))
             website.add_suffix(button("adw-external-link-symbolic", _tr('Open Entry URL'), lambda: self.app.open_entry_url(entry)))
+            from .field_actions import add_double_click
+            add_double_click(self.app, website, entry, "URL")
             fields.add(website)
         if entry.override_url:
             override = Adw.ActionRow(title=_tr("URL Override"), subtitle=GLib.markup_escape_text(entry.override_url))

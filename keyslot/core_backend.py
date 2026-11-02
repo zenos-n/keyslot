@@ -73,6 +73,9 @@ class Vault:
         self._ssh_configuration = None
         self.ssh_warning = None
         self.auto_save = self.auto_save_on_exit = True
+        self.auto_save_non_data = True
+        self.save_settings = None
+        self._updating_save_policy = False
         self.backup_before_save = False
         self.backup_path_pattern = "{DB_FILENAME}.old.kdbx"
         self.backup_settings = None
@@ -159,8 +162,11 @@ class Vault:
                 return
             if discard:
                 self.recovery_action("discard", manifest, self.path)
-            elif self.auto_save_on_exit:
+            elif (self.save_settings.save_policy_value[1] if self.save_settings else self.auto_save_on_exit):
                 self.recovery_action("commit", manifest, self.path)
+            elif (self.save_settings.save_policy_value[2] if self.save_settings else self.auto_save_non_data):
+                if not self.recovery_action("commit_non_data", manifest, self.path):
+                    raise VaultError("Unsaved changes were kept in an encrypted recovery copy.")
             else:
                 raise VaultError("Unsaved changes were kept in an encrypted recovery copy.")
             try:
@@ -223,13 +229,13 @@ class Vault:
             if not isinstance(hello, dict) or hello.get("protocol") != 1 or hello.get("engine") != "keepassxc-core" or hello.get("upstream") != CORE_VERSION:
                 raise VaultError("The native engine protocol is incompatible with this client.")
             self.capabilities = frozenset(hello.get("capabilities", []))
-            if "backup-policy" not in self.capabilities:
-                raise VaultError("Update the native engine before configuring database backups.")
+            if not {"backup-policy", "non-data-save"} <= self.capabilities:
+                raise VaultError("The native engine protocol is incompatible with this client.")
             self._rpc("backup.policy", enabled=self.backup_before_save, pattern=self.backup_path_pattern)
             if not self.auto_save:
                 if "manual-save" not in self.capabilities:
                     raise VaultError("Update the native engine before disabling automatic saving.")
-                self._rpc("save.policy", auto_save=False)
+            self._rpc("save.policy", auto_save=self.auto_save, auto_save_non_data=self.auto_save_non_data)
         except Exception:
             self._stop()
             raise
@@ -237,6 +243,11 @@ class Vault:
     def _rpc(self, method, _timeout=None, **params):
         if self._cancelled.is_set() or self._process is None:
             raise VaultError("The database is locked.")
+        if (method not in ("hello", "save.policy") and not self._updating_save_policy
+                and "non-data-save" in self.capabilities and self.save_settings is not None):
+            chosen = self.save_settings.save_policy_value
+            if chosen != (self.auto_save, self.auto_save_on_exit, self.auto_save_non_data):
+                self.save_policy(*chosen)
         if method not in ("hello", "backup.policy") and "backup-policy" in self.capabilities and self.backup_settings is not None:
             # Read one committed pair even when a window opens during a preference update.
             chosen = self.backup_settings.backup_policy_value
@@ -337,7 +348,7 @@ class Vault:
             self.snapshot = Snapshot(value.get("name", ""), value.get("recycle_bin_enabled", True), groups,
                                      entries, value.get("root", ""), value.get("default_username", ""), value.get("secret_group", ""),
                                      value.get("modified") is True, value.get("recovery_path", ""), value.get("recovery_copy") is True,
-                                     value.get("recycle_bin", ""))
+                                     value.get("recycle_bin", ""), value.get("non_data_only") is True)
         except (TypeError, AttributeError) as exc:
             self.lock()
             raise VaultError("The native engine returned invalid database metadata.") from exc
@@ -400,13 +411,27 @@ class Vault:
                 self.forget_system_auth()
             return self._set_snapshot(data["snapshot"])
 
-    def save_policy(self, auto_save, on_exit):
+    def save_policy(self, auto_save, on_exit, non_data=None):
         with self._mutex:
-            if auto_save and not self.auto_save and self.unlocked and self.snapshot.modified:
-                self._snapshot_call("database.save")
-            if self.unlocked:
-                self._snapshot_call("save.policy", auto_save=auto_save)
-            self.auto_save, self.auto_save_on_exit = auto_save, on_exit
+            non_data = self.auto_save_non_data if non_data is None else non_data
+            if any(type(value) is not bool for value in (auto_save, on_exit, non_data)):
+                raise VaultError("Choose whether to save vault changes automatically.")
+            previous = self._updating_save_policy
+            self._updating_save_policy = True
+            try:
+                if auto_save and not self.auto_save and self.unlocked and self.snapshot.modified:
+                    self._snapshot_call("database.save")
+                if self.unlocked:
+                    self._snapshot_call("save.policy", auto_save=auto_save, auto_save_non_data=non_data)
+                self.auto_save, self.auto_save_on_exit, self.auto_save_non_data = auto_save, on_exit, non_data
+            finally:
+                self._updating_save_policy = previous
+
+    def set_group_expanded(self, identity, expanded):
+        with self._mutex:
+            if "non-data-save" not in self.capabilities or type(expanded) is not bool:
+                raise VaultError("The native engine protocol is incompatible with this client.")
+            return self._snapshot_call("group.expanded", group=identity, expanded=expanded)
 
     def backup_policy(self, enabled, pattern):
         if type(enabled) is not bool or not isinstance(pattern, str) or len(pattern) > 16384 or "\0" in pattern:
