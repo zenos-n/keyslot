@@ -19,8 +19,11 @@ lease is installed. A reused connection cannot select or approve an entry by
 itself; failed input is never automatically replayed.
 
 Successful completion may retain the transport. Errors, cancellation or revoked
-sessions close it. An idle timer checks transport identity and connection epoch;
+sessions close it. An idle timer checks transport identity and a unique idle-period marker;
 acquisition also checks monotonic expiry, so a delayed timer cannot extend reuse.
+The idle marker changes on every reuse, preventing a canceled old timer from
+closing that same transport after a later invocation has returned it to idle.
+Failure to start a timer or close thread falls back to closing the transport.
 Persistent mode omits the timer. Turning persistence off closes the old transport;
 changing only this flag leaves remembered permission intact. Other Auto-Type
 policy changes close the connection as well, including timeout changes.

@@ -13,9 +13,11 @@ class PortalConnections:
         self.epoch = 0
         self.active = self.idle = self.timer = None
         self.idle_until = 0
+        self.idle_stamp = None
         self.closed = False
 
     def _cancel_timer(self):
+        self.idle_stamp = None
         if self.timer:
             self.timer.cancel()
             self.timer = None
@@ -23,7 +25,10 @@ class PortalConnections:
     @staticmethod
     def _discard(keyboard):
         if keyboard:
-            threading.Thread(target=keyboard.close, name="keyslot-portal-close", daemon=True).start()
+            try:
+                threading.Thread(target=keyboard.close, name="keyslot-portal-close", daemon=True).start()
+            except RuntimeError:
+                keyboard.close()
 
     def invalidate(self):
         with self.mutex:
@@ -98,11 +103,15 @@ class PortalConnections:
             if keep and (timeout is None or timeout > 0):
                 self.active = None
                 self.idle = keyboard
+                self.idle_stamp = object()
                 self.idle_until = float("inf") if timeout is None else time.monotonic() + timeout
                 if timeout is not None:
-                    self.timer = threading.Timer(timeout, self._expire, (keyboard, self.epoch))
+                    self.timer = threading.Timer(timeout, self._expire, (keyboard, self.idle_stamp))
                     self.timer.daemon = True
-                    self.timer.start()
+                    try:
+                        self.timer.start()
+                    except RuntimeError:
+                        self._expire(keyboard, self.idle_stamp)
                 return
         try:
             keyboard.close()
@@ -111,12 +120,13 @@ class PortalConnections:
                 if self.active is keyboard:
                     self.active = None
 
-    def _expire(self, keyboard, epoch):
+    def _expire(self, keyboard, stamp):
         with self.mutex:
-            if self.idle is not keyboard or epoch != self.epoch:
+            if self.idle is not keyboard or stamp is not self.idle_stamp:
                 return
             self.idle = self.timer = None
             self.idle_until = 0
+            self.idle_stamp = None
         keyboard.close()
 
     def close(self):
