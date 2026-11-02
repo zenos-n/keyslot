@@ -83,3 +83,13 @@ automated GTK/Shell/clipboard/vault/auth/config behavior runs. Manual acceptance
 remains for X11/Wayland, extension upgrade/disable, focus/lock/close races,
 multi-vault and every unlock path, opening links, clipboard failure, Never,
 minimize-lock grace, explicit INI conflict handling, accessibility and layout.
+
+Login-keyring startup now always requests daemon/background mode, independently
+of the saved close-window preference. `--login` implies a background application
+hold and new autostart entries also include `--background`. Restored/new login
+windows stay hidden; later explicit Open/Show presents normally. An already
+visible window is not hidden by a repeated login request. Hidden credential
+failures stay locked and queue their error for explicit opening. No credentials
+or enrollment policy changed. Runtime/Python compilation only, no tests or
+automated login/keyring/GTK/vault behavior runs; next-login/manual acceptance
+remains with the user.

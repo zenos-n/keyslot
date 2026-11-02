@@ -269,7 +269,7 @@ class Keyslot(Adw.Application):
             command_line.printerr_literal("Keyslot is already running with a different configuration. Quit it before switching profiles.\n")
             return 1
         arguments = gui_cli.arguments(options)
-        background_requested = options.contains("background") or options.contains("minimized")
+        background_requested = options.contains("background") or options.contains("minimized") or options.contains("login")
         if background_requested:
             self.set_background(True)
         if options.contains("login"):
@@ -283,8 +283,6 @@ class Keyslot(Adw.Application):
                 if not self.active_session:
                     self.active_session, self.window = session, session.host_window
                 session.requested_path = path
-                if not self.background_enabled:
-                    self.select_session(session, activate=False)
                 if not session.vault.unlocked and not session.busy:
                     session.pending_unlock = None
                     session.unlock_at_login(path)

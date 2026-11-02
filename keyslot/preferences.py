@@ -22,7 +22,7 @@ def show(session):
     remember = Adw.SwitchRow(title="Remember Last Opened Vault",
         subtitle="Open its unlock screen when Keyslot starts", active=settings.remember)
     login = Adw.SwitchRow(title="Unlock at Login",
-        subtitle="Save the vault credential in the GNOME login keyring", active=settings.login,
+        subtitle="Unlock in the background using the GNOME login keyring", active=settings.login,
         sensitive=settings.remember)
     group.add(remember)
     group.add(login)

@@ -482,7 +482,13 @@ Remembering reopens the last successfully unlocked vault's password screen.
 Login unlock is opt-in: unlock the vault, enable it in Preferences, and confirm
 its password/key-file/hardware-key options. The helper verifies the credential
 without replacing the open database, then libsecret saves it in GNOME's login
-keyring. A per-user XDG autostart entry runs `keyslot --login` after sign-in.
+keyring. A per-user XDG autostart entry runs `keyslot --login --background` after sign-in.
+Login unlock stays in daemon mode with no window, even when the saved Run in
+Background preference is off. Open Keyslot normally or through Quick Settings
+to show its window; normal launches remain graphical. The login request does
+not hide windows you already opened. Failed hidden login attempts stay locked
+and defer their error until you open Keyslot. This does not change your saved
+window-close preference.
 The keyring must already be unlocked by the login session; hardware keys may
 still require interaction. Failure leaves manual unlock available.
 

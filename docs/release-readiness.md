@@ -616,3 +616,13 @@ compilation only. All real portal/clipboard/FD/GUI/owner/profile/lock/cancel/fal
 accessibility and native2.8 workflow acceptance remains manual.
 
 Desktop-wide Auto-Type shortcuts now have [companion preferences](autotype-shortcuts.md): add/change/remove aliases, disable/reset, read-only handling and compositor-confirmed shortcut capture. Shell suppresses the hotkey into extension preferences, including while capture is pending; focus/owner/lifecycle errors cancel rather than replay. App preferences and shortcut editor can open GNOME’s standard companion preferences service. Package/Python/schema compilation and JS syntax evidence only; manual GNOME50 recording/keys/focus/lifecycle/accessibility acceptance remains. No tests or automated behavior runs.
+
+Login-keyring unlock now always starts in daemon/background mode: `--login`
+implies a runtime background hold, and generated profile-aware XDG autostart
+commands include `--background`. It creates/restores hidden windows and does
+not select/present one as part of login. Existing visible windows are preserved;
+normal launches remain graphical, deferred hidden errors surface on explicit
+Open. This keeps saved background/close behavior settings and opt-in enrollment
+unchanged. Runtime/Python compilation only; no tests, simulated login or live
+keyring/vault/GTK behavior checks. User manual fresh-login/failure/session-restore
+and already-running acceptance remains.

@@ -290,7 +290,7 @@ class Startup:
                     for option, value in self.storage.launch_arguments:
                         command += " " + option + " " + _desktop_argument(value)
                 _write(self.autostart, '[Desktop Entry]\nType=Application\nName=Keyslot\n'
-                       f'Exec={command} --login\nIcon=keepassxc\nTerminal=false\n'
+                       f'Exec={command} --login --background\nIcon=keepassxc\nTerminal=false\n'
                        'OnlyShowIn=GNOME;\nX-GNOME-Autostart-enabled=true\n')
             else:
                 self.autostart.unlink(missing_ok=True)
