@@ -73,6 +73,8 @@ class Vault:
         self._ssh_configuration = None
         self.ssh_warning = None
         self.auto_save = self.auto_save_on_exit = True
+        self.backup_before_save = False
+        self.backup_path_pattern = "{DB_FILENAME}.old.kdbx"
         self.discard_on_stop = False
         self.recovery_warning = ""
         self.finishing = False
@@ -170,6 +172,8 @@ class Vault:
 
     def recovery_action(self, action, manifest=None, source=None, **options):
         client = Vault(executable=self.executable, timeout=self.timeout)
+        client.backup_before_save = self.backup_before_save
+        client.backup_path_pattern = self.backup_path_pattern
         try:
             client._start()
             return client._rpc("recovery." + action, source=str(source or self.path),
@@ -217,6 +221,9 @@ class Vault:
             if not isinstance(hello, dict) or hello.get("protocol") != 1 or hello.get("engine") != "keepassxc-core" or hello.get("upstream") != CORE_VERSION:
                 raise VaultError("The native engine protocol is incompatible with this client.")
             self.capabilities = frozenset(hello.get("capabilities", []))
+            if "backup-policy" not in self.capabilities:
+                raise VaultError("Update the native engine before configuring database backups.")
+            self._rpc("backup.policy", enabled=self.backup_before_save, pattern=self.backup_path_pattern)
             if not self.auto_save:
                 if "manual-save" not in self.capabilities:
                     raise VaultError("Update the native engine before disabling automatic saving.")
@@ -393,6 +400,14 @@ class Vault:
             if self.unlocked:
                 self._snapshot_call("save.policy", auto_save=auto_save)
             self.auto_save, self.auto_save_on_exit = auto_save, on_exit
+
+    def backup_policy(self, enabled, pattern):
+        if type(enabled) is not bool or not isinstance(pattern, str) or len(pattern) > 16384 or "\0" in pattern:
+            raise VaultError("Choose a supported backup switch and file path pattern.")
+        with self._mutex:
+            if self._process is not None and not self._cancelled.is_set():
+                self._rpc("backup.policy", enabled=enabled, pattern=pattern)
+            self.backup_before_save, self.backup_path_pattern = enabled, pattern
 
     def reconcile(self, merge=False, discard=False, overwrite=False, review=None):
         with self._mutex:

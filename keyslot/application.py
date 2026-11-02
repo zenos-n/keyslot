@@ -91,6 +91,8 @@ class VaultSession:
         self.vault = vault or Vault()
         self.vault.auto_save = application.startup.auto_save
         self.vault.auto_save_on_exit = application.startup.auto_save_on_exit
+        self.vault.backup_before_save = application.startup.backup_before_save
+        self.vault.backup_path_pattern = application.startup.backup_path_pattern
         self.requested_path = None
         self.pending_unlock = None
         self.unlock_prompt = None

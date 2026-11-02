@@ -205,7 +205,7 @@ def save_as(session, destination=None):
             save()
             return
         dialog = Adw.AlertDialog(heading=_tr("Replace Existing Vault?"),
-            body=_trf('Replace {arg0} with this vault’s current contents? The existing file’s version will be kept as an encrypted backup.', arg0=target))
+            body=_trf('Replace {arg0} with this vault’s current contents? Backups follow the current settings in Preferences → Backups.', arg0=target))
         dialog.add_response("cancel", _tr("Cancel"))
         dialog.add_response("replace", _tr("Replace"))
         dialog.set_close_response("cancel")

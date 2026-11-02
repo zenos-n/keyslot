@@ -104,6 +104,8 @@ class Startup:
         self.minimize_on_url = False
         self.auto_reload = True
         self.auto_save = self.auto_save_on_exit = True
+        self.backup_before_save = False
+        self.backup_path_pattern = "{DB_FILENAME}.old.kdbx"
         for name, value in LOCK_DEFAULTS.items():
             setattr(self, name, value)
         for name, value in PRIVACY_DEFAULTS.items():
@@ -131,6 +133,10 @@ class Startup:
             self.auto_reload = data.get("auto_reload", True) is True
             self.auto_save = data.get("auto_save", True) is True
             self.auto_save_on_exit = data.get("auto_save_on_exit", True) is True
+            self.backup_before_save = data.get("backup_before_save", False) is True
+            pattern = data.get("backup_path_pattern", self.backup_path_pattern)
+            if isinstance(pattern, str) and len(pattern) <= 16384 and "\0" not in pattern:
+                self.backup_path_pattern = pattern
             for name, default in LOCK_DEFAULTS.items():
                 value = data.get(name, default)
                 if type(value) is bool:
@@ -219,6 +225,7 @@ class Startup:
              ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
              minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None,
              auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None,
+             backup_before_save=None, backup_path_pattern=None,
              hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None,
              hide_window_on_copy=None, minimize_on_copy=None, drop_to_background_on_copy=None,
              minimize_after_unlock=None, minimize_to_background=None,
@@ -252,6 +259,11 @@ class Startup:
             auto_reload = self.auto_reload if auto_reload is None else auto_reload
             auto_save = self.auto_save if auto_save is None else auto_save
             auto_save_on_exit = self.auto_save_on_exit if auto_save_on_exit is None else auto_save_on_exit
+            backup_before_save = self.backup_before_save if backup_before_save is None else backup_before_save
+            backup_path_pattern = self.backup_path_pattern if backup_path_pattern is None else backup_path_pattern
+            if (type(backup_before_save) is not bool or not isinstance(backup_path_pattern, str)
+                    or len(backup_path_pattern) > 16384 or "\0" in backup_path_pattern):
+                raise ValueError("Choose a supported backup switch and file path pattern.")
             if type(auto_save) is not bool or type(auto_save_on_exit) is not bool:
                 raise ValueError("Choose whether to save vault changes automatically.")
             if type(auto_reload) is not bool:
@@ -304,6 +316,8 @@ class Startup:
                        "minimize_on_url": minimize_on_url,
                        "vault": str(vault) if vault else None}
                 data.update(locks)
+                data["backup_before_save"] = backup_before_save
+                data["backup_path_pattern"] = backup_path_pattern
                 data.update(privacy)
                 data.update(windows)
                 data.update(entries)
@@ -333,6 +347,7 @@ class Startup:
             self.minimize_on_url = minimize_on_url
             self.auto_reload = auto_reload
             self.auto_save, self.auto_save_on_exit = auto_save, auto_save_on_exit
+            self.backup_before_save, self.backup_path_pattern = backup_before_save, backup_path_pattern
             for name, value in locks.items():
                 setattr(self, name, value)
             for name, value in privacy.items():

@@ -5,6 +5,11 @@ for the bounded remaining work and acceptance status. Historical notes below are
 not additional feature requirements. GTK language scope is English, Polish and
 Romanian only; other languages are deferred by the user.
 
+Backup enable/path-pattern preferences now map the stock keys and native
+substitution rules across normal, manual-recovery and Save As replacement
+saves. [Backups](backups.md) documents the stricter failure policy and pending
+manual acceptance; full upstream failure-path compatibility is not claimed.
+
 The user-requested Shell password-access popup and per-connection encrypted
 browser trust are implemented in [Browser approvals](browser-approval.md).
 Compilation/static review only; actual GNOME50/browser/DND/trust/cancellation

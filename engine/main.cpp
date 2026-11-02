@@ -20,6 +20,7 @@
 #include "KeyslotRemote.h"
 #include "KeyslotProperties.h"
 #include "KeyslotAuth.h"
+#include "core/Tools.h"
 #include <QKeySequence>
 #include "fdosecrets/FdoSecretsSettings.h"
 #include "core/Bootstrap.h"
@@ -211,6 +212,50 @@ bool recoveryLocation(const QString& path)
     const auto root = QDir(configured).canonicalPath();
     return !root.isEmpty() && path.startsWith(root + "/");
 }
+struct BackupPolicy {
+    bool enabled = true;
+    // A null pattern retains the fixed name for older private clients.
+    QString pattern;
+};
+void backupBeforeSave(const QString& source, const BackupPolicy& policy,
+                      const std::function<void()>& verify, const QString& otherSource = {})
+{
+    if (!policy.enabled) return;
+    const QFileInfo file(otherSource.isEmpty() ? source : otherSource);
+    const auto databasePath = file.canonicalFilePath().isEmpty() ? file.absoluteFilePath() : file.canonicalFilePath();
+    auto target = policy.pattern.isNull() ? source + ".keyslot.bak"
+        : Tools::substituteBackupFilePath(policy.pattern, databasePath);
+    if (target.isEmpty()) fail("file_error", "The backup pattern did not produce a file path.");
+    if (QDir::isRelativePath(target)) target = file.absoluteDir().absoluteFilePath(target);
+    target = QDir::cleanPath(target);
+    const auto configuredRoot = qEnvironmentVariable("KEYSLOT_RECOVERY_DIRECTORY");
+    if ((!configuredRoot.isEmpty() && (target == QDir::cleanPath(configuredRoot)
+            || target.startsWith(QDir::cleanPath(configuredRoot) + "/"))) || recoveryLocation(target))
+        fail("invalid_request", "Choose a backup location outside Keyslot’s private recovery storage.");
+    if (!QDir().mkpath(QFileInfo(target).absolutePath()))
+        fail("file_error", "The backup folder could not be created.");
+    const auto parent = QFileInfo(target).absoluteDir().canonicalPath();
+    target = parent + "/" + QFileInfo(target).fileName();
+    const auto check = [&] {
+        verify();
+        const QFileInfo destination(target);
+        if (parent.isEmpty() || destination.isSymLink() || (destination.exists() && !destination.isFile())
+            || recoveryLocation(target))
+            fail("invalid_request", "Choose a regular backup file distinct from the database.");
+        for (const auto& originalPath : QStringList{source, otherSource}) {
+            if (originalPath.isEmpty()) continue;
+            struct stat original {}, backup {};
+            if (target == QDir::cleanPath(QFileInfo(originalPath).absoluteFilePath())
+                || target == QFileInfo(originalPath).canonicalFilePath()
+                || (!::stat(QFile::encodeName(originalPath).constData(), &original)
+                    && !::stat(QFile::encodeName(target).constData(), &backup)
+                    && original.st_dev == backup.st_dev && original.st_ino == backup.st_ino))
+                fail("invalid_request", "The backup path would replace an active database.");
+        }
+    };
+    check();
+    copyToSaveFile(source, target, QFile::ReadOwner | QFile::WriteOwner, check);
+}
 QJsonObject manualInfo(const QString& manifest, const QString& source = {})
 {
     const QFileInfo file(manifest), directory(file.absolutePath());
@@ -250,7 +295,8 @@ void discardManual(const QJsonObject& data, bool strict = true)
     QDir directory(manifest.absolutePath());
     for (const auto& name : directory.entryList({"snapshot-*.kdbx"}, QDir::Files | QDir::NoSymLinks)) directory.remove(name);
 }
-QByteArray commitManual(const QString& manifest, const QString& source, bool ownsCheckpoint = false)
+QByteArray commitManual(const QString& manifest, const QString& source, const BackupPolicy& backupPolicy,
+                       bool ownsCheckpoint = false)
 {
     manualInfo(manifest, source);
     QLockFile owner(manifest + ".owner");
@@ -271,7 +317,7 @@ QByteArray commitManual(const QString& manifest, const QString& source, bool own
         verify();
         const QFileInfo destination(source);
         if (!destination.isWritable()) fail("read_only", "The vault is read-only. Its unsaved encrypted copy was kept.");
-        copyToSaveFile(source, source + ".keyslot.bak", QFile::ReadOwner | QFile::WriteOwner, verify);
+        backupBeforeSave(source, backupPolicy, verify);
         copyToSaveFile(snapshot, source, destination.permissions(), verify);
         const int directory = ::open(QFile::encodeName(destination.absolutePath()).constData(), O_RDONLY | O_DIRECTORY);
         if (directory >= 0) { ::fsync(directory); ::close(directory); }
@@ -359,6 +405,7 @@ class Engine {
     QString path;
     QByteArray hash, diskHash;
     bool autoSave = true, modified = false;
+    BackupPolicy backupPolicy;
     QString manualManifest, manualSnapshot;
     std::unique_ptr<QLockFile> manualOwner;
 
@@ -498,7 +545,7 @@ class Engine {
     }
     void persist(bool creating = false, bool prepared = true) {
         if (!creating && prepared && modified && !manualSnapshot.isEmpty()) {
-            hash = diskHash = commitManual(manualManifest, path, true);
+            hash = diskHash = commitManual(manualManifest, path, backupPolicy, true);
             clearManual();
             db->markAsClean();
             return;
@@ -519,8 +566,7 @@ class Engine {
                 fail("file_error", "The database could not be created. A file may already exist there.");
         } else {
             unchanged();
-            copyToSaveFile(path, path + ".keyslot.bak", QFile::ReadOwner | QFile::WriteOwner,
-                           [this] { unchanged(); });
+            backupBeforeSave(path, backupPolicy, [this] { unchanged(); });
             copyToSaveFile(stage, path, info.permissions(), [this] { unchanged(); });
         }
         const int directory = ::open(QFile::encodeName(info.absolutePath()).constData(), O_RDONLY | O_DIRECTORY);
@@ -801,12 +847,20 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy"}}};
         if (method == "save.policy") { autoSave = boolean(args, "auto_save"); return db ? QJsonValue(snapshot()) : QJsonValue(true); }
+        if (method == "backup.policy") {
+            const bool enabled = boolean(args, "enabled");
+            auto pattern = text(args, "pattern");
+            if (pattern.isEmpty()) pattern = "{DB_FILENAME}.old.kdbx";
+            backupPolicy.enabled = enabled;
+            backupPolicy.pattern = pattern;
+            return true;
+        }
         if (method == "recovery.list") return manualRecords(boolean(args, "all") ? QString() : requestedPath(args, "source"));
         if (method == "recovery.commit" || method == "recovery.discard" || method == "recovery.clone") {
             const auto manifest = requestedPath(args, "manifest"), source = requestedPath(args, "source");
-            if (method == "recovery.commit") return QString::fromLatin1(commitManual(manifest, source).toHex());
+            if (method == "recovery.commit") return QString::fromLatin1(commitManual(manifest, source, backupPolicy).toHex());
             manualInfo(manifest, source);
             QLockFile owner(manifest + ".owner");
             if (!owner.tryLock()) fail("busy", "The vault owning this recovery copy is still open.");
@@ -1301,7 +1355,7 @@ public:
             const auto saved = digest(stage);
             verify();
             if (overwrite) {
-                copyToSaveFile(target, target + ".keyslot.bak", QFile::ReadOwner | QFile::WriteOwner, verify);
+                backupBeforeSave(target, backupPolicy, verify, path);
                 copyToSaveFile(stage, target, QFileInfo(target).permissions(), verify);
             } else if (::link(QFile::encodeName(stage).constData(), QFile::encodeName(target).constData()) != 0)
                 fail("file_error", "The destination could not be created. A file may already exist there.");

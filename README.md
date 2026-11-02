@@ -5,6 +5,10 @@ GTK language work is limited to English, Polish and Romanian for now.
 The [gettext catalogs](docs/localization.md) are in progress; untranslated
 messages fall back to English.
 
+Preferences → Backups now supports KeePassXC's backup switch and path pattern,
+including database-name/time placeholders and a destination-folder picker.
+See [backup behavior](docs/backups.md) for save/recovery coverage and limits.
+
 Browser password-access approvals can use a compact GNOME Shell popup with
 companion0.4.0 enabled. Fully Trust This Browser remembers one paired connection
 inside the encrypted database; Browser Connections can remove that trust.

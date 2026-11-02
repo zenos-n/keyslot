@@ -14,7 +14,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: keyslot/configuration.py:173
+#: keyslot/configuration.py:175
 msgid " Quit and reopen Keyslot before changing settings."
 msgstr ""
 
@@ -22,27 +22,27 @@ msgstr ""
 msgid "(Empty Name)"
 msgstr ""
 
-#: keyslot/application.py:1103
+#: keyslot/application.py:1105
 msgid "0 entries"
 msgstr ""
 
-#: keyslot/preferences.py:115
+#: keyslot/preferences.py:167
 msgid "1 Hour"
 msgstr ""
 
-#: keyslot/preferences.py:115 keyslot/preferences.py:158
+#: keyslot/preferences.py:167 keyslot/preferences.py:210
 msgid "1 Minute"
 msgstr ""
 
-#: keyslot/preferences.py:115
+#: keyslot/preferences.py:167
 msgid "10 Minutes"
 msgstr ""
 
-#: keyslot/preferences.py:158
+#: keyslot/preferences.py:210
 msgid "10 Seconds"
 msgstr ""
 
-#: keyslot/preferences.py:115
+#: keyslot/preferences.py:167
 msgid "15 Minutes"
 msgstr ""
 
@@ -54,19 +54,19 @@ msgstr ""
 msgid "1Password OPVault Folder"
 msgstr ""
 
-#: keyslot/preferences.py:158
+#: keyslot/preferences.py:210
 msgid "20 Seconds"
 msgstr ""
 
-#: keyslot/preferences.py:115
+#: keyslot/preferences.py:167
 msgid "30 Minutes"
 msgstr ""
 
-#: keyslot/preferences.py:158
+#: keyslot/preferences.py:210
 msgid "30 Seconds"
 msgstr ""
 
-#: keyslot/preferences.py:115
+#: keyslot/preferences.py:167
 msgid "5 Minutes"
 msgstr ""
 
@@ -170,23 +170,23 @@ msgstr ""
 msgid "A draft icon identifier is invalid."
 msgstr ""
 
-#: engine/main.cpp:2111
+#: engine/main.cpp:2164
 msgid "A dropped file changed after review. Drop the files again."
 msgstr ""
 
-#: engine/main.cpp:2128
+#: engine/main.cpp:2181
 msgid "A dropped file changed before saving. No attachments were added."
 msgstr ""
 
-#: engine/main.cpp:2118
+#: engine/main.cpp:2171
 msgid "A dropped file changed while being read. No attachments were added."
 msgstr ""
 
-#: engine/main.cpp:951 engine/main.cpp:992 keyslot/backend.py:299
+#: engine/main.cpp:1004 engine/main.cpp:1045 keyslot/backend.py:299
 msgid "A file already exists at that location."
 msgstr ""
 
-#: engine/main.cpp:1290
+#: engine/main.cpp:1343
 msgid "A file appeared at the destination. It was not replaced."
 msgstr ""
 
@@ -194,15 +194,15 @@ msgstr ""
 msgid "A group cannot be copied or moved inside itself."
 msgstr ""
 
-#: engine/main.cpp:1944
+#: engine/main.cpp:1997
 msgid "A group cannot be moved inside itself."
 msgstr ""
 
-#: engine/main.cpp:1126
+#: engine/main.cpp:1179
 msgid "A key-file staging directory could not be created."
 msgstr ""
 
-#: engine/main.cpp:1023
+#: engine/main.cpp:1076
 msgid "A keyboard shortcut is invalid."
 msgstr ""
 
@@ -238,7 +238,7 @@ msgstr ""
 msgid "A private recovery directory is required for manual saving."
 msgstr ""
 
-#: engine/main.cpp:447
+#: engine/main.cpp:493
 msgid "A private unsaved-vault directory could not be created."
 msgstr ""
 
@@ -354,11 +354,11 @@ msgstr ""
 msgid "Add Attachments"
 msgstr ""
 
-#: keyslot/application.py:1641
+#: keyslot/application.py:1643
 msgid "Add Attachment…"
 msgstr ""
 
-#: keyslot/application.py:1619
+#: keyslot/application.py:1621
 msgid "Add Custom Attribute…"
 msgstr ""
 
@@ -402,7 +402,7 @@ msgstr ""
 msgid "Additional Characters"
 msgstr ""
 
-#: keyslot/application.py:497
+#: keyslot/application.py:499
 msgid "Additional Unlock Options"
 msgstr ""
 
@@ -415,7 +415,7 @@ msgstr ""
 msgid "Additional Websites"
 msgstr ""
 
-#: keyslot/application.py:1604
+#: keyslot/application.py:1606
 msgid "Additional Websites…"
 msgstr ""
 
@@ -443,7 +443,7 @@ msgstr ""
 msgid "Algorithm"
 msgstr ""
 
-#: keyslot/application.py:886
+#: keyslot/application.py:888
 msgid "All Children"
 msgstr ""
 
@@ -455,7 +455,7 @@ msgstr ""
 msgid "All Descendant Groups"
 msgstr ""
 
-#: keyslot/application.py:1103 keyslot/application.py:1261 keyslot/application.py:1290 keyslot/application.py:1394
+#: keyslot/application.py:1105 keyslot/application.py:1263 keyslot/application.py:1292 keyslot/application.py:1396
 msgid "All Entries"
 msgstr ""
 
@@ -519,11 +519,11 @@ msgstr ""
 msgid "Allowed URLs"
 msgstr ""
 
-#: keyslot/application.py:886
+#: keyslot/application.py:888
 msgid "Also Child Entries"
 msgstr ""
 
-#: keyslot/application.py:886
+#: keyslot/application.py:888
 msgid "Also Child Groups"
 msgstr ""
 
@@ -551,7 +551,7 @@ msgstr ""
 msgid "Ambiguous entry identifiers cannot be dragged"
 msgstr ""
 
-#: engine/main.cpp:2107
+#: engine/main.cpp:2160
 msgid "An attachment already uses a dropped file's name. Review replacements first."
 msgstr ""
 
@@ -559,19 +559,19 @@ msgstr ""
 msgid "An attachment already uses this key name. Choose a different name; existing keys were kept."
 msgstr ""
 
-#: engine/main.cpp:2092
+#: engine/main.cpp:2145
 msgid "An attachment file request is invalid."
 msgstr ""
 
-#: engine/main.cpp:2114
+#: engine/main.cpp:2167
 msgid "An attachment source changed or could not be opened."
 msgstr ""
 
-#: engine/main.cpp:2162 keyslot/backend.py:463
+#: engine/main.cpp:2215 keyslot/backend.py:463
 msgid "An attachment with this name already exists."
 msgstr ""
 
-#: engine/main.cpp:1994
+#: engine/main.cpp:2047
 msgid "An attribute with this name already exists. Choose another name."
 msgstr ""
 
@@ -591,15 +591,15 @@ msgstr ""
 msgid "An auto-type window association is invalid."
 msgstr ""
 
-#: engine/main.cpp:439
+#: engine/main.cpp:485
 msgid "An encrypted recovery snapshot could not be created."
 msgstr ""
 
-#: engine/main.cpp:543
+#: engine/main.cpp:588
 msgid "An encrypted recovery snapshot could not be created. The vault was not changed."
 msgstr ""
 
-#: engine/main.cpp:510
+#: engine/main.cpp:556
 msgid "An encrypted staging directory could not be created."
 msgstr ""
 
@@ -611,7 +611,7 @@ msgstr ""
 msgid "An entry action switch is invalid."
 msgstr ""
 
-#: engine/main.cpp:676
+#: engine/main.cpp:721
 msgid "An entry field is invalid."
 msgstr ""
 
@@ -627,7 +627,7 @@ msgstr ""
 msgid "An entry with this title already exists in the group."
 msgstr ""
 
-#: keyslot/core_backend.py:883
+#: keyslot/core_backend.py:898
 msgid "An export destination already exists or would replace the database."
 msgstr ""
 
@@ -639,7 +639,7 @@ msgstr ""
 msgid "An icon parameter is invalid."
 msgstr ""
 
-#: engine/main.cpp:824
+#: engine/main.cpp:877
 msgid "An independent encrypted working copy could not be created."
 msgstr ""
 
@@ -651,11 +651,11 @@ msgstr ""
 msgid "An item identifier is invalid."
 msgstr ""
 
-#: engine/main.cpp:1727 keyslot/core_backend.py:1144
+#: engine/main.cpp:1780 keyslot/core_backend.py:1159
 msgid "An unencrypted export cannot replace the database."
 msgstr ""
 
-#: engine/main.cpp:1524 keyslot/core_backend.py:856
+#: engine/main.cpp:1577 keyslot/core_backend.py:871
 msgid "An unencrypted passkey cannot replace the database."
 msgstr ""
 
@@ -663,23 +663,23 @@ msgstr ""
 msgid "An unexpected error occurred. Lock and reopen this database before continuing."
 msgstr ""
 
-#: engine/main.cpp:1633
+#: engine/main.cpp:1686
 msgid "An unknown KDF benchmark option was supplied."
 msgstr ""
 
-#: engine/main.cpp:1644
+#: engine/main.cpp:1697
 msgid "An unknown database setting was supplied."
 msgstr ""
 
-#: engine/main.cpp:1672
+#: engine/main.cpp:1725
 msgid "An unknown unlock-key option was supplied."
 msgstr ""
 
-#: engine/main.cpp:985
+#: engine/main.cpp:1038
 msgid "An unsaved encrypted recovery copy is available. Open this vault in Keyslot to review it first."
 msgstr ""
 
-#: keyslot/core_backend.py:1661
+#: keyslot/core_backend.py:1676
 msgid "An unsupported password generator option was supplied."
 msgstr ""
 
@@ -695,7 +695,7 @@ msgstr ""
 msgid "Another application changed this browser connection. Its settings have been preserved."
 msgstr ""
 
-#: engine/main.cpp:368 keyslot/backend.py:284
+#: engine/main.cpp:414 keyslot/backend.py:284
 msgid "Another application changed this database. Refresh before continuing."
 msgstr ""
 
@@ -715,7 +715,7 @@ msgstr ""
 msgid "Another open vault manages this SSH key. Remove it from that vault first."
 msgstr ""
 
-#: engine/main.cpp:259
+#: engine/main.cpp:304
 msgid "Another process is already saving this recovery snapshot."
 msgstr ""
 
@@ -723,7 +723,7 @@ msgstr ""
 msgid "Any paired browser can retrieve entry titles, IDs and resolved website fields, including entries hidden from normal filling. References in these fields are resolved and can include protected values."
 msgstr ""
 
-#: keyslot/application.py:746
+#: keyslot/application.py:748
 msgid "Appearance"
 msgstr ""
 
@@ -747,7 +747,7 @@ msgstr ""
 msgid "Applies to Type Entry from the vault window"
 msgstr ""
 
-#: keyslot/preferences.py:112
+#: keyslot/preferences.py:164
 msgid "Applies to all vaults. Screen and user-switch detection requires GNOME and systemd-logind."
 msgstr ""
 
@@ -755,7 +755,7 @@ msgstr ""
 msgid "Apply Group Icon to Its Contents?"
 msgstr ""
 
-#: keyslot/application.py:885
+#: keyslot/application.py:887
 msgid "Apply Icon To"
 msgstr ""
 
@@ -780,11 +780,11 @@ msgstr ""
 msgid "At a Specific Time"
 msgstr ""
 
-#: engine/main.cpp:1688
+#: engine/main.cpp:1741
 msgid "At least one unlock component must remain."
 msgstr ""
 
-#: keyslot/application.py:1569
+#: keyslot/application.py:1571
 msgid "Attach a passkey to this entry"
 msgstr ""
 
@@ -796,7 +796,7 @@ msgstr ""
 msgid "Attachment saved"
 msgstr ""
 
-#: keyslot/application.py:1632 keyslot/history_views.py:12
+#: keyslot/application.py:1634 keyslot/history_views.py:12
 msgid "Attachments"
 msgstr ""
 
@@ -824,7 +824,7 @@ msgstr ""
 msgid "Authorize this Secret Service item before reading its secret."
 msgstr ""
 
-#: keyslot/application.py:1581 keyslot/autotype_views.py:215 keyslot/autotype_views.py:55 keyslot/autotype_views.py:639 keyslot/history_views.py:11
+#: keyslot/application.py:1583 keyslot/autotype_views.py:215 keyslot/autotype_views.py:55 keyslot/autotype_views.py:639 keyslot/history_views.py:11
 msgid "Auto-Type"
 msgstr ""
 
@@ -840,7 +840,7 @@ msgstr ""
 msgid "Auto-Type Settings"
 msgstr ""
 
-#: keyslot/application.py:1582 keyslot/application.py:908
+#: keyslot/application.py:1584 keyslot/application.py:910
 msgid "Auto-Type Settings…"
 msgstr ""
 
@@ -908,7 +908,7 @@ msgstr ""
 msgid "Auto-type was cancelled."
 msgstr ""
 
-#: keyslot/preferences.py:111
+#: keyslot/preferences.py:163
 msgid "Automatic Locking"
 msgstr ""
 
@@ -920,12 +920,24 @@ msgstr ""
 msgid "Average Password Length"
 msgstr ""
 
-#: keyslot/application.py:749
+#: keyslot/preferences.py:112
+msgid "Back Up Before Saving"
+msgstr ""
+
+#: keyslot/application.py:751
 msgid "Background Color"
 msgstr ""
 
 #: keyslot/database_views.py:173
 msgid "Backslash Escapes"
+msgstr ""
+
+#: keyslot/preferences.py:113
+msgid "Backup File Path Pattern"
+msgstr ""
+
+#: keyslot/preferences.py:109
+msgid "Backups"
 msgstr ""
 
 #: keyslot/database_views.py:44
@@ -948,15 +960,15 @@ msgstr ""
 msgid "Browser Connections"
 msgstr ""
 
-#: keyslot/application.py:1598 keyslot/browser_dialogs.py:26 keyslot/browser_dialogs.py:28 keyslot/browser_options.py:20 keyslot/database_views.py:329
+#: keyslot/application.py:1600 keyslot/browser_dialogs.py:26 keyslot/browser_dialogs.py:28 keyslot/browser_options.py:20 keyslot/database_views.py:329
 msgid "Browser Integration"
 msgstr ""
 
-#: keyslot/application.py:912
+#: keyslot/application.py:914
 msgid "Browser Integration…"
 msgstr ""
 
-#: keyslot/application.py:1599
+#: keyslot/application.py:1601
 msgid "Browser Settings…"
 msgstr ""
 
@@ -1004,7 +1016,7 @@ msgstr ""
 msgid "CSV Source Values"
 msgstr ""
 
-#: engine/main.cpp:334 keyslot/core_backend.py:541
+#: engine/main.cpp:379 keyslot/core_backend.py:556
 msgid "CSV options must be an object."
 msgstr ""
 
@@ -1016,7 +1028,7 @@ msgstr ""
 msgid "Calibrate"
 msgstr ""
 
-#: keyslot/appearance.py:178 keyslot/application.py:1112 keyslot/application.py:810 keyslot/application.py:855 keyslot/auth_views.py:33 keyslot/breach_views.py:61 keyslot/browser_dialogs.py:169 keyslot/browser_dialogs.py:313 keyslot/browser_dialogs.py:334 keyslot/browser_dialogs.py:389 keyslot/browser_dialogs.py:450 keyslot/browser_dialogs.py:537 keyslot/browser_dialogs.py:88 keyslot/database_views.py:570 keyslot/database_views.py:596 keyslot/database_views.py:609 keyslot/database_views.py:666 keyslot/drag_drop.py:256 keyslot/drag_drop.py:287 keyslot/entry_actions.py:110 keyslot/file_changes.py:186 keyslot/generator_views.py:384 keyslot/group_icon_views.py:84 keyslot/history_views.py:31 keyslot/icon_views.py:193 keyslot/icon_views.py:39 keyslot/keeshare_identity_views.py:125 keyslot/passkey_views.py:20 keyslot/property_views.py:218 keyslot/property_views.py:261 keyslot/remote_views.py:284 keyslot/reports_views.py:122 keyslot/saving.py:102 keyslot/saving.py:209 keyslot/saving.py:25 keyslot/shortcut_views.py:135 keyslot/ssh_views.py:252 keyslot/ssh_views.py:360 keyslot/transfer_views.py:154 keyslot/trash_views.py:84 keyslot/url_views.py:120
+#: keyslot/appearance.py:178 keyslot/application.py:1114 keyslot/application.py:812 keyslot/application.py:857 keyslot/auth_views.py:33 keyslot/breach_views.py:61 keyslot/browser_dialogs.py:169 keyslot/browser_dialogs.py:313 keyslot/browser_dialogs.py:334 keyslot/browser_dialogs.py:389 keyslot/browser_dialogs.py:450 keyslot/browser_dialogs.py:537 keyslot/browser_dialogs.py:88 keyslot/database_views.py:570 keyslot/database_views.py:596 keyslot/database_views.py:609 keyslot/database_views.py:666 keyslot/drag_drop.py:256 keyslot/drag_drop.py:287 keyslot/entry_actions.py:110 keyslot/file_changes.py:186 keyslot/generator_views.py:384 keyslot/group_icon_views.py:84 keyslot/history_views.py:31 keyslot/icon_views.py:193 keyslot/icon_views.py:39 keyslot/keeshare_identity_views.py:125 keyslot/passkey_views.py:20 keyslot/property_views.py:218 keyslot/property_views.py:261 keyslot/remote_views.py:284 keyslot/reports_views.py:122 keyslot/saving.py:102 keyslot/saving.py:209 keyslot/saving.py:25 keyslot/shortcut_views.py:135 keyslot/ssh_views.py:252 keyslot/ssh_views.py:360 keyslot/transfer_views.py:154 keyslot/trash_views.py:84 keyslot/url_views.py:120
 msgid "Cancel"
 msgstr ""
 
@@ -1101,6 +1113,10 @@ msgstr ""
 msgid "Choose Auto-Type Entry"
 msgstr ""
 
+#: keyslot/preferences.py:115
+msgid "Choose Backup Folder"
+msgstr ""
+
 #: keyslot/database_views.py:457
 msgid "Choose Existing Key File"
 msgstr ""
@@ -1117,7 +1133,7 @@ msgstr ""
 msgid "Choose Import Source"
 msgstr ""
 
-#: keyslot/application.py:503 keyslot/preferences.py:317
+#: keyslot/application.py:505 keyslot/preferences.py:369
 msgid "Choose Key File"
 msgstr ""
 
@@ -1149,16 +1165,20 @@ msgstr ""
 msgid "Choose Word List"
 msgstr ""
 
-#: engine/main.cpp:1745
+#: engine/main.cpp:1798
 msgid "Choose XML, CSV, or HTML export."
 msgstr ""
 
-#: keyslot/core_backend.py:561
+#: keyslot/core_backend.py:576
 msgid "Choose a CSV source file."
 msgstr ""
 
 #: keyslot/generator_views.py:130
 msgid "Choose a UTF-8 or Diceware word list. Import a copy into your library or use a file directly."
+msgstr ""
+
+#: engine/main.cpp:233
+msgid "Choose a backup location outside Keyslot’s private recovery storage."
 msgstr ""
 
 #: engine/KeyslotSecrets.cpp:266
@@ -1173,23 +1193,23 @@ msgstr ""
 msgid "Choose a current group, icon and child icon scope."
 msgstr ""
 
-#: engine/main.cpp:1990
+#: engine/main.cpp:2043
 msgid "Choose a custom attribute name that is not reserved."
 msgstr ""
 
-#: engine/main.cpp:1263 engine/main.cpp:1277
+#: engine/main.cpp:1316 engine/main.cpp:1330
 msgid "Choose a destination outside Keyslot’s private recovery storage."
 msgstr ""
 
-#: engine/main.cpp:1911
+#: engine/main.cpp:1964
 msgid "Choose a destination outside the recycle bin."
 msgstr ""
 
-#: keyslot/core_backend.py:1545
+#: keyslot/core_backend.py:1560
 msgid "Choose a different destination for the attachment."
 msgstr ""
 
-#: engine/main.cpp:1712 keyslot/core_backend.py:1152
+#: engine/main.cpp:1765 keyslot/core_backend.py:1167
 msgid "Choose a different destination for the database copy."
 msgstr ""
 
@@ -1217,7 +1237,7 @@ msgstr ""
 msgid "Choose a group outside the recycle bin."
 msgstr ""
 
-#: engine/main.cpp:1761
+#: engine/main.cpp:1814
 msgid "Choose a group with an unambiguous identifier."
 msgstr ""
 
@@ -1225,19 +1245,19 @@ msgstr ""
 msgid "Choose a list from this profile's word-list library."
 msgstr ""
 
-#: keyslot/core_backend.py:531 keyslot/core_backend.py:535
+#: keyslot/core_backend.py:546 keyslot/core_backend.py:550
 msgid "Choose a new file for the imported database. Existing files cannot be replaced."
 msgstr ""
 
-#: engine/main.cpp:1596
+#: engine/main.cpp:1649
 msgid "Choose a nonempty browser connection name."
 msgstr ""
 
-#: engine/main.cpp:1979
+#: engine/main.cpp:2032
 msgid "Choose a nonempty custom attribute name."
 msgstr ""
 
-#: keyslot/configuration.py:107
+#: keyslot/configuration.py:109
 msgid "Choose a nonempty global configuration file path."
 msgstr ""
 
@@ -1245,7 +1265,7 @@ msgstr ""
 msgid "Choose a nonempty group path without empty components."
 msgstr ""
 
-#: keyslot/core_backend.py:528
+#: keyslot/core_backend.py:543
 msgid "Choose a nonempty master password for the imported database."
 msgstr ""
 
@@ -1253,15 +1273,15 @@ msgstr ""
 msgid "Choose a nonempty master password without newlines or NUL."
 msgstr ""
 
-#: keyslot/core_backend.py:355
+#: keyslot/core_backend.py:362
 msgid "Choose a nonempty master password."
 msgstr ""
 
-#: engine/main.cpp:1938
+#: engine/main.cpp:1991
 msgid "Choose a parent group."
 msgstr ""
 
-#: engine/main.cpp:1941
+#: engine/main.cpp:1994
 msgid "Choose a parent outside the recycle bin."
 msgstr ""
 
@@ -1273,7 +1293,7 @@ msgstr ""
 msgid "Choose a passkey to sign in."
 msgstr ""
 
-#: engine/main.cpp:418
+#: engine/main.cpp:464
 msgid "Choose a password, a key file, or a hardware key."
 msgstr ""
 
@@ -1281,11 +1301,11 @@ msgstr ""
 msgid "Choose a positive SSH key lifetime in seconds."
 msgstr ""
 
-#: engine/main.cpp:1094
+#: engine/main.cpp:1147
 msgid "Choose a readable word list containing at least one word."
 msgstr ""
 
-#: engine/main.cpp:1077
+#: engine/main.cpp:1130
 msgid "Choose a readable word list."
 msgstr ""
 
@@ -1293,8 +1313,12 @@ msgstr ""
 msgid "Choose a regular SHA-1 password-hash corpus file."
 msgstr ""
 
-#: keyslot/core_backend.py:1580
+#: keyslot/core_backend.py:1595
 msgid "Choose a regular attachment file."
+msgstr ""
+
+#: engine/main.cpp:243
+msgid "Choose a regular backup file distinct from the database."
 msgstr ""
 
 #: engine/KeyslotConfig.cpp:42
@@ -1305,7 +1329,7 @@ msgstr ""
 msgid "Choose a regular destination group."
 msgstr ""
 
-#: engine/main.cpp:1265
+#: engine/main.cpp:1318
 msgid "Choose a regular file, not a link or a folder."
 msgstr ""
 
@@ -1317,7 +1341,7 @@ msgstr ""
 msgid "Choose a regular passkey file smaller than 1 MiB."
 msgstr ""
 
-#: engine/main.cpp:1048 engine/main.cpp:1079 keyslot/wordlists.py:57
+#: engine/main.cpp:1101 engine/main.cpp:1132 keyslot/wordlists.py:57
 msgid "Choose a regular word-list file."
 msgstr ""
 
@@ -1337,7 +1361,7 @@ msgstr ""
 msgid "Choose a short attachment name other than KeeAgent.settings."
 msgstr ""
 
-#: engine/main.cpp:876
+#: engine/main.cpp:929
 msgid "Choose a short password with 4 to 128 characters."
 msgstr ""
 
@@ -1365,6 +1389,10 @@ msgstr ""
 msgid "Choose a supported SSH key type and size."
 msgstr ""
 
+#: keyslot/core_backend.py:406
+msgid "Choose a supported backup switch and file path pattern."
+msgstr ""
+
 #: keyslot/browser_hosts.py:86
 msgid "Choose a supported browser."
 msgstr ""
@@ -1381,7 +1409,7 @@ msgstr ""
 msgid "Choose a supported expiry action."
 msgstr ""
 
-#: engine/main.cpp:796 keyslot/core_backend.py:526
+#: engine/main.cpp:841 keyslot/core_backend.py:541
 msgid "Choose a supported import format."
 msgstr ""
 
@@ -1405,7 +1433,7 @@ msgstr ""
 msgid "Choose a supported report action and selection."
 msgstr ""
 
-#: engine/main.cpp:1090
+#: engine/main.cpp:1143
 msgid "Choose a supported word case."
 msgstr ""
 
@@ -1421,7 +1449,7 @@ msgstr ""
 msgid "Choose a valid browser settings target."
 msgstr ""
 
-#: engine/main.cpp:705
+#: engine/main.cpp:750
 msgid "Choose a valid entry color or leave it empty for the default."
 msgstr ""
 
@@ -1473,11 +1501,11 @@ msgstr ""
 msgid "Choose an attachment name without path separators or control characters."
 msgstr ""
 
-#: engine/main.cpp:2139
+#: engine/main.cpp:2192
 msgid "Choose an attachment name."
 msgstr ""
 
-#: engine/main.cpp:2058
+#: engine/main.cpp:2111
 msgid "Choose an attachment output file."
 msgstr ""
 
@@ -1493,11 +1521,11 @@ msgstr ""
 msgid "Choose an entry and a supported Auto-Type field."
 msgstr ""
 
-#: engine/BrowserDatabase.cpp:85 keyslot/core_backend.py:942
+#: engine/BrowserDatabase.cpp:85 keyslot/core_backend.py:957
 msgid "Choose an entry or group for browser settings."
 msgstr ""
 
-#: engine/main.cpp:1260
+#: engine/main.cpp:1313
 msgid "Choose an existing destination folder."
 msgstr ""
 
@@ -1517,7 +1545,7 @@ msgstr ""
 msgid "Choose an icon file smaller than 8 MiB."
 msgstr ""
 
-#: engine/main.cpp:740
+#: engine/main.cpp:785
 msgid "Choose an image with dimensions of at most 4096 by 4096 pixels."
 msgstr ""
 
@@ -1525,7 +1553,7 @@ msgstr ""
 msgid "Choose an import source first."
 msgstr ""
 
-#: engine/main.cpp:1083
+#: engine/main.cpp:1136
 msgid "Choose an installed word list or an absolute custom word-list path."
 msgstr ""
 
@@ -1533,11 +1561,11 @@ msgstr ""
 msgid "Choose an online or offline password check."
 msgstr ""
 
-#: keyslot/core_backend.py:1234 keyslot/core_backend.py:1357
+#: keyslot/core_backend.py:1249 keyslot/core_backend.py:1372
 msgid "Choose an output file different from the open database."
 msgstr ""
 
-#: engine/main.cpp:1695
+#: engine/main.cpp:1748
 msgid "Choose another database to merge."
 msgstr ""
 
@@ -1557,11 +1585,11 @@ msgstr ""
 msgid "Choose copy or move."
 msgstr ""
 
-#: keyslot/core_backend.py:878
+#: keyslot/core_backend.py:893
 msgid "Choose distinct destinations for the selected passkeys."
 msgstr ""
 
-#: engine/main.cpp:1929
+#: engine/main.cpp:1982
 msgid "Choose each entry once, outside the recycle bin."
 msgstr ""
 
@@ -1569,7 +1597,7 @@ msgstr ""
 msgid "Choose each group once."
 msgstr ""
 
-#: engine/main.cpp:1788
+#: engine/main.cpp:1841
 msgid "Choose each supported preview field once."
 msgstr ""
 
@@ -1601,7 +1629,7 @@ msgstr ""
 msgid "Choose exactly one entry or group."
 msgstr ""
 
-#: engine/main.cpp:2096
+#: engine/main.cpp:2149
 msgid "Choose existing files with distinct attachment names."
 msgstr ""
 
@@ -1613,7 +1641,7 @@ msgstr ""
 msgid "Choose local files for --config and --localconfig."
 msgstr ""
 
-#: engine/main.cpp:2143
+#: engine/main.cpp:2196
 msgid "Choose one attachment input source."
 msgstr ""
 
@@ -1625,11 +1653,11 @@ msgstr ""
 msgid "Choose one or two configuration files."
 msgstr ""
 
-#: keyslot/core_backend.py:863
+#: keyslot/core_backend.py:878
 msgid "Choose passkeys and an export folder."
 msgstr ""
 
-#: engine/main.cpp:2100
+#: engine/main.cpp:2153
 msgid "Choose readable regular attachment files."
 msgstr ""
 
@@ -1641,15 +1669,15 @@ msgstr ""
 msgid "Choose recycled groups, excluding the recycle bin itself."
 msgstr ""
 
-#: engine/main.cpp:1677
+#: engine/main.cpp:1730
 msgid "Choose replacement or removal of the hardware key."
 msgstr ""
 
-#: engine/main.cpp:1676
+#: engine/main.cpp:1729
 msgid "Choose replacement or removal of the key file."
 msgstr ""
 
-#: engine/main.cpp:1675
+#: engine/main.cpp:1728
 msgid "Choose replacement or removal of the password."
 msgstr ""
 
@@ -1657,15 +1685,15 @@ msgstr ""
 msgid "Choose supported browser settings."
 msgstr ""
 
-#: keyslot/configuration.py:409
+#: keyslot/configuration.py:411
 msgid "Choose supported password generator settings."
 msgstr ""
 
-#: engine/main.cpp:1783
+#: engine/main.cpp:1836
 msgid "Choose supported preview fields."
 msgstr ""
 
-#: keyslot/configuration.py:382
+#: keyslot/configuration.py:384
 msgid "Choose supported search options."
 msgstr ""
 
@@ -1673,7 +1701,7 @@ msgstr ""
 msgid "Choose the requested character positions."
 msgstr ""
 
-#: engine/main.cpp:1950
+#: engine/main.cpp:2003
 msgid "Choose the reviewed child icon scope."
 msgstr ""
 
@@ -1685,7 +1713,7 @@ msgstr ""
 msgid "Choose whether attribute names should be suggested."
 msgstr ""
 
-#: keyslot/configuration.py:363
+#: keyslot/configuration.py:365
 msgid "Choose whether paired browsers may list entries."
 msgstr ""
 
@@ -1705,11 +1733,11 @@ msgstr ""
 msgid "Clear Agent…"
 msgstr ""
 
-#: keyslot/preferences.py:157
+#: keyslot/preferences.py:209
 msgid "Clear Clipboard After"
 msgstr ""
 
-#: keyslot/application.py:509 keyslot/preferences.py:318
+#: keyslot/application.py:511 keyslot/preferences.py:370
 msgid "Clear Key File"
 msgstr ""
 
@@ -1744,11 +1772,11 @@ msgstr ""
 msgid "Clear remembered access; the desktop controls future prompts"
 msgstr ""
 
-#: keyslot/preferences.py:162
+#: keyslot/preferences.py:214
 msgid "Clipboard Timeout (Seconds)"
 msgstr ""
 
-#: keyslot/application.py:366 keyslot/remote_views.py:229 keyslot/reports_views.py:190 keyslot/search_view.py:110 keyslot/transfer_views.py:198
+#: keyslot/application.py:368 keyslot/remote_views.py:229 keyslot/reports_views.py:190 keyslot/search_view.py:110 keyslot/transfer_views.py:198
 msgid "Close"
 msgstr ""
 
@@ -1760,7 +1788,7 @@ msgstr ""
 msgid "Close the current dialog before using Auto-Type"
 msgstr ""
 
-#: engine/main.cpp:834
+#: engine/main.cpp:887
 msgid "Close the recipient vault before opening a linked vault."
 msgstr ""
 
@@ -1808,7 +1836,7 @@ msgstr ""
 msgid "Command"
 msgstr ""
 
-#: keyslot/application.py:1560
+#: keyslot/application.py:1562
 msgid "Command Approval"
 msgstr ""
 
@@ -1832,7 +1860,7 @@ msgstr ""
 msgid "Communication with the native SSH relay failed."
 msgstr ""
 
-#: keyslot/core_backend.py:312
+#: keyslot/core_backend.py:319
 msgid "Communication with the native engine failed. Unlock the database again."
 msgstr ""
 
@@ -1864,7 +1892,7 @@ msgstr ""
 msgid "Configure KeeShare before exporting signed containers."
 msgstr ""
 
-#: keyslot/application.py:1623
+#: keyslot/application.py:1625
 msgid "Configure One-Time Password…"
 msgstr ""
 
@@ -1872,7 +1900,7 @@ msgstr ""
 msgid "Configure This Vault’s Exposed Group…"
 msgstr ""
 
-#: keyslot/application.py:1576
+#: keyslot/application.py:1578
 msgid "Configure an attached or external key"
 msgstr ""
 
@@ -1964,15 +1992,15 @@ msgstr ""
 msgid "Controlled by this entry’s group"
 msgstr ""
 
-#: engine/main.cpp:726
+#: engine/main.cpp:771
 msgid "Convert this image to PNG before importing it."
 msgstr ""
 
-#: keyslot/application.py:380 keyslot/autotype_views.py:316
+#: keyslot/application.py:382 keyslot/autotype_views.py:316
 msgid "Copied"
 msgstr ""
 
-#: keyslot/application.py:380 keyslot/autotype_views.py:316
+#: keyslot/application.py:382 keyslot/autotype_views.py:316
 #, python-brace-format
 msgid "Copied · clipboard clears in {count} second"
 msgid_plural "Copied · clipboard clears in {count} seconds"
@@ -2031,24 +2059,24 @@ msgstr ""
 msgid "Copy Website"
 msgstr ""
 
-#: keyslot/application.py:919
+#: keyslot/application.py:921
 msgid "Copy or Move Group…"
 msgstr ""
 
-#: keyslot/application.py:1154 keyslot/application.py:1669
+#: keyslot/application.py:1156 keyslot/application.py:1671
 msgid "Copy or Move…"
 msgstr ""
 
-#: keyslot/application.py:1614
+#: keyslot/application.py:1616
 msgid "Copy or edit this attribute"
 msgstr ""
 
-#: keyslot/application.py:1615 keyslot/privacy_views.py:25 keyslot/property_views.py:38
+#: keyslot/application.py:1617 keyslot/privacy_views.py:25 keyslot/property_views.py:38
 #, python-brace-format
 msgid "Copy {field}"
 msgstr ""
 
-#: keyslot/application.py:365
+#: keyslot/application.py:367
 msgid "Could Not Complete Operation"
 msgstr ""
 
@@ -2056,7 +2084,7 @@ msgstr ""
 msgid "Could not contact the Keyslot GNOME companion"
 msgstr ""
 
-#: keyslot/application.py:382 keyslot/autotype_views.py:319
+#: keyslot/application.py:384 keyslot/autotype_views.py:319
 msgid "Could not copy to the clipboard"
 msgstr ""
 
@@ -2080,11 +2108,11 @@ msgstr ""
 msgid "Could not search entries. Edit the query or change the search scope to retry."
 msgstr ""
 
-#: keyslot/application.py:811 keyslot/browser_dialogs.py:274 keyslot/browser_dialogs.py:390
+#: keyslot/application.py:813 keyslot/browser_dialogs.py:274 keyslot/browser_dialogs.py:390
 msgid "Create"
 msgstr ""
 
-#: keyslot/application.py:523
+#: keyslot/application.py:525
 msgid "Create Database"
 msgstr ""
 
@@ -2100,7 +2128,7 @@ msgstr ""
 msgid "Create a copy in the same group, retaining attachments, icons and custom settings."
 msgstr ""
 
-#: keyslot/application.py:807
+#: keyslot/application.py:809
 msgid "Create a group inside the selected group."
 msgstr ""
 
@@ -2128,11 +2156,11 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: keyslot/application.py:965
+#: keyslot/application.py:967
 msgid "Custom Attribute"
 msgstr ""
 
-#: keyslot/application.py:1612
+#: keyslot/application.py:1614
 msgid "Custom Attributes"
 msgstr ""
 
@@ -2156,11 +2184,11 @@ msgstr ""
 msgid "Customize Keyboard Shortcuts"
 msgstr ""
 
-#: keyslot/preferences.py:209
+#: keyslot/preferences.py:261
 msgid "Customize application shortcuts and restore defaults"
 msgstr ""
 
-#: keyslot/generator_views.py:285 keyslot/preferences.py:115 keyslot/preferences.py:158
+#: keyslot/generator_views.py:285 keyslot/preferences.py:167 keyslot/preferences.py:210
 msgid "Custom…"
 msgstr ""
 
@@ -2172,7 +2200,7 @@ msgstr ""
 msgid "Database"
 msgstr ""
 
-#: keyslot/application.py:1234
+#: keyslot/application.py:1236
 msgid "Database Locked"
 msgstr ""
 
@@ -2228,7 +2256,7 @@ msgstr ""
 msgid "Delete All History…"
 msgstr ""
 
-#: keyslot/application.py:990
+#: keyslot/application.py:992
 msgid "Delete Attribute…"
 msgstr ""
 
@@ -2248,11 +2276,11 @@ msgstr ""
 msgid "Delete Permanently"
 msgstr ""
 
-#: keyslot/application.py:1672
+#: keyslot/application.py:1674
 msgid "Delete Permanently…"
 msgstr ""
 
-#: keyslot/application.py:1162 keyslot/shortcuts.py:51
+#: keyslot/application.py:1164 keyslot/shortcuts.py:51
 msgid "Delete Selected Entries"
 msgstr ""
 
@@ -2284,7 +2312,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: keyslot/application.py:1478
+#: keyslot/application.py:1480
 msgid "Deselect All"
 msgstr ""
 
@@ -2308,7 +2336,7 @@ msgstr ""
 msgid "Destination Vault"
 msgstr ""
 
-#: keyslot/preferences.py:192
+#: keyslot/preferences.py:244
 msgid "Disable Quick Unlock"
 msgstr ""
 
@@ -2317,7 +2345,7 @@ msgstr ""
 msgid "Disable Shortcut for {action}"
 msgstr ""
 
-#: keyslot/preferences.py:200
+#: keyslot/preferences.py:252
 msgid "Disable System Authentication"
 msgstr ""
 
@@ -2325,7 +2353,7 @@ msgstr ""
 msgid "Disable login unlock and remove Keyslot’s saved credentials"
 msgstr ""
 
-#: keyslot/application.py:894 keyslot/autotype_views.py:55 keyslot/browser_options.py:29 keyslot/browser_options.py:30 keyslot/keeshare_views.py:27 keyslot/shortcut_views.py:109 keyslot/shortcut_views.py:148 keyslot/ssh_views.py:431
+#: keyslot/application.py:896 keyslot/autotype_views.py:55 keyslot/browser_options.py:29 keyslot/browser_options.py:30 keyslot/keeshare_views.py:27 keyslot/shortcut_views.py:109 keyslot/shortcut_views.py:148 keyslot/ssh_views.py:431
 msgid "Disabled"
 msgstr ""
 
@@ -2401,11 +2429,11 @@ msgstr ""
 msgid "Drag Entry or Selected Entries; Hold Ctrl to Copy"
 msgstr ""
 
-#: engine/main.cpp:2102
+#: engine/main.cpp:2155
 msgid "Drop at most 256 MiB at once. Larger individual files can use Add Attachment."
 msgstr ""
 
-#: engine/main.cpp:2084
+#: engine/main.cpp:2137
 msgid "Drop between one and 32 attachment files."
 msgstr ""
 
@@ -2417,7 +2445,7 @@ msgstr ""
 msgid "Duplicate Entry"
 msgstr ""
 
-#: keyslot/application.py:1658
+#: keyslot/application.py:1660
 msgid "Duplicate Entry…"
 msgstr ""
 
@@ -2429,15 +2457,15 @@ msgstr ""
 msgid "Ed25519"
 msgstr ""
 
-#: keyslot/application.py:1094
+#: keyslot/application.py:1096
 msgid "Edit / Move Group…"
 msgstr ""
 
-#: keyslot/application.py:1661 keyslot/application.py:706 keyslot/shortcuts.py:49
+#: keyslot/application.py:1663 keyslot/application.py:708 keyslot/shortcuts.py:49
 msgid "Edit Entry"
 msgstr ""
 
-#: keyslot/application.py:867
+#: keyslot/application.py:869
 msgid "Edit Group"
 msgstr ""
 
@@ -2457,7 +2485,7 @@ msgstr ""
 msgid "Edit Website"
 msgstr ""
 
-#: keyslot/application.py:1617
+#: keyslot/application.py:1619
 #, python-brace-format
 msgid "Edit {field}"
 msgstr ""
@@ -2490,11 +2518,11 @@ msgstr ""
 msgid "Enable Browser Integration in Preferences, then install KeePassXC-Browser in the browsers you select. Turning a browser off restores its previous connection settings."
 msgstr ""
 
-#: keyslot/preferences.py:334
+#: keyslot/preferences.py:386
 msgid "Enable Login Unlock"
 msgstr ""
 
-#: keyslot/preferences.py:334
+#: keyslot/preferences.py:386
 msgid "Enable Quick Unlock"
 msgstr ""
 
@@ -2510,11 +2538,11 @@ msgstr ""
 msgid "Enable SSH-agent integration before managing agent keys."
 msgstr ""
 
-#: keyslot/core_backend.py:634
+#: keyslot/core_backend.py:649
 msgid "Enable SSH-agent integration for this unlocked vault first."
 msgstr ""
 
-#: keyslot/preferences.py:334
+#: keyslot/preferences.py:386
 msgid "Enable System Authentication"
 msgstr ""
 
@@ -2526,7 +2554,7 @@ msgstr ""
 msgid "Enable the Keyslot GNOME companion for guarded Wayland auto-type."
 msgstr ""
 
-#: keyslot/application.py:894 keyslot/autotype_views.py:55 keyslot/browser_options.py:29 keyslot/browser_options.py:30
+#: keyslot/application.py:896 keyslot/autotype_views.py:55 keyslot/browser_options.py:29 keyslot/browser_options.py:30
 msgid "Enabled"
 msgstr ""
 
@@ -2554,15 +2582,15 @@ msgstr ""
 msgid "Enter a valid ISO 8601 expiry timestamp."
 msgstr ""
 
-#: engine/main.cpp:682
+#: engine/main.cpp:727
 msgid "Enter a valid TOTP URI."
 msgstr ""
 
-#: engine/main.cpp:678
+#: engine/main.cpp:723
 msgid "Enter a valid expiry timestamp."
 msgstr ""
 
-#: engine/main.cpp:1962
+#: engine/main.cpp:2015
 msgid "Enter a valid group expiry timestamp."
 msgstr ""
 
@@ -2587,7 +2615,7 @@ msgstr ""
 msgid "Entire Vault"
 msgstr ""
 
-#: keyslot/application.py:1169 keyslot/browser_dialogs.py:572 keyslot/property_views.py:55 keyslot/reports_views.py:168
+#: keyslot/application.py:1171 keyslot/browser_dialogs.py:572 keyslot/property_views.py:55 keyslot/reports_views.py:168
 msgid "Entries"
 msgstr ""
 
@@ -2615,7 +2643,7 @@ msgstr ""
 msgid "Entry Context Menu"
 msgstr ""
 
-#: keyslot/application.py:1183
+#: keyslot/application.py:1185
 msgid "Entry Details"
 msgstr ""
 
@@ -2631,7 +2659,7 @@ msgstr ""
 msgid "Entry List"
 msgstr ""
 
-#: keyslot/application.py:761
+#: keyslot/application.py:763
 msgid "Entry Options"
 msgstr ""
 
@@ -2643,7 +2671,7 @@ msgstr ""
 msgid "Entry Properties"
 msgstr ""
 
-#: keyslot/application.py:1649
+#: keyslot/application.py:1651
 msgid "Entry Properties…"
 msgstr ""
 
@@ -2659,7 +2687,7 @@ msgstr ""
 msgid "Entry duplicated"
 msgstr ""
 
-#: engine/main.cpp:671
+#: engine/main.cpp:716
 msgid "Entry fields must be an object."
 msgstr ""
 
@@ -2667,7 +2695,7 @@ msgstr ""
 msgid "Entry passwords containing newlines or NUL are not supported by this backend."
 msgstr ""
 
-#: keyslot/application.py:797
+#: keyslot/application.py:799
 msgid "Entry saved"
 msgstr ""
 
@@ -2696,7 +2724,7 @@ msgstr ""
 msgid "Exclude Look-alike Characters"
 msgstr ""
 
-#: keyslot/application.py:766
+#: keyslot/application.py:768
 msgid "Exclude from Password Reports"
 msgstr ""
 
@@ -2728,11 +2756,11 @@ msgstr ""
 msgid "Expected a text field."
 msgstr ""
 
-#: engine/main.cpp:2209
+#: engine/main.cpp:2262
 msgid "Expected one JSON request per line."
 msgstr ""
 
-#: engine/main.cpp:2215
+#: engine/main.cpp:2268
 msgid "Expected request parameters."
 msgstr ""
 
@@ -2744,7 +2772,7 @@ msgstr ""
 msgid "Expired Entries"
 msgstr ""
 
-#: keyslot/application.py:763 keyslot/application.py:896
+#: keyslot/application.py:765 keyslot/application.py:898
 msgid "Expires"
 msgstr ""
 
@@ -2752,7 +2780,7 @@ msgstr ""
 msgid "Expiry"
 msgstr ""
 
-#: keyslot/application.py:764 keyslot/application.py:897 keyslot/entry_actions.py:48
+#: keyslot/application.py:766 keyslot/application.py:899 keyslot/entry_actions.py:48
 msgid "Expiry (ISO 8601)"
 msgstr ""
 
@@ -2845,7 +2873,7 @@ msgstr ""
 msgid "Fingerprint"
 msgstr ""
 
-#: keyslot/application.py:1390
+#: keyslot/application.py:1392
 msgid "Finish Selecting Entries"
 msgstr ""
 
@@ -2865,7 +2893,7 @@ msgstr ""
 msgid "Finish or cancel the pending entry transfers first."
 msgstr ""
 
-#: keyslot/application.py:258 keyslot/saving.py:171
+#: keyslot/application.py:260 keyslot/saving.py:171
 msgid "Finish the current dialog before saving the vault"
 msgstr ""
 
@@ -2893,7 +2921,7 @@ msgstr ""
 msgid "Focus the destination window, then return to Keyslot and try Auto-Type again."
 msgstr ""
 
-#: keyslot/application.py:1561
+#: keyslot/application.py:1563
 msgid "Forget Command Approval"
 msgstr ""
 
@@ -2905,7 +2933,7 @@ msgstr ""
 msgid "Forget Remembered Access"
 msgstr ""
 
-#: keyslot/preferences.py:243
+#: keyslot/preferences.py:295
 msgid "Forget Saved Login Credentials"
 msgstr ""
 
@@ -2934,7 +2962,7 @@ msgstr ""
 msgid "Generate Identity…"
 msgstr ""
 
-#: keyslot/application.py:508
+#: keyslot/application.py:510
 msgid "Generate Key File"
 msgstr ""
 
@@ -2990,15 +3018,15 @@ msgstr ""
 msgid "Good"
 msgstr ""
 
-#: keyslot/application.py:728 keyslot/autotype_views.py:226 keyslot/browser_dialogs.py:253 keyslot/browser_dialogs.py:446 keyslot/database_views.py:104 keyslot/passkey_views.py:162 keyslot/secret_views.py:21
+#: keyslot/application.py:730 keyslot/autotype_views.py:226 keyslot/browser_dialogs.py:253 keyslot/browser_dialogs.py:446 keyslot/database_views.py:104 keyslot/passkey_views.py:162 keyslot/secret_views.py:21
 msgid "Group"
 msgstr ""
 
-#: keyslot/application.py:892
+#: keyslot/application.py:894
 msgid "Group Options"
 msgstr ""
 
-#: keyslot/application.py:1083 keyslot/property_views.py:27
+#: keyslot/application.py:1085 keyslot/property_views.py:27
 msgid "Group Properties"
 msgstr ""
 
@@ -3010,7 +3038,7 @@ msgstr ""
 msgid "Group created"
 msgstr ""
 
-#: keyslot/application.py:808
+#: keyslot/application.py:810
 msgid "Group name"
 msgstr ""
 
@@ -3018,7 +3046,7 @@ msgstr ""
 msgid "Group rules take precedence where shown."
 msgstr ""
 
-#: keyslot/application.py:1081 keyslot/reports_views.py:168
+#: keyslot/application.py:1083 keyslot/reports_views.py:168
 msgid "Groups"
 msgstr ""
 
@@ -3034,11 +3062,11 @@ msgstr ""
 msgid "Hardware Key"
 msgstr ""
 
-#: keyslot/application.py:511 keyslot/database_views.py:533
+#: keyslot/application.py:513 keyslot/database_views.py:533
 msgid "Hardware Key Slot (1 or 2, optional :serial)"
 msgstr ""
 
-#: keyslot/preferences.py:319
+#: keyslot/preferences.py:371
 msgid "Hardware Key Slot (optional)"
 msgstr ""
 
@@ -3147,7 +3175,7 @@ msgstr ""
 msgid "Import CSV"
 msgstr ""
 
-#: keyslot/application.py:480 keyslot/application.py:523 keyslot/database_views.py:46 keyslot/shortcuts.py:57
+#: keyslot/application.py:482 keyslot/application.py:525 keyslot/database_views.py:46 keyslot/shortcuts.py:57
 msgid "Import Database"
 msgstr ""
 
@@ -3159,7 +3187,7 @@ msgstr ""
 msgid "Import Passkey"
 msgstr ""
 
-#: keyslot/application.py:1568
+#: keyslot/application.py:1570
 msgid "Import Passkey…"
 msgstr ""
 
@@ -3199,7 +3227,7 @@ msgstr ""
 msgid "In Recycle Bin"
 msgstr ""
 
-#: keyslot/preferences.py:118
+#: keyslot/preferences.py:170
 msgid "Inactivity Timeout (Seconds)"
 msgstr ""
 
@@ -3219,11 +3247,11 @@ msgstr ""
 msgid "Include in Reports…"
 msgstr ""
 
-#: keyslot/preferences.py:157
+#: keyslot/preferences.py:209
 msgid "Includes text selections for middle-click paste"
 msgstr ""
 
-#: keyslot/application.py:894 keyslot/autotype_views.py:55
+#: keyslot/application.py:896 keyslot/autotype_views.py:55
 msgid "Inherit"
 msgstr ""
 
@@ -3329,15 +3357,15 @@ msgstr ""
 msgid "KeePassXC closed before completing the operation."
 msgstr ""
 
-#: engine/main.cpp:1666
+#: engine/main.cpp:1719
 msgid "KeePassXC could not apply the KDF settings."
 msgstr ""
 
-#: engine/main.cpp:1637
+#: engine/main.cpp:1690
 msgid "KeePassXC could not calibrate these KDF settings."
 msgstr ""
 
-#: engine/main.cpp:1690
+#: engine/main.cpp:1743
 msgid "KeePassXC could not change the database key."
 msgstr ""
 
@@ -3357,11 +3385,11 @@ msgstr ""
 msgid "KeePassXC could not import a share. Check its password and file format."
 msgstr ""
 
-#: engine/main.cpp:797
+#: engine/main.cpp:842
 msgid "KeePassXC could not import this source. Check the export format and source credentials."
 msgstr ""
 
-#: engine/main.cpp:512
+#: engine/main.cpp:558
 msgid "KeePassXC could not save the encrypted database."
 msgstr ""
 
@@ -3369,15 +3397,15 @@ msgstr ""
 msgid "KeePassXC could not serialize a KeeShare export."
 msgstr ""
 
-#: engine/main.cpp:995
+#: engine/main.cpp:1048
 msgid "KeePassXC could not set the database key."
 msgstr ""
 
-#: engine/main.cpp:964
+#: engine/main.cpp:1017
 msgid "KeePassXC could not set the imported database's unlock key."
 msgstr ""
 
-#: engine/main.cpp:987
+#: engine/main.cpp:1040
 msgid "KeePassXC could not unlock the database. Check your credentials and hardware key."
 msgstr ""
 
@@ -3421,7 +3449,7 @@ msgstr ""
 msgid "KeeShare"
 msgstr ""
 
-#: keyslot/application.py:915
+#: keyslot/application.py:917
 msgid "KeeShare Settings…"
 msgstr ""
 
@@ -3454,6 +3482,10 @@ msgstr ""
 msgid "Keep Window Open"
 msgstr ""
 
+#: keyslot/preferences.py:109
+msgid "Keep an encrypted copy of the previous file before saving. Relative paths use the database folder. Use {DB_FILENAME} for its name, {TIME} for the current time, or {TIME:yyyy-MM-dd_hh-mm-ss} for a custom time format."
+msgstr ""
+
 #: keyslot/database_views.py:451
 msgid "Keep the current key file"
 msgstr ""
@@ -3470,11 +3502,11 @@ msgstr ""
 msgid "Key Derivation"
 msgstr ""
 
-#: keyslot/application.py:499 keyslot/database_views.py:449 keyslot/database_views.py:534 keyslot/preferences.py:312 keyslot/ssh_views.py:39
+#: keyslot/application.py:501 keyslot/database_views.py:449 keyslot/database_views.py:534 keyslot/preferences.py:364 keyslot/ssh_views.py:39
 msgid "Key File"
 msgstr ""
 
-#: keyslot/application.py:512 keyslot/database_views.py:532 keyslot/preferences.py:320 keyslot/remote_views.py:191
+#: keyslot/application.py:514 keyslot/database_views.py:532 keyslot/preferences.py:372 keyslot/remote_views.py:191
 msgid "Key File / Hardware Key Only"
 msgstr ""
 
@@ -3490,7 +3522,7 @@ msgstr ""
 msgid "Key file for the databases being opened"
 msgstr ""
 
-#: keyslot/preferences.py:208
+#: keyslot/preferences.py:260
 msgid "Keyboard"
 msgstr ""
 
@@ -3498,7 +3530,7 @@ msgstr ""
 msgid "Keyboard Shortcuts"
 msgstr ""
 
-#: keyslot/preferences.py:209
+#: keyslot/preferences.py:261
 msgid "Keyboard Shortcuts…"
 msgstr ""
 
@@ -3542,7 +3574,7 @@ msgstr ""
 msgid "Leave the command empty to skip this direction."
 msgstr ""
 
-#: keyslot/application.py:726
+#: keyslot/application.py:728
 msgid "Leave the password unchanged to keep the current one."
 msgstr ""
 
@@ -3610,23 +3642,23 @@ msgstr ""
 msgid "Lock Database"
 msgstr ""
 
-#: keyslot/application.py:1177
+#: keyslot/application.py:1179
 msgid "Lock Database (Ctrl+L)"
 msgstr ""
 
-#: keyslot/preferences.py:114
+#: keyslot/preferences.py:166
 msgid "Lock When Inactive"
 msgstr ""
 
-#: keyslot/preferences.py:137
+#: keyslot/preferences.py:189
 msgid "Lock When Minimized or Hidden"
 msgstr ""
 
-#: keyslot/preferences.py:136
+#: keyslot/preferences.py:188
 msgid "Lock When Switching Users"
 msgstr ""
 
-#: keyslot/preferences.py:137
+#: keyslot/preferences.py:189
 msgid "Lock after a clipboard grace period of 1–20 seconds, including close-to-background"
 msgstr ""
 
@@ -3634,23 +3666,23 @@ msgstr ""
 msgid "Lock all open databases and exit"
 msgstr ""
 
-#: keyslot/preferences.py:135
+#: keyslot/preferences.py:187
 msgid "Lock immediately when the screen locks or the computer sleeps"
 msgstr ""
 
-#: keyslot/preferences.py:135
+#: keyslot/preferences.py:187
 msgid "Lock on Screen Lock or Suspend"
 msgstr ""
 
-#: engine/main.cpp:859
+#: engine/main.cpp:912
 msgid "Lock the vault before requesting system authentication."
 msgstr ""
 
-#: keyslot/preferences.py:136
+#: keyslot/preferences.py:188
 msgid "Lock when this login session becomes inactive"
 msgstr ""
 
-#: keyslot/application.py:713
+#: keyslot/application.py:715
 msgid "Login Details"
 msgstr ""
 
@@ -3714,7 +3746,7 @@ msgstr ""
 msgid "Mask Empty Passwords"
 msgstr ""
 
-#: keyslot/application.py:491 keyslot/preferences.py:304
+#: keyslot/application.py:493 keyslot/preferences.py:356
 msgid "Master Password"
 msgstr ""
 
@@ -3819,15 +3851,15 @@ msgstr ""
 msgid "Move to Recycle Bin"
 msgstr ""
 
-#: keyslot/application.py:1672
+#: keyslot/application.py:1674
 msgid "Move to Recycle Bin…"
 msgstr ""
 
-#: keyslot/application.py:875 keyslot/application.py:973 keyslot/database_views.py:322 keyslot/property_views.py:34 keyslot/remote_views.py:83
+#: keyslot/application.py:877 keyslot/application.py:975 keyslot/database_views.py:322 keyslot/property_views.py:34 keyslot/remote_views.py:83
 msgid "Name"
 msgstr ""
 
-#: keyslot/preferences.py:115 keyslot/preferences.py:158 keyslot/property_views.py:104
+#: keyslot/preferences.py:167 keyslot/preferences.py:210 keyslot/property_views.py:104
 msgid "Never"
 msgstr ""
 
@@ -3835,11 +3867,11 @@ msgstr ""
 msgid "Never Expires"
 msgstr ""
 
-#: keyslot/application.py:480 keyslot/shortcuts.py:43
+#: keyslot/application.py:482 keyslot/shortcuts.py:43
 msgid "New Database"
 msgstr ""
 
-#: keyslot/app.py:601 keyslot/application.py:1065
+#: keyslot/app.py:601 keyslot/application.py:1067
 msgid "New Database…"
 msgstr ""
 
@@ -3847,15 +3879,15 @@ msgstr ""
 msgid "New Entries"
 msgstr ""
 
-#: keyslot/application.py:706 keyslot/browser_dialogs.py:248 keyslot/passkey_views.py:159 keyslot/shortcuts.py:48
+#: keyslot/application.py:708 keyslot/browser_dialogs.py:248 keyslot/passkey_views.py:159 keyslot/shortcuts.py:48
 msgid "New Entry"
 msgstr ""
 
-#: keyslot/application.py:1106
+#: keyslot/application.py:1108
 msgid "New Entry (Ctrl+N)"
 msgstr ""
 
-#: keyslot/application.py:1090 keyslot/application.py:807
+#: keyslot/application.py:1092 keyslot/application.py:809
 msgid "New Group"
 msgstr ""
 
@@ -3867,7 +3899,7 @@ msgstr ""
 msgid "New Master Password"
 msgstr ""
 
-#: keyslot/application.py:717
+#: keyslot/application.py:719
 msgid "New Password"
 msgstr ""
 
@@ -3955,7 +3987,7 @@ msgstr ""
 msgid "No differences between these versions"
 msgstr ""
 
-#: keyslot/application.py:1148
+#: keyslot/application.py:1150
 msgid "No entries found"
 msgstr ""
 
@@ -4011,7 +4043,7 @@ msgstr ""
 msgid "None"
 msgstr ""
 
-#: keyslot/application.py:499 keyslot/application.py:502 keyslot/database_views.py:50 keyslot/database_views.py:52 keyslot/database_views.py:534 keyslot/database_views.py:67 keyslot/database_views.py:76 keyslot/generator_views.py:128 keyslot/generator_views.py:259 keyslot/generator_views.py:283 keyslot/generator_views.py:401 keyslot/preferences.py:312 keyslot/preferences.py:316 keyslot/remote_views.py:193 keyslot/remote_views.py:197
+#: keyslot/application.py:501 keyslot/application.py:504 keyslot/database_views.py:50 keyslot/database_views.py:52 keyslot/database_views.py:534 keyslot/database_views.py:67 keyslot/database_views.py:76 keyslot/generator_views.py:128 keyslot/generator_views.py:259 keyslot/generator_views.py:283 keyslot/generator_views.py:401 keyslot/preferences.py:364 keyslot/preferences.py:368 keyslot/remote_views.py:193 keyslot/remote_views.py:197
 msgid "None selected"
 msgstr ""
 
@@ -4031,7 +4063,7 @@ msgstr ""
 msgid "Not configured"
 msgstr ""
 
-#: keyslot/application.py:1611 keyslot/application.py:753 keyslot/application.py:780 keyslot/application.py:904 keyslot/database_views.py:105 keyslot/history_views.py:13 keyslot/privacy_views.py:34 keyslot/reference_views.py:14
+#: keyslot/application.py:1613 keyslot/application.py:755 keyslot/application.py:782 keyslot/application.py:906 keyslot/database_views.py:105 keyslot/history_views.py:13 keyslot/privacy_views.py:34 keyslot/reference_views.py:14
 msgid "Notes"
 msgstr ""
 
@@ -4059,7 +4091,7 @@ msgstr ""
 msgid "One-Time Password"
 msgstr ""
 
-#: keyslot/application.py:1346
+#: keyslot/application.py:1348
 msgid "One-Time Password Available"
 msgstr ""
 
@@ -4103,7 +4135,7 @@ msgstr ""
 msgid "Open Database"
 msgstr ""
 
-#: keyslot/app.py:601 keyslot/application.py:1064
+#: keyslot/app.py:601 keyslot/application.py:1066
 msgid "Open Database…"
 msgstr ""
 
@@ -4115,7 +4147,7 @@ msgstr ""
 msgid "Open Entry"
 msgstr ""
 
-#: keyslot/application.py:1553
+#: keyslot/application.py:1555
 msgid "Open Entry URL"
 msgstr ""
 
@@ -4123,7 +4155,7 @@ msgstr ""
 msgid "Open Entry Website"
 msgstr ""
 
-#: keyslot/application.py:402
+#: keyslot/application.py:404
 msgid "Open File"
 msgstr ""
 
@@ -4135,7 +4167,7 @@ msgstr ""
 msgid "Open Saved Vault"
 msgstr ""
 
-#: keyslot/application.py:1557
+#: keyslot/application.py:1559
 msgid "Open URL Override"
 msgstr ""
 
@@ -4143,7 +4175,7 @@ msgstr ""
 msgid "Open Vaults"
 msgstr ""
 
-#: keyslot/application.py:1062 keyslot/application.py:1235
+#: keyslot/application.py:1064 keyslot/application.py:1237
 msgid "Open a KeePass database to get started."
 msgstr ""
 
@@ -4175,11 +4207,11 @@ msgstr ""
 msgid "Open the application you want to type into."
 msgstr ""
 
-#: engine/main.cpp:983
+#: engine/main.cpp:1036
 msgid "Open the source vault to review an independent recovery copy. Recovery checkpoints cannot be edited directly."
 msgstr ""
 
-#: engine/main.cpp:838
+#: engine/main.cpp:891
 msgid "Open this linked vault manually to review its unsaved recovery copy first."
 msgstr ""
 
@@ -4211,11 +4243,11 @@ msgstr ""
 msgid "Parallelism"
 msgstr ""
 
-#: keyslot/application.py:878 keyslot/property_views.py:34
+#: keyslot/application.py:880 keyslot/property_views.py:34
 msgid "Parent Group"
 msgstr ""
 
-#: keyslot/application.py:1567
+#: keyslot/application.py:1569
 msgid "Passkey"
 msgstr ""
 
@@ -4223,7 +4255,7 @@ msgstr ""
 msgid "Passkey Details"
 msgstr ""
 
-#: keyslot/application.py:1568
+#: keyslot/application.py:1570
 msgid "Passkey Details…"
 msgstr ""
 
@@ -4251,7 +4283,7 @@ msgstr ""
 msgid "Passphrase Options"
 msgstr ""
 
-#: keyslot/application.py:1550 keyslot/application.py:717 keyslot/application.py:778 keyslot/browser_dialogs.py:423 keyslot/database_views.py:104 keyslot/database_views.py:433 keyslot/history_views.py:13 keyslot/reference_views.py:13
+#: keyslot/application.py:1552 keyslot/application.py:719 keyslot/application.py:780 keyslot/browser_dialogs.py:423 keyslot/database_views.py:104 keyslot/database_views.py:433 keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Password"
 msgstr ""
 
@@ -4411,7 +4443,7 @@ msgstr ""
 msgid "Prompt to Unlock Before Searching"
 msgstr ""
 
-#: keyslot/application.py:977
+#: keyslot/application.py:979
 msgid "Protect Value"
 msgstr ""
 
@@ -4471,19 +4503,19 @@ msgstr ""
 msgid "Queries and the case, protected-field, recycle-bin and disabled-group switches are not remembered."
 msgstr ""
 
-#: keyslot/application.py:616 keyslot/preferences.py:186
+#: keyslot/application.py:618 keyslot/preferences.py:238
 msgid "Quick Unlock"
 msgstr ""
 
-#: keyslot/preferences.py:328
+#: keyslot/preferences.py:380
 msgid "Quick Unlock Password"
 msgstr ""
 
-#: keyslot/preferences.py:383
+#: keyslot/preferences.py:435
 msgid "Quick unlock is available until Keyslot quits"
 msgstr ""
 
-#: keyslot/application.py:649
+#: keyslot/application.py:651
 msgid "Quick unlock is disabled after five failed attempts. Use the master password."
 msgstr ""
 
@@ -4648,7 +4680,7 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: keyslot/application.py:1638
+#: keyslot/application.py:1640
 msgid "Remove Attachment"
 msgstr ""
 
@@ -4758,11 +4790,11 @@ msgid_plural "Removed {count} SSH keys"
 msgstr[0] ""
 msgstr[1] ""
 
-#: keyslot/application.py:493 keyslot/database_views.py:436
+#: keyslot/application.py:495 keyslot/database_views.py:436
 msgid "Repeat Password"
 msgstr ""
 
-#: keyslot/preferences.py:326
+#: keyslot/preferences.py:378
 msgid "Repeat Short Password"
 msgstr ""
 
@@ -4813,7 +4845,7 @@ msgstr ""
 
 #: keyslot/saving.py:208
 #, python-brace-format
-msgid "Replace {arg0} with this vault’s current contents? The existing file’s version will be kept as an encrypted backup."
+msgid "Replace {arg0} with this vault’s current contents? Backups follow the current settings in Preferences → Backups."
 msgstr ""
 
 #: engine/KeyslotPasskeys.cpp:255
@@ -4880,7 +4912,7 @@ msgstr ""
 msgid "Restore this entry before adding its SSH key."
 msgstr ""
 
-#: engine/main.cpp:1888
+#: engine/main.cpp:1941
 msgid "Restore this entry before changing its one-time password."
 msgstr ""
 
@@ -4892,7 +4924,7 @@ msgstr ""
 msgid "Restore this entry before generating an SSH key."
 msgstr ""
 
-#: engine/main.cpp:1529
+#: engine/main.cpp:1582
 msgid "Restore this entry before removing its passkey."
 msgstr ""
 
@@ -4904,7 +4936,7 @@ msgstr ""
 msgid "Restore this group before configuring KeeShare."
 msgstr ""
 
-#: engine/main.cpp:1895
+#: engine/main.cpp:1948
 msgid "Restore this group before editing it."
 msgstr ""
 
@@ -4916,7 +4948,7 @@ msgstr ""
 msgid "Restore to a group outside the recycle bin."
 msgstr ""
 
-#: keyslot/application.py:1158 keyslot/application.py:1661
+#: keyslot/application.py:1160 keyslot/application.py:1663
 msgid "Restore…"
 msgstr ""
 
@@ -4988,15 +5020,15 @@ msgstr ""
 msgid "Review and revoke this database’s browser connections"
 msgstr ""
 
-#: engine/main.cpp:1324
+#: engine/main.cpp:1377
 msgid "Review both versions before overwriting disk changes."
 msgstr ""
 
-#: engine/main.cpp:1947
+#: engine/main.cpp:2000
 msgid "Review the child icon changes first."
 msgstr ""
 
-#: engine/main.cpp:1281
+#: engine/main.cpp:1334
 msgid "Review the existing destination before replacing it."
 msgstr ""
 
@@ -5065,7 +5097,7 @@ msgstr ""
 msgid "SSH Agent Keys"
 msgstr ""
 
-#: keyslot/application.py:1575
+#: keyslot/application.py:1577
 msgid "SSH Key"
 msgstr ""
 
@@ -5073,7 +5105,7 @@ msgstr ""
 msgid "SSH Key Settings"
 msgstr ""
 
-#: keyslot/application.py:1576
+#: keyslot/application.py:1578
 msgid "SSH Key Settings…"
 msgstr ""
 
@@ -5109,7 +5141,7 @@ msgstr ""
 msgid "SSH key was not added"
 msgstr ""
 
-#: keyslot/app.py:606 keyslot/application.py:709 keyslot/application.py:870 keyslot/application.py:968 keyslot/database_views.py:25 keyslot/saving.py:27 keyslot/totp_views.py:234
+#: keyslot/app.py:606 keyslot/application.py:711 keyslot/application.py:872 keyslot/application.py:970 keyslot/database_views.py:25 keyslot/saving.py:27 keyslot/totp_views.py:234
 msgid "Save"
 msgstr ""
 
@@ -5117,7 +5149,7 @@ msgstr ""
 msgid "Save As…"
 msgstr ""
 
-#: keyslot/application.py:1635
+#: keyslot/application.py:1637
 msgid "Save Attachment"
 msgstr ""
 
@@ -5137,7 +5169,7 @@ msgstr ""
 msgid "Save Copy…"
 msgstr ""
 
-#: keyslot/application.py:532
+#: keyslot/application.py:534
 msgid "Save Current Data as a Copy…"
 msgstr ""
 
@@ -5153,7 +5185,7 @@ msgstr ""
 msgid "Save Encrypted Database Copy"
 msgstr ""
 
-#: keyslot/application.py:402
+#: keyslot/application.py:404
 msgid "Save File"
 msgstr ""
 
@@ -5185,7 +5217,7 @@ msgstr ""
 msgid "Save Unencrypted Export?"
 msgstr ""
 
-#: keyslot/application.py:1178
+#: keyslot/application.py:1180
 msgid "Save Vault (Ctrl+S)"
 msgstr ""
 
@@ -5206,15 +5238,15 @@ msgstr ""
 msgid "Save and Apply"
 msgstr ""
 
-#: engine/main.cpp:949
+#: engine/main.cpp:1002
 msgid "Save or discard the open vault before importing another database."
 msgstr ""
 
-#: engine/main.cpp:971
+#: engine/main.cpp:1024
 msgid "Save or discard the open vault before opening another database."
 msgstr ""
 
-#: engine/main.cpp:488
+#: engine/main.cpp:534
 msgid "Save, merge or discard the unsaved changes before reloading."
 msgstr ""
 
@@ -5254,7 +5286,7 @@ msgstr ""
 msgid "Search Disabled Groups"
 msgstr ""
 
-#: keyslot/application.py:894
+#: keyslot/application.py:896
 msgid "Search Entries"
 msgstr ""
 
@@ -5262,7 +5294,7 @@ msgstr ""
 msgid "Search Passwords"
 msgstr ""
 
-#: keyslot/application.py:1315
+#: keyslot/application.py:1317
 msgid "Search Results"
 msgstr ""
 
@@ -5298,7 +5330,7 @@ msgstr ""
 msgid "Search passkeys"
 msgstr ""
 
-#: keyslot/application.py:1120
+#: keyslot/application.py:1122
 msgid "Search passwords"
 msgstr ""
 
@@ -5346,7 +5378,7 @@ msgstr ""
 msgid "Secret Service secrets cannot contain KeePass reference expressions."
 msgstr ""
 
-#: keyslot/preferences.py:155
+#: keyslot/preferences.py:207
 msgid "Security"
 msgstr ""
 
@@ -5354,7 +5386,7 @@ msgstr ""
 msgid "Security Key Provider (blank = default)"
 msgstr ""
 
-#: keyslot/application.py:1152 keyslot/application.py:1478
+#: keyslot/application.py:1154 keyslot/application.py:1480
 msgid "Select All"
 msgstr ""
 
@@ -5362,11 +5394,11 @@ msgstr ""
 msgid "Select All Entries"
 msgstr ""
 
-#: keyslot/application.py:1108 keyslot/application.py:1390 keyslot/application.py:1493
+#: keyslot/application.py:1110 keyslot/application.py:1392 keyslot/application.py:1495
 msgid "Select Entries"
 msgstr ""
 
-#: keyslot/application.py:402
+#: keyslot/application.py:404
 msgid "Select Folder"
 msgstr ""
 
@@ -5378,7 +5410,7 @@ msgstr ""
 msgid "Select a database file."
 msgstr ""
 
-#: engine/main.cpp:976
+#: engine/main.cpp:1029
 msgid "Select a database path."
 msgstr ""
 
@@ -5386,11 +5418,11 @@ msgstr ""
 msgid "Select a passkey explicitly before signing in."
 msgstr ""
 
-#: engine/main.cpp:385
+#: engine/main.cpp:431
 msgid "Select a valid history version."
 msgstr ""
 
-#: keyslot/application.py:1533
+#: keyslot/application.py:1535
 msgid "Select an Entry"
 msgstr ""
 
@@ -5438,7 +5470,7 @@ msgstr ""
 msgid "Select each unambiguous entry once."
 msgstr ""
 
-#: engine/main.cpp:1923
+#: engine/main.cpp:1976
 msgid "Select entries and enable the recycle bin first."
 msgstr ""
 
@@ -5458,7 +5490,7 @@ msgstr ""
 msgid "Select one entry to duplicate."
 msgstr ""
 
-#: keyslot/core_backend.py:537
+#: keyslot/core_backend.py:552
 msgid "Select the source file, or the directory for an OPVault import."
 msgstr ""
 
@@ -5494,7 +5526,7 @@ msgstr ""
 msgid "Sequence (Optional)"
 msgstr ""
 
-#: keyslot/application.py:1582
+#: keyslot/application.py:1584
 msgid "Sequences and window associations"
 msgstr ""
 
@@ -5514,11 +5546,11 @@ msgstr ""
 msgid "Set Up One-Time Password"
 msgstr ""
 
-#: keyslot/preferences.py:188 keyslot/preferences.py:288
+#: keyslot/preferences.py:240 keyslot/preferences.py:340
 msgid "Set Up Quick Unlock"
 msgstr ""
 
-#: keyslot/preferences.py:196 keyslot/preferences.py:288
+#: keyslot/preferences.py:248 keyslot/preferences.py:340
 msgid "Set Up System Authentication"
 msgstr ""
 
@@ -5566,7 +5598,7 @@ msgstr ""
 msgid "Sharing Mode"
 msgstr ""
 
-#: keyslot/application.py:623 keyslot/preferences.py:325
+#: keyslot/application.py:625 keyslot/preferences.py:377
 msgid "Short Password"
 msgstr ""
 
@@ -5578,7 +5610,7 @@ msgstr ""
 msgid "Shortcuts changed in another window. Reopen the editor before saving."
 msgstr ""
 
-#: keyslot/application.py:1628
+#: keyslot/application.py:1630
 msgid "Show Authenticator QR Code…"
 msgstr ""
 
@@ -5594,7 +5626,7 @@ msgstr ""
 msgid "Show Expired Passkeys"
 msgstr ""
 
-#: keyslot/application.py:1105
+#: keyslot/application.py:1107
 msgid "Show Groups"
 msgstr ""
 
@@ -5699,7 +5731,7 @@ msgstr ""
 msgid "Specify individual settings to reset."
 msgstr ""
 
-#: engine/main.cpp:1019
+#: engine/main.cpp:1072
 msgid "Specify supported keyboard shortcuts."
 msgstr ""
 
@@ -5803,15 +5835,15 @@ msgstr ""
 msgid "Synchronizing Vault"
 msgstr ""
 
-#: keyslot/preferences.py:195
+#: keyslot/preferences.py:247
 msgid "System Authentication"
 msgstr ""
 
-#: keyslot/preferences.py:201
+#: keyslot/preferences.py:253
 msgid "System authentication disabled"
 msgstr ""
 
-#: keyslot/preferences.py:375
+#: keyslot/preferences.py:427
 msgid "System authentication is available until Keyslot quits"
 msgstr ""
 
@@ -5819,7 +5851,7 @@ msgstr ""
 msgid "System authentication is unavailable."
 msgstr ""
 
-#: keyslot/core_backend.py:495
+#: keyslot/core_backend.py:510
 msgid "System authentication is unavailable. Use the master password."
 msgstr ""
 
@@ -5827,7 +5859,7 @@ msgstr ""
 msgid "System authentication stopped. Set it up again with the master password."
 msgstr ""
 
-#: keyslot/core_backend.py:480
+#: keyslot/core_backend.py:495
 msgid "System-authentication enrollment was cancelled."
 msgstr ""
 
@@ -5847,7 +5879,7 @@ msgstr ""
 msgid "Tags"
 msgstr ""
 
-#: keyslot/application.py:762 keyslot/application.py:893
+#: keyslot/application.py:764 keyslot/application.py:895
 msgid "Tags (separated by semicolons)"
 msgstr ""
 
@@ -5855,7 +5887,7 @@ msgstr ""
 msgid "Target Unlock Time (ms)"
 msgstr ""
 
-#: keyslot/application.py:748
+#: keyslot/application.py:750
 msgid "Text Color"
 msgstr ""
 
@@ -5867,7 +5899,7 @@ msgstr ""
 msgid "Text Quotes"
 msgstr ""
 
-#: engine/main.cpp:1621
+#: engine/main.cpp:1674
 msgid "That browser connection name is already in use."
 msgstr ""
 
@@ -5883,7 +5915,7 @@ msgstr ""
 msgid "That vault path is no longer available."
 msgstr ""
 
-#: engine/main.cpp:928
+#: engine/main.cpp:981
 msgid "The CSV source changed while being read."
 msgstr ""
 
@@ -5891,19 +5923,19 @@ msgstr ""
 msgid "The GNOME companion defaults to Ctrl+Alt+K. Wayland asks the desktop for keyboard permission."
 msgstr ""
 
-#: keyslot/application.py:201
+#: keyslot/application.py:203
 msgid "The GNOME login keyring operation failed. Unlock its login keyring in Passwords and Keys and try again."
 msgstr ""
 
-#: engine/main.cpp:635
+#: engine/main.cpp:680
 msgid "The KDF iteration count is invalid."
 msgstr ""
 
-#: engine/main.cpp:638
+#: engine/main.cpp:683
 msgid "The KDF memory setting is invalid."
 msgstr ""
 
-#: engine/main.cpp:640
+#: engine/main.cpp:685
 msgid "The KDF parallelism setting is invalid."
 msgstr ""
 
@@ -5971,7 +6003,7 @@ msgstr ""
 msgid "The KeeShare identity path must be absolute."
 msgstr ""
 
-#: engine/main.cpp:1885
+#: engine/main.cpp:1938
 msgid "The QR code output could not be created completely."
 msgstr ""
 
@@ -6091,27 +6123,27 @@ msgstr ""
 msgid "The Secret Service vault was locked or closed."
 msgstr ""
 
-#: engine/main.cpp:2069
+#: engine/main.cpp:2122
 msgid "The attachment could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:2157
+#: engine/main.cpp:2210
 msgid "The attachment encoding is invalid."
 msgstr ""
 
-#: engine/main.cpp:2150
+#: engine/main.cpp:2203
 msgid "The attachment exceeds the upstream engine's size limit."
 msgstr ""
 
-#: engine/main.cpp:2066
+#: engine/main.cpp:2119
 msgid "The attachment output could not be created."
 msgstr ""
 
-#: engine/main.cpp:2153
+#: engine/main.cpp:2206
 msgid "The attachment source changed or could not be read completely."
 msgstr ""
 
-#: engine/main.cpp:2147
+#: engine/main.cpp:2200
 msgid "The attachment source could not be opened."
 msgstr ""
 
@@ -6139,11 +6171,23 @@ msgstr ""
 msgid "The auto-type target is no longer available."
 msgstr ""
 
+#: engine/main.cpp:235
+msgid "The backup folder could not be created."
+msgstr ""
+
+#: engine/main.cpp:252
+msgid "The backup path would replace an active database."
+msgstr ""
+
+#: engine/main.cpp:227
+msgid "The backup pattern did not produce a file path."
+msgstr ""
+
 #: engine/BrowserDatabase.cpp:475
 msgid "The browser confirmation is no longer valid."
 msgstr ""
 
-#: engine/main.cpp:1601
+#: engine/main.cpp:1654
 msgid "The browser connection changed. Open the connection list again."
 msgstr ""
 
@@ -6151,7 +6195,7 @@ msgstr ""
 msgid "The browser connection changed. Review it again before replacing it."
 msgstr ""
 
-#: engine/main.cpp:1599 engine/main.cpp:1609
+#: engine/main.cpp:1652 engine/main.cpp:1662
 msgid "The browser connection no longer exists."
 msgstr ""
 
@@ -6163,7 +6207,7 @@ msgstr ""
 msgid "The browser group confirmation is no longer valid."
 msgstr ""
 
-#: engine/main.cpp:1616
+#: engine/main.cpp:1669
 msgid "The browser identification key is invalid."
 msgstr ""
 
@@ -6195,11 +6239,11 @@ msgstr ""
 msgid "The browser supplied an invalid website address."
 msgstr ""
 
-#: engine/main.cpp:1332
+#: engine/main.cpp:1385
 msgid "The changed vault changed again while being opened."
 msgstr ""
 
-#: engine/main.cpp:1331
+#: engine/main.cpp:1384
 msgid "The changed vault requires its current credential before merging."
 msgstr ""
 
@@ -6235,7 +6279,7 @@ msgstr ""
 msgid "The configuration comparison is invalid."
 msgstr ""
 
-#: keyslot/configuration.py:300
+#: keyslot/configuration.py:302
 msgid "The configuration contains an invalid file path. Original settings have been preserved."
 msgstr ""
 
@@ -6247,11 +6291,11 @@ msgstr ""
 msgid "The configuration contains an unsupported dictionary."
 msgstr ""
 
-#: keyslot/configuration.py:398
+#: keyslot/configuration.py:400
 msgid "The configuration contains an unsupported password generator mode."
 msgstr ""
 
-#: keyslot/configuration.py:401
+#: keyslot/configuration.py:403
 msgid "The configuration contains unsupported password generator settings."
 msgstr ""
 
@@ -6331,11 +6375,11 @@ msgstr ""
 msgid "The configuration value has the wrong type."
 msgstr ""
 
-#: keyslot/configuration.py:302
+#: keyslot/configuration.py:304
 msgid "The configured SSH agent socket must be an absolute path."
 msgstr ""
 
-#: keyslot/configuration.py:330
+#: keyslot/configuration.py:332
 msgid "The configured recent-database limit is invalid."
 msgstr ""
 
@@ -6383,15 +6427,15 @@ msgstr ""
 msgid "The database changed since browser settings were opened. Open them again before saving."
 msgstr ""
 
-#: engine/main.cpp:380
+#: engine/main.cpp:426
 msgid "The database changed since history was reviewed. Open history again."
 msgstr ""
 
-#: engine/main.cpp:1871
+#: engine/main.cpp:1924
 msgid "The database changed since setup was opened. Open it again before continuing."
 msgstr ""
 
-#: engine/main.cpp:1983
+#: engine/main.cpp:2036
 msgid "The database changed since this attribute was opened. Open it again before continuing."
 msgstr ""
 
@@ -6399,11 +6443,11 @@ msgstr ""
 msgid "The database changed while being read. Refresh to try again."
 msgstr ""
 
-#: engine/main.cpp:988
+#: engine/main.cpp:1041
 msgid "The database changed while being unlocked."
 msgstr ""
 
-#: engine/main.cpp:550
+#: engine/main.cpp:595
 msgid "The database changed while preparing recovery. Refresh before continuing."
 msgstr ""
 
@@ -6415,7 +6459,7 @@ msgstr ""
 msgid "The database changed. Refresh the report before changing its entries."
 msgstr ""
 
-#: engine/main.cpp:519
+#: engine/main.cpp:565
 msgid "The database could not be created. A file may already exist there."
 msgstr ""
 
@@ -6427,7 +6471,7 @@ msgstr ""
 msgid "The database could not be read."
 msgstr ""
 
-#: engine/main.cpp:493
+#: engine/main.cpp:539
 msgid "The database could not be reopened. The currently open data is still available to save as a copy."
 msgstr ""
 
@@ -6435,11 +6479,11 @@ msgstr ""
 msgid "The database has no root group."
 msgstr ""
 
-#: keyslot/backend.py:212 keyslot/backend.py:215 keyslot/backend.py:331 keyslot/core_backend.py:230 keyslot/core_backend.py:250
+#: keyslot/backend.py:212 keyslot/backend.py:215 keyslot/backend.py:331 keyslot/core_backend.py:237 keyslot/core_backend.py:257
 msgid "The database is locked."
 msgstr ""
 
-#: engine/main.cpp:508 keyslot/backend.py:366
+#: engine/main.cpp:554 keyslot/backend.py:366
 msgid "The database is read-only."
 msgstr ""
 
@@ -6451,7 +6495,7 @@ msgstr ""
 msgid "The desktop did not retain clipboard ownership."
 msgstr ""
 
-#: engine/main.cpp:1288
+#: engine/main.cpp:1341
 msgid "The destination changed after review. Choose it again before replacing it."
 msgstr ""
 
@@ -6463,19 +6507,19 @@ msgstr ""
 msgid "The destination changed immediately after saving. Source entries were kept."
 msgstr ""
 
-#: engine/main.cpp:1285
+#: engine/main.cpp:1338
 msgid "The destination changed into a link or a folder."
 msgstr ""
 
-#: engine/main.cpp:1307
+#: engine/main.cpp:1360
 msgid "The destination could not be created. A file may already exist there."
 msgstr ""
 
-#: engine/main.cpp:1298
+#: engine/main.cpp:1351
 msgid "The destination could not be staged."
 msgstr ""
 
-#: engine/main.cpp:1275
+#: engine/main.cpp:1328
 msgid "The destination folder is unavailable."
 msgstr ""
 
@@ -6487,7 +6531,7 @@ msgstr ""
 msgid "The destination is open in another window. Lock it and finish its current operation before replacing it."
 msgstr ""
 
-#: engine/main.cpp:1289
+#: engine/main.cpp:1342
 msgid "The destination is read-only."
 msgstr ""
 
@@ -6511,7 +6555,7 @@ msgstr ""
 msgid "The destination transfer approval is unavailable."
 msgstr ""
 
-#: keyslot/core_backend.py:1452 keyslot/core_backend.py:1466
+#: keyslot/core_backend.py:1467 keyslot/core_backend.py:1481
 msgid "The destination vault is already unlocked."
 msgstr ""
 
@@ -6535,19 +6579,19 @@ msgstr ""
 msgid "The encrypted backup retains the previous unlock key."
 msgstr ""
 
-#: engine/main.cpp:478
+#: engine/main.cpp:524
 msgid "The encrypted checkpoint could not be recorded. The previous state was kept."
 msgstr ""
 
-#: engine/main.cpp:471
+#: engine/main.cpp:517
 msgid "The encrypted checkpoint could not be verified."
 msgstr ""
 
-#: engine/main.cpp:1716
+#: engine/main.cpp:1769
 msgid "The encrypted database copy could not be created."
 msgstr ""
 
-#: engine/main.cpp:1720
+#: engine/main.cpp:1773
 msgid "The encrypted database copy could not be written completely."
 msgstr ""
 
@@ -6575,23 +6619,23 @@ msgstr ""
 msgid "The encrypted file could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:822
+#: engine/main.cpp:875
 msgid "The encrypted recovery snapshot changed. It was kept for manual recovery."
 msgstr ""
 
-#: engine/main.cpp:264
+#: engine/main.cpp:309
 msgid "The encrypted recovery snapshot changed. It was not saved over the vault."
 msgstr ""
 
-#: engine/main.cpp:552
+#: engine/main.cpp:597
 msgid "The encrypted recovery snapshot could not be prepared. The vault was not changed."
 msgstr ""
 
-#: engine/main.cpp:442
+#: engine/main.cpp:488
 msgid "The encrypted recovery snapshot could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:238
+#: engine/main.cpp:282
 msgid "The encrypted recovery snapshot is not a private regular file."
 msgstr ""
 
@@ -6599,7 +6643,7 @@ msgstr ""
 msgid "The encrypted secret parameters are invalid."
 msgstr ""
 
-#: engine/main.cpp:514
+#: engine/main.cpp:560
 msgid "The encrypted staging file permissions could not be secured."
 msgstr ""
 
@@ -6615,23 +6659,23 @@ msgstr ""
 msgid "The encrypted upload file could not be saved completely. Nothing was uploaded."
 msgstr ""
 
-#: keyslot/core_backend.py:1123
+#: keyslot/core_backend.py:1138
 msgid "The engine did not confirm that the output was written completely."
 msgstr ""
 
-#: keyslot/core_backend.py:657
+#: keyslot/core_backend.py:672
 msgid "The engine returned invalid Auto-Type field information."
 msgstr ""
 
-#: keyslot/core_backend.py:685
+#: keyslot/core_backend.py:700
 msgid "The engine returned invalid Auto-Type search results."
 msgstr ""
 
-#: keyslot/core_backend.py:716
+#: keyslot/core_backend.py:731
 msgid "The engine returned invalid KeeShare identity information."
 msgstr ""
 
-#: keyslot/core_backend.py:337
+#: keyslot/core_backend.py:344
 msgid "The entry changed. Refresh and select it again."
 msgstr ""
 
@@ -6643,7 +6687,7 @@ msgstr ""
 msgid "The entry list exceeds the browser message limit."
 msgstr ""
 
-#: engine/main.cpp:374
+#: engine/main.cpp:420
 msgid "The entry no longer exists. Refresh the database."
 msgstr ""
 
@@ -6683,19 +6727,19 @@ msgstr ""
 msgid "The entry website or icon changed. Its current icon was kept."
 msgstr ""
 
-#: engine/main.cpp:1747
+#: engine/main.cpp:1800
 msgid "The export could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:1752
+#: engine/main.cpp:1805
 msgid "The export destination already exists or cannot be written."
 msgstr ""
 
-#: engine/main.cpp:1733
+#: engine/main.cpp:1786
 msgid "The export file could not be created."
 msgstr ""
 
-#: engine/main.cpp:1729
+#: engine/main.cpp:1782
 msgid "The export staging directory could not be created."
 msgstr ""
 
@@ -6703,7 +6747,7 @@ msgstr ""
 msgid "The exported file will include passwords and other stored secrets. Choose the format to export."
 msgstr ""
 
-#: engine/main.cpp:1322
+#: engine/main.cpp:1375
 msgid "The file changed again after review. Review the new changes before continuing."
 msgstr ""
 
@@ -6735,23 +6779,23 @@ msgstr ""
 msgid "The group icon source is missing or ambiguous."
 msgstr ""
 
-#: engine/main.cpp:392
+#: engine/main.cpp:438
 msgid "The group no longer exists. Refresh the database."
 msgstr ""
 
-#: engine/main.cpp:411
+#: engine/main.cpp:457
 msgid "The hardware key serial is invalid."
 msgstr ""
 
-#: keyslot/configuration.py:255
+#: keyslot/configuration.py:257
 msgid "The hardware-key selection could not be remembered."
 msgstr ""
 
-#: engine/main.cpp:1390
+#: engine/main.cpp:1443
 msgid "The icon could not be exported."
 msgstr ""
 
-#: engine/main.cpp:1139
+#: engine/main.cpp:1192
 msgid "The icon download address is invalid."
 msgstr ""
 
@@ -6759,23 +6803,23 @@ msgstr ""
 msgid "The icon download status is invalid."
 msgstr ""
 
-#: engine/KeyslotIcons.cpp:255 engine/main.cpp:1399
+#: engine/KeyslotIcons.cpp:255 engine/main.cpp:1452
 msgid "The icon encoding is invalid."
 msgstr ""
 
-#: engine/main.cpp:746
+#: engine/main.cpp:791
 msgid "The icon image could not be converted."
 msgstr ""
 
-#: engine/main.cpp:743
+#: engine/main.cpp:788
 msgid "The icon image could not be decoded."
 msgstr ""
 
-#: engine/main.cpp:720
+#: engine/main.cpp:765
 msgid "The icon is too large to preview."
 msgstr ""
 
-#: engine/KeyslotIcons.cpp:252 engine/main.cpp:1397
+#: engine/KeyslotIcons.cpp:252 engine/main.cpp:1450
 msgid "The icon is too large."
 msgstr ""
 
@@ -6791,27 +6835,27 @@ msgstr ""
 msgid "The import directory contains an unreadable or unsupported file."
 msgstr ""
 
-#: engine/main.cpp:339
+#: engine/main.cpp:384
 msgid "The import source changed since review. Review it again before importing."
 msgstr ""
 
-#: engine/main.cpp:938 engine/main.cpp:959
+#: engine/main.cpp:1012 engine/main.cpp:991
 msgid "The import source changed while being read."
 msgstr ""
 
-#: engine/main.cpp:1134
+#: engine/main.cpp:1187
 msgid "The key file could not be created. A file may already exist there."
 msgstr ""
 
-#: engine/main.cpp:1129
+#: engine/main.cpp:1182
 msgid "The key file could not be generated."
 msgstr ""
 
-#: engine/main.cpp:401
+#: engine/main.cpp:447
 msgid "The key file could not be loaded."
 msgstr ""
 
-#: engine/main.cpp:1132
+#: engine/main.cpp:1185
 msgid "The key file could not be synchronized to disk."
 msgstr ""
 
@@ -6887,23 +6931,23 @@ msgstr ""
 msgid "The linked-vault source key is invalid."
 msgstr ""
 
-#: keyslot/application.py:547
+#: keyslot/application.py:549
 msgid "The master passwords do not match."
 msgstr ""
 
-#: engine/main.cpp:1699
+#: engine/main.cpp:1752
 msgid "The merge database could not be unlocked."
 msgstr ""
 
-#: engine/main.cpp:537
+#: engine/main.cpp:582
 msgid "The merge source changed before the merge began."
 msgstr ""
 
-#: engine/main.cpp:1706
+#: engine/main.cpp:1759
 msgid "The merge source changed during the operation."
 msgstr ""
 
-#: engine/main.cpp:1700
+#: engine/main.cpp:1753
 msgid "The merge source changed while being read."
 msgstr ""
 
@@ -6935,43 +6979,43 @@ msgstr ""
 msgid "The native broker rejected a process-control request."
 msgstr ""
 
-#: keyslot/core_backend.py:266
+#: keyslot/core_backend.py:273
 msgid "The native engine closed. Unlock the database again."
 msgstr ""
 
-#: keyslot/core_backend.py:428
+#: keyslot/core_backend.py:443
 msgid "The native engine did not verify the vault credential."
 msgstr ""
 
-#: keyslot/core_backend.py:218
+#: keyslot/core_backend.py:222
 msgid "The native engine protocol is incompatible with this client."
 msgstr ""
 
-#: keyslot/core_backend.py:269
+#: keyslot/core_backend.py:276
 msgid "The native engine response exceeds its message limit."
 msgstr ""
 
-#: keyslot/core_backend.py:275
+#: keyslot/core_backend.py:282
 msgid "The native engine returned an invalid request ID."
 msgstr ""
 
-#: keyslot/core_backend.py:272
+#: keyslot/core_backend.py:279
 msgid "The native engine returned an invalid response frame."
 msgstr ""
 
-#: keyslot/core_backend.py:317 keyslot/core_backend.py:329
+#: keyslot/core_backend.py:324 keyslot/core_backend.py:336
 msgid "The native engine returned invalid database metadata."
 msgstr ""
 
-#: keyslot/core_backend.py:294
+#: keyslot/core_backend.py:301
 msgid "The native engine timed out. Check your hardware key, then unlock again."
 msgstr ""
 
-#: keyslot/core_backend.py:306
+#: keyslot/core_backend.py:313
 msgid "The native operation stopped. An encrypted recovery copy remains at:\n"
 msgstr ""
 
-#: engine/main.cpp:863
+#: engine/main.cpp:916
 msgid "The native session credential is invalid."
 msgstr ""
 
@@ -6995,7 +7039,7 @@ msgstr ""
 msgid "The native transfer socket is not private."
 msgstr ""
 
-#: keyslot/core_backend.py:458
+#: keyslot/core_backend.py:473
 msgid "The native vault helper stopped."
 msgstr ""
 
@@ -7035,11 +7079,11 @@ msgstr ""
 msgid "The offline password-hash file is empty."
 msgstr ""
 
-#: keyslot/core_backend.py:1125
+#: keyslot/core_backend.py:1140
 msgid "The operation was cancelled before saving its output."
 msgstr ""
 
-#: keyslot/core_backend.py:201
+#: keyslot/core_backend.py:205
 msgid "The operation was cancelled before the native engine started."
 msgstr ""
 
@@ -7107,7 +7151,7 @@ msgstr ""
 msgid "The passkey request is too large."
 msgstr ""
 
-#: engine/main.cpp:1119
+#: engine/main.cpp:1172
 msgid "The password generator settings are invalid."
 msgstr ""
 
@@ -7167,47 +7211,47 @@ msgstr ""
 msgid "The private transfer directory could not be created."
 msgstr ""
 
-#: engine/main.cpp:895
+#: engine/main.cpp:948
 msgid "The quick-unlock credential could not be encrypted."
 msgstr ""
 
-#: engine/main.cpp:900 engine/main.cpp:902 engine/main.cpp:912
+#: engine/main.cpp:953 engine/main.cpp:955 engine/main.cpp:965
 msgid "The quick-unlock credential is invalid."
 msgstr ""
 
-#: engine/main.cpp:886
+#: engine/main.cpp:939
 msgid "The quick-unlock key could not be created."
 msgstr ""
 
-#: engine/main.cpp:450
+#: engine/main.cpp:496
 msgid "The recovery checkpoint could not be reserved."
 msgstr ""
 
-#: engine/main.cpp:461
+#: engine/main.cpp:507
 msgid "The recovery checkpoint is in use."
 msgstr ""
 
-#: engine/main.cpp:818
+#: engine/main.cpp:871
 msgid "The recovery copy changed after it was opened. It was kept for review."
 msgstr ""
 
-#: engine/main.cpp:226
+#: engine/main.cpp:270
 msgid "The recovery record could not be read."
 msgstr ""
 
-#: engine/main.cpp:247
+#: engine/main.cpp:291
 msgid "The recovery record could not be removed."
 msgstr ""
 
-#: engine/main.cpp:234
+#: engine/main.cpp:278
 msgid "The recovery record is invalid or belongs to another vault."
 msgstr ""
 
-#: engine/main.cpp:463
+#: engine/main.cpp:509
 msgid "The recovery snapshot could not be staged."
 msgstr ""
 
-#: engine/main.cpp:1917
+#: engine/main.cpp:1970
 msgid "The recycle bin is disabled or this entry is already recycled."
 msgstr ""
 
@@ -7219,7 +7263,7 @@ msgstr ""
 msgid "The recycle bin is empty"
 msgstr ""
 
-#: keyslot/configuration.py:240
+#: keyslot/configuration.py:242
 msgid "The remembered key-file path is invalid. Choose a key file manually."
 msgstr ""
 
@@ -7235,7 +7279,7 @@ msgstr ""
 msgid "The remote file changed during synchronization. The local merge was saved; upload was stopped. Start a fresh synchronization."
 msgstr ""
 
-#: engine/main.cpp:2213
+#: engine/main.cpp:2266
 msgid "The request ID is invalid."
 msgstr ""
 
@@ -7267,7 +7311,7 @@ msgstr ""
 msgid "The root group cannot be deleted or restored."
 msgstr ""
 
-#: engine/main.cpp:1942
+#: engine/main.cpp:1995
 msgid "The root group cannot be moved."
 msgstr ""
 
@@ -7315,15 +7359,15 @@ msgstr ""
 msgid "The secret content type or value is invalid."
 msgstr ""
 
-#: engine/main.cpp:633
+#: engine/main.cpp:678
 msgid "The selected KDF is unavailable."
 msgstr ""
 
-#: engine/main.cpp:1647
+#: engine/main.cpp:1700
 msgid "The selected cipher is unavailable."
 msgstr ""
 
-#: engine/main.cpp:714
+#: engine/main.cpp:759
 msgid "The selected custom icon is no longer available."
 msgstr ""
 
@@ -7331,7 +7375,7 @@ msgstr ""
 msgid "The selected entries already have this setting"
 msgstr ""
 
-#: keyslot/core_backend.py:1479 keyslot/core_backend.py:947
+#: keyslot/core_backend.py:1494 keyslot/core_backend.py:962
 msgid "The selected group is unavailable."
 msgstr ""
 
@@ -7359,7 +7403,7 @@ msgstr ""
 msgid "The shared file changed before export. Import it successfully before trying again."
 msgstr ""
 
-#: engine/main.cpp:910
+#: engine/main.cpp:963
 msgid "The short password is incorrect."
 msgstr ""
 
@@ -7395,11 +7439,11 @@ msgstr ""
 msgid "The source vault closed before the transfer."
 msgstr ""
 
-#: engine/main.cpp:1381
+#: engine/main.cpp:1434
 msgid "The standard icon assets are unavailable."
 msgstr ""
 
-#: engine/main.cpp:1383
+#: engine/main.cpp:1436
 msgid "The standard icon could not be read."
 msgstr ""
 
@@ -7419,11 +7463,11 @@ msgstr ""
 msgid "The system-authentication broker returned oversized control data."
 msgstr ""
 
-#: keyslot/core_backend.py:462 keyslot/system_auth.py:47
+#: keyslot/core_backend.py:477 keyslot/system_auth.py:47
 msgid "The system-authentication broker stopped."
 msgstr ""
 
-#: keyslot/core_backend.py:475
+#: keyslot/core_backend.py:490
 msgid "The system-authentication enrollment response is invalid."
 msgstr ""
 
@@ -7463,19 +7507,19 @@ msgstr ""
 msgid "The transferred database could not be read."
 msgstr ""
 
-#: engine/main.cpp:881
+#: engine/main.cpp:934
 msgid "The unlock credential is too large for quick unlock."
 msgstr ""
 
-#: engine/main.cpp:1319
+#: engine/main.cpp:1372
 msgid "The unsaved vault changed after review. Review it again before continuing."
 msgstr ""
 
-#: engine/main.cpp:456
+#: engine/main.cpp:502
 msgid "The unsaved-vault journal could not be prepared."
 msgstr ""
 
-#: engine/main.cpp:224
+#: engine/main.cpp:268
 msgid "The unsaved-vault recovery record is not a private regular file."
 msgstr ""
 
@@ -7483,15 +7527,15 @@ msgstr ""
 msgid "The vault changed after properties were opened. Refresh the properties first."
 msgstr ""
 
-#: engine/main.cpp:1336
+#: engine/main.cpp:1389
 msgid "The vault changed again during the merge."
 msgstr ""
 
-#: keyslot/application.py:489
+#: keyslot/application.py:491
 msgid "The vault changed elsewhere. Enter its current credential. Your previous data stays open until unlocking succeeds."
 msgstr ""
 
-#: engine/main.cpp:269
+#: engine/main.cpp:314
 msgid "The vault changed elsewhere. The unsaved encrypted copy was kept for recovery."
 msgstr ""
 
@@ -7507,11 +7551,11 @@ msgstr ""
 msgid "The vault changed or the SSH approval expired. Review the keys again."
 msgstr ""
 
-#: engine/main.cpp:1344
+#: engine/main.cpp:1397
 msgid "The vault credential could not be verified. Check the password and key file."
 msgstr ""
 
-#: engine/main.cpp:861
+#: engine/main.cpp:914
 msgid "The vault file is unavailable."
 msgstr ""
 
@@ -7519,11 +7563,11 @@ msgstr ""
 msgid "The vault is busy. Start the check again."
 msgstr ""
 
-#: engine/main.cpp:273
+#: engine/main.cpp:318
 msgid "The vault is read-only. Its unsaved encrypted copy was kept."
 msgstr ""
 
-#: engine/main.cpp:257 engine/main.cpp:812
+#: engine/main.cpp:302 engine/main.cpp:865
 msgid "The vault owning this recovery copy is still open."
 msgstr ""
 
@@ -7543,7 +7587,7 @@ msgstr ""
 msgid "The website icon target is ambiguous."
 msgstr ""
 
-#: engine/main.cpp:1272
+#: engine/main.cpp:1325
 msgid "The working vault changed while choosing its destination. Save it again."
 msgstr ""
 
@@ -7599,11 +7643,11 @@ msgstr ""
 msgid "This CLI backend supports at most 3000 bytes per edit."
 msgstr ""
 
-#: keyslot/application.py:886
+#: keyslot/application.py:888
 msgid "This Group Only"
 msgstr ""
 
-#: engine/main.cpp:630
+#: engine/main.cpp:675
 msgid "This KDF is not supported by the current database format."
 msgstr ""
 
@@ -7635,15 +7679,15 @@ msgstr ""
 msgid "This URL launch expired or the vault changed. Open the entry again."
 msgstr ""
 
-#: engine/main.cpp:2061
+#: engine/main.cpp:2114
 msgid "This attachment does not exist."
 msgstr ""
 
-#: engine/main.cpp:1814 engine/main.cpp:1847
+#: engine/main.cpp:1867 engine/main.cpp:1900
 msgid "This attribute does not exist."
 msgstr ""
 
-#: engine/main.cpp:1992
+#: engine/main.cpp:2045
 msgid "This attribute no longer exists. Open it again before continuing."
 msgstr ""
 
@@ -7696,31 +7740,31 @@ msgstr ""
 msgid "This command was not approved."
 msgstr ""
 
-#: keyslot/configuration.py:293
+#: keyslot/configuration.py:295
 msgid "This configuration's idle or clipboard timeout exceeds Keyslot's supported range. Original settings have been preserved."
 msgstr ""
 
-#: engine/main.cpp:1375 engine/main.cpp:1411
+#: engine/main.cpp:1428 engine/main.cpp:1464
 msgid "This custom icon is unavailable."
 msgstr ""
 
-#: engine/main.cpp:814
+#: engine/main.cpp:867
 msgid "This encrypted recovery copy is in use."
 msgstr ""
 
-#: engine/main.cpp:2170
+#: engine/main.cpp:2223
 msgid "This engine operation is unavailable."
 msgstr ""
 
-#: engine/main.cpp:415
+#: engine/main.cpp:461
 msgid "This engine was built without hardware-key support."
 msgstr ""
 
-#: engine/main.cpp:1192
+#: engine/main.cpp:1245
 msgid "This entry action is not supported."
 msgstr ""
 
-#: keyslot/application.py:1560
+#: keyslot/application.py:1562
 msgid "This entry can run a previously approved command"
 msgstr ""
 
@@ -7732,7 +7776,7 @@ msgstr ""
 msgid "This entry does not contain the requested field."
 msgstr ""
 
-#: keyslot/application.py:1681
+#: keyslot/application.py:1683
 msgid "This entry has an ambiguous path. Rename it in KeePassXC to enable actions here."
 msgstr ""
 
@@ -7740,7 +7784,7 @@ msgstr ""
 msgid "This entry has an ambiguous path. Use KeePassXC to rename it before editing or copying it here."
 msgstr ""
 
-#: engine/KeyslotPasskeys.cpp:31 engine/main.cpp:1520
+#: engine/KeyslotPasskeys.cpp:31 engine/main.cpp:1573
 msgid "This entry has no passkey."
 msgstr ""
 
@@ -7756,11 +7800,11 @@ msgstr ""
 msgid "This entry has no username to update."
 msgstr ""
 
-#: engine/main.cpp:1810
+#: engine/main.cpp:1863
 msgid "This entry has no valid TOTP settings."
 msgstr ""
 
-#: engine/main.cpp:2079
+#: engine/main.cpp:2132
 msgid "This entry identifier is ambiguous. Refresh before adding attachments."
 msgstr ""
 
@@ -7768,7 +7812,7 @@ msgstr ""
 msgid "This entry identifier is ambiguous. Resolve duplicate identifiers before generating a key."
 msgstr ""
 
-#: engine/main.cpp:1780
+#: engine/main.cpp:1833
 msgid "This entry identifier is ambiguous. Select an entry with a unique identifier."
 msgstr ""
 
@@ -7776,7 +7820,7 @@ msgstr ""
 msgid "This entry no longer exists. Select it again before continuing."
 msgstr ""
 
-#: engine/main.cpp:1364
+#: engine/main.cpp:1417
 msgid "This entry transfer operation is unavailable."
 msgstr ""
 
@@ -7784,15 +7828,15 @@ msgstr ""
 msgid "This entry's KeeAgent settings could not be read. Preserve or remove its settings attachment before replacing it."
 msgstr ""
 
-#: engine/main.cpp:1053
+#: engine/main.cpp:1106
 msgid "This file contains no usable passphrase words."
 msgstr ""
 
-#: engine/main.cpp:1972
+#: engine/main.cpp:2025
 msgid "This group cannot be recycled."
 msgstr ""
 
-#: engine/main.cpp:2035
+#: engine/main.cpp:2088
 msgid "This history field does not exist."
 msgstr ""
 
@@ -7800,11 +7844,11 @@ msgstr ""
 msgid "This icon download reply is no longer expected."
 msgstr ""
 
-#: engine/main.cpp:736
+#: engine/main.cpp:781
 msgid "This icon has no supported image size."
 msgstr ""
 
-#: engine/main.cpp:1214
+#: engine/main.cpp:1267
 msgid "This icon operation is not supported."
 msgstr ""
 
@@ -7824,7 +7868,7 @@ msgstr ""
 msgid "This location changed. Open its settings again."
 msgstr ""
 
-#: keyslot/core_backend.py:236
+#: keyslot/core_backend.py:243
 msgid "This operation exceeds the engine's 64 MiB message limit."
 msgstr ""
 
@@ -7840,15 +7884,15 @@ msgstr ""
 msgid "This plugin data no longer exists. Refresh properties."
 msgstr ""
 
-#: keyslot/configuration.py:376
+#: keyslot/configuration.py:378
 msgid "This profile's favicon timeout is outside the supported 1–300 second range. Its original setting was preserved."
 msgstr ""
 
-#: engine/main.cpp:1157
+#: engine/main.cpp:1210
 msgid "This properties operation is not supported."
 msgstr ""
 
-#: engine/main.cpp:915
+#: engine/main.cpp:968
 msgid "This quick-unlock credential belongs to another vault."
 msgstr ""
 
@@ -7856,7 +7900,7 @@ msgstr ""
 msgid "This remote location no longer exists. Open the location list again."
 msgstr ""
 
-#: engine/main.cpp:1178
+#: engine/main.cpp:1231
 msgid "This remote operation is not supported."
 msgstr ""
 
@@ -7872,7 +7916,7 @@ msgstr ""
 msgid "This review expires after two minutes or when the vault changes. Saving keeps the existing SSH-agent policy."
 msgstr ""
 
-#: engine/main.cpp:865
+#: engine/main.cpp:918
 msgid "This session credential belongs to another vault."
 msgstr ""
 
@@ -7900,7 +7944,7 @@ msgstr ""
 msgid "This synchronization is no longer active."
 msgstr ""
 
-#: engine/main.cpp:870
+#: engine/main.cpp:923
 msgid "This system authentication operation is unavailable."
 msgstr ""
 
@@ -7944,7 +7988,7 @@ msgstr ""
 msgid "Timeout (Seconds)"
 msgstr ""
 
-#: keyslot/application.py:714 keyslot/application.py:776 keyslot/autotype_views.py:226 keyslot/database_views.py:104 keyslot/history_views.py:13 keyslot/reference_views.py:13
+#: keyslot/application.py:716 keyslot/application.py:778 keyslot/autotype_views.py:226 keyslot/database_views.py:104 keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Title"
 msgstr ""
 
@@ -8003,11 +8047,11 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: keyslot/application.py:1585
+#: keyslot/application.py:1587
 msgid "Type Entry…"
 msgstr ""
 
-#: keyslot/application.py:1591
+#: keyslot/application.py:1593
 msgid "Type Individual Fields"
 msgstr ""
 
@@ -8051,7 +8095,7 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
-#: keyslot/application.py:1556 keyslot/application.py:765 keyslot/application.py:781
+#: keyslot/application.py:1558 keyslot/application.py:767 keyslot/application.py:783
 msgid "URL Override"
 msgstr ""
 
@@ -8091,7 +8135,7 @@ msgstr ""
 msgid "Unknown Secret Service item mutation."
 msgstr ""
 
-#: keyslot/core_backend.py:748
+#: keyslot/core_backend.py:763
 msgid "Unknown Secret Service operation."
 msgstr ""
 
@@ -8099,7 +8143,7 @@ msgstr ""
 msgid "Unknown Secret Service session operation."
 msgstr ""
 
-#: engine/main.cpp:1628
+#: engine/main.cpp:1681
 msgid "Unknown browser operation."
 msgstr ""
 
@@ -8107,27 +8151,27 @@ msgstr ""
 msgid "Unknown remote synchronization operation."
 msgstr ""
 
-#: keyslot/application.py:523 keyslot/application.py:627 keyslot/file_changes.py:135
+#: keyslot/application.py:525 keyslot/application.py:629 keyslot/file_changes.py:135
 msgid "Unlock"
 msgstr ""
 
-#: keyslot/application.py:480
+#: keyslot/application.py:482
 msgid "Unlock Changed Vault"
 msgstr ""
 
-#: keyslot/application.py:1066 keyslot/application.py:480
+#: keyslot/application.py:1068 keyslot/application.py:482
 msgid "Unlock Database"
 msgstr ""
 
-#: engine/main.cpp:365 keyslot/backend.py:364 keyslot/core_backend.py:1142 keyslot/core_backend.py:1150 keyslot/core_backend.py:1476 keyslot/core_backend.py:405 keyslot/core_backend.py:414 keyslot/core_backend.py:829 keyslot/core_backend.py:835 keyslot/core_backend.py:841
+#: engine/main.cpp:411 keyslot/backend.py:364 keyslot/core_backend.py:1157 keyslot/core_backend.py:1165 keyslot/core_backend.py:1491 keyslot/core_backend.py:420 keyslot/core_backend.py:429 keyslot/core_backend.py:844 keyslot/core_backend.py:850 keyslot/core_backend.py:856
 msgid "Unlock a database first."
 msgstr ""
 
-#: keyslot/core_backend.py:940
+#: keyslot/core_backend.py:955
 msgid "Unlock a vault with the updated native engine before editing browser settings."
 msgstr ""
 
-#: keyslot/core_backend.py:1376
+#: keyslot/core_backend.py:1391
 msgid "Unlock a vault with the updated native engine before using entry actions."
 msgstr ""
 
@@ -8135,7 +8179,7 @@ msgstr ""
 msgid "Unlock and Merge"
 msgstr ""
 
-#: keyslot/preferences.py:25 keyslot/preferences.py:288
+#: keyslot/preferences.py:25 keyslot/preferences.py:340
 msgid "Unlock at Login"
 msgstr ""
 
@@ -8151,23 +8195,23 @@ msgstr ""
 msgid "Unlock the remembered vault using the login keyring"
 msgstr ""
 
-#: keyslot/core_backend.py:608
+#: keyslot/core_backend.py:623
 msgid "Unlock the vault before configuring SSH integration."
 msgstr ""
 
-#: keyslot/core_backend.py:425
+#: keyslot/core_backend.py:440
 msgid "Unlock the vault before configuring login unlock."
 msgstr ""
 
-#: keyslot/core_backend.py:433
+#: keyslot/core_backend.py:448
 msgid "Unlock the vault before configuring quick unlock."
 msgstr ""
 
-#: keyslot/preferences.py:267
+#: keyslot/preferences.py:319
 msgid "Unlock the vault first, then enable Unlock at Login."
 msgstr ""
 
-#: keyslot/core_backend.py:469
+#: keyslot/core_backend.py:484
 msgid "Unlock this vault with its master credential first."
 msgstr ""
 
@@ -8175,7 +8219,7 @@ msgstr ""
 msgid "Unlock with System Authentication"
 msgstr ""
 
-#: keyslot/application.py:1235
+#: keyslot/application.py:1237
 msgid "Unlock your database to access your passwords."
 msgstr ""
 
@@ -8191,7 +8235,7 @@ msgstr ""
 msgid "Unsaved changes and changes on disk"
 msgstr ""
 
-#: keyslot/core_backend.py:162
+#: keyslot/core_backend.py:164
 msgid "Unsaved changes were kept in an encrypted recovery copy."
 msgstr ""
 
@@ -8223,95 +8267,99 @@ msgstr ""
 msgid "Update Preview"
 msgstr ""
 
-#: keyslot/core_backend.py:1268
+#: keyslot/core_backend.py:1283
 msgid "Update the native engine before applying group icons to their contents."
 msgstr ""
 
-#: keyslot/core_backend.py:1317
+#: keyslot/core_backend.py:1332
 msgid "Update the native engine before assigning downloaded entry icons."
 msgstr ""
 
-#: keyslot/core_backend.py:1105
+#: keyslot/core_backend.py:1120
 msgid "Update the native engine before checking for exposed passwords."
 msgstr ""
 
-#: keyslot/core_backend.py:1496
+#: keyslot/core_backend.py:1511
 msgid "Update the native engine before choosing a group insertion position."
 msgstr ""
 
-#: keyslot/core_backend.py:1666
+#: keyslot/core_backend.py:1681
 msgid "Update the native engine before choosing password character types."
 msgstr ""
 
-#: keyslot/core_backend.py:1305
+#: keyslot/core_backend.py:1320
 msgid "Update the native engine before cleaning the icon library."
 msgstr ""
 
-#: keyslot/core_backend.py:1043
+#: keyslot/core_backend.py:225
+msgid "Update the native engine before configuring database backups."
+msgstr ""
+
+#: keyslot/core_backend.py:1058
 msgid "Update the native engine before configuring remote synchronization."
 msgstr ""
 
-#: keyslot/core_backend.py:1481
+#: keyslot/core_backend.py:1496
 msgid "Update the native engine before copying or moving recycled groups."
 msgstr ""
 
-#: keyslot/core_backend.py:1423
+#: keyslot/core_backend.py:1438
 msgid "Update the native engine before copying or moving recycled items."
 msgstr ""
 
-#: keyslot/core_backend.py:222
+#: keyslot/core_backend.py:229
 msgid "Update the native engine before disabling automatic saving."
 msgstr ""
 
-#: keyslot/core_backend.py:679
+#: keyslot/core_backend.py:694
 msgid "Update the native engine before displaying Auto-Type search results."
 msgstr ""
 
-#: keyslot/core_backend.py:1315
+#: keyslot/core_backend.py:1330
 msgid "Update the native engine before downloading website icons."
 msgstr ""
 
-#: keyslot/core_backend.py:1634
+#: keyslot/core_backend.py:1649
 msgid "Update the native engine before editing shared keyboard shortcuts."
 msgstr ""
 
-#: keyslot/core_backend.py:1652
+#: keyslot/core_backend.py:1667
 msgid "Update the native engine before estimating password strength."
 msgstr ""
 
-#: keyslot/core_backend.py:764 keyslot/core_backend.py:771
+#: keyslot/core_backend.py:779 keyslot/core_backend.py:786
 msgid "Update the native engine before generating SSH keys."
 msgstr ""
 
-#: keyslot/core_backend.py:1586
+#: keyslot/core_backend.py:1601
 msgid "Update the native engine before importing dropped attachment files."
 msgstr ""
 
-#: keyslot/core_backend.py:1643
+#: keyslot/core_backend.py:1658
 msgid "Update the native engine before importing word lists."
 msgstr ""
 
-#: keyslot/core_backend.py:1049
+#: keyslot/core_backend.py:1064
 msgid "Update the native engine before inspecting entry or group properties."
 msgstr ""
 
-#: keyslot/core_backend.py:921
+#: keyslot/core_backend.py:936
 msgid "Update the native engine before listing browser entries."
 msgstr ""
 
-#: keyslot/core_backend.py:1171
+#: keyslot/core_backend.py:1186
 msgid "Update the native engine before loading entry previews."
 msgstr ""
 
-#: keyslot/core_backend.py:708
+#: keyslot/core_backend.py:723
 msgid "Update the native engine before managing the KeeShare identity."
 msgstr ""
 
-#: keyslot/core_backend.py:1370
+#: keyslot/core_backend.py:1385
 msgid "Update the native engine before managing the recycle bin."
 msgstr ""
 
-#: keyslot/core_backend.py:1430
+#: keyslot/core_backend.py:1445
 msgid "Update the native engine before opening entry URLs."
 msgstr ""
 
@@ -8319,11 +8367,11 @@ msgstr ""
 msgid "Update the native engine before positioning groups"
 msgstr ""
 
-#: keyslot/core_backend.py:1616
+#: keyslot/core_backend.py:1631
 msgid "Update the native engine before resetting keyboard shortcuts."
 msgstr ""
 
-#: keyslot/core_backend.py:1494
+#: keyslot/core_backend.py:1509
 msgid "Update the native engine before transferring into the recycle bin."
 msgstr ""
 
@@ -8331,43 +8379,43 @@ msgstr ""
 msgid "Update the native engine before transferring recycled items"
 msgstr ""
 
-#: keyslot/core_backend.py:1005
+#: keyslot/core_backend.py:1020
 msgid "Update the native engine before trusting a browser connection."
 msgstr ""
 
-#: keyslot/core_backend.py:1189
+#: keyslot/core_backend.py:1204
 msgid "Update the native engine before using attribute-name suggestions."
 msgstr ""
 
-#: keyslot/core_backend.py:416
+#: keyslot/core_backend.py:431
 msgid "Update the native engine before using automatic vault reload."
 msgstr ""
 
-#: keyslot/core_backend.py:992
+#: keyslot/core_backend.py:1007
 msgid "Update the native engine before using browser-requested icons."
 msgstr ""
 
-#: keyslot/core_backend.py:1614
+#: keyslot/core_backend.py:1629
 msgid "Update the native engine before using custom configuration files."
 msgstr ""
 
-#: keyslot/core_backend.py:653 keyslot/core_backend.py:692
+#: keyslot/core_backend.py:668 keyslot/core_backend.py:707
 msgid "Update the native engine before using field-only Auto-Type actions."
 msgstr ""
 
-#: keyslot/core_backend.py:1567
+#: keyslot/core_backend.py:1582
 msgid "Update the native engine before using search options."
 msgstr ""
 
-#: keyslot/core_backend.py:456
+#: keyslot/core_backend.py:471
 msgid "Update the native engine before using system authentication."
 msgstr ""
 
-#: keyslot/core_backend.py:1625 keyslot/core_backend.py:1668
+#: keyslot/core_backend.py:1640 keyslot/core_backend.py:1683
 msgid "Update the native engine before using the extended password generator."
 msgstr ""
 
-#: keyslot/core_backend.py:1385
+#: keyslot/core_backend.py:1400
 msgid "Update the native engine before using these entry actions."
 msgstr ""
 
@@ -8437,7 +8485,7 @@ msgstr ""
 msgid "Use Keyslot for {arg0}?"
 msgstr ""
 
-#: keyslot/application.py:628 keyslot/auth_views.py:30
+#: keyslot/application.py:630 keyslot/auth_views.py:30
 msgid "Use Master Password"
 msgstr ""
 
@@ -8449,7 +8497,7 @@ msgstr ""
 msgid "Use Password"
 msgstr ""
 
-#: keyslot/preferences.py:195
+#: keyslot/preferences.py:247
 msgid "Use Polkit and your system's authentication agent for this vault until Keyslot quits"
 msgstr ""
 
@@ -8457,7 +8505,7 @@ msgstr ""
 msgid "Use Recycle Bin"
 msgstr ""
 
-#: engine/main.cpp:1940
+#: engine/main.cpp:1993
 msgid "Use Restore to move a recycled group."
 msgstr ""
 
@@ -8477,23 +8525,23 @@ msgstr ""
 msgid "Use a field from another entry in this database. The reference follows its entry even if it is renamed or moved."
 msgstr ""
 
-#: keyslot/core_backend.py:703
+#: keyslot/core_backend.py:718
 msgid "Use a separate helper for KeeShare identity settings."
 msgstr ""
 
-#: keyslot/core_backend.py:1609
+#: keyslot/core_backend.py:1624
 msgid "Use a separate helper for application configuration."
 msgstr ""
 
-#: keyslot/preferences.py:187
+#: keyslot/preferences.py:239
 msgid "Use a short password for this vault location; the master password stays unchanged"
 msgstr ""
 
-#: engine/main.cpp:1820
+#: engine/main.cpp:1873
 msgid "Use a shorter attribute-name search."
 msgstr ""
 
-#: engine/main.cpp:408 keyslot/backend.py:259
+#: engine/main.cpp:454 keyslot/backend.py:259
 msgid "Use hardware key slot 1 or 2, optionally followed by :serial."
 msgstr ""
 
@@ -8501,7 +8549,7 @@ msgstr ""
 msgid "Use the Group Icon"
 msgstr ""
 
-#: keyslot/application.py:1494
+#: keyslot/application.py:1496
 msgid "Use the actions below the entry list to copy, move, restore, delete or edit tags and expiry."
 msgstr ""
 
@@ -8513,7 +8561,7 @@ msgstr ""
 msgid "Use the selected group's icon until you choose another"
 msgstr ""
 
-#: keyslot/application.py:1604
+#: keyslot/application.py:1606
 msgid "Use this login on other websites"
 msgstr ""
 
@@ -8529,11 +8577,11 @@ msgstr ""
 msgid "Used for legacy .kdbx.share exports. Current KeePassXC ignores signatures when importing."
 msgstr ""
 
-#: keyslot/application.py:1549 keyslot/application.py:715 keyslot/application.py:777 keyslot/autotype_views.py:226 keyslot/browser_dialogs.py:422 keyslot/database_views.py:104 keyslot/history_views.py:13 keyslot/reference_views.py:13
+#: keyslot/application.py:1551 keyslot/application.py:717 keyslot/application.py:779 keyslot/autotype_views.py:226 keyslot/browser_dialogs.py:422 keyslot/database_views.py:104 keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Username"
 msgstr ""
 
-#: keyslot/application.py:976 keyslot/application.py:982
+#: keyslot/application.py:978 keyslot/application.py:984
 msgid "Value"
 msgstr ""
 
@@ -8569,7 +8617,7 @@ msgstr ""
 msgid "Vault file is unavailable"
 msgstr ""
 
-#: keyslot/application.py:267
+#: keyslot/application.py:269
 msgid "Vault saved"
 msgstr ""
 
@@ -8581,7 +8629,7 @@ msgstr ""
 msgid "Vault updated"
 msgstr ""
 
-#: keyslot/preferences.py:368
+#: keyslot/preferences.py:420
 msgid "Vault will unlock from the login keyring when you sign in"
 msgstr ""
 
@@ -8593,7 +8641,7 @@ msgstr ""
 msgid "Vertical Bar"
 msgstr ""
 
-#: keyslot/application.py:1653
+#: keyslot/application.py:1655
 #, python-brace-format
 msgid "View History ({count} Version)"
 msgid_plural "View History ({count} Versions)"
@@ -8608,11 +8656,11 @@ msgstr ""
 msgid "View keys, remove selected keys or clear the agent"
 msgstr ""
 
-#: keyslot/application.py:1569
+#: keyslot/application.py:1571
 msgid "View, export or remove this passkey"
 msgstr ""
 
-#: keyslot/application.py:1599
+#: keyslot/application.py:1601
 msgid "Visibility, form submission and HTTP authentication"
 msgstr ""
 
@@ -8644,7 +8692,7 @@ msgstr ""
 msgid "Weak Passwords"
 msgstr ""
 
-#: keyslot/application.py:1552 keyslot/application.py:716 keyslot/application.py:779 keyslot/browser_dialogs.py:237 keyslot/browser_dialogs.py:412 keyslot/browser_dialogs.py:562 keyslot/browser_options.py:164 keyslot/browser_options.py:172 keyslot/history_views.py:13 keyslot/icon_views.py:129 keyslot/passkey_views.py:113 keyslot/passkey_views.py:153 keyslot/reference_views.py:14
+#: keyslot/application.py:1554 keyslot/application.py:718 keyslot/application.py:781 keyslot/browser_dialogs.py:237 keyslot/browser_dialogs.py:412 keyslot/browser_dialogs.py:562 keyslot/browser_options.py:164 keyslot/browser_options.py:172 keyslot/history_views.py:13 keyslot/icon_views.py:129 keyslot/passkey_views.py:113 keyslot/passkey_views.py:153 keyslot/reference_views.py:14
 msgid "Website"
 msgstr ""
 
@@ -8712,7 +8760,7 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: keyslot/application.py:1061 keyslot/application.py:1234
+#: keyslot/application.py:1063 keyslot/application.py:1236
 msgid "Your Passwords, Safely Kept"
 msgstr ""
 
@@ -8724,7 +8772,7 @@ msgstr ""
 msgid "Your desktop controls prompts when a connection opens. Each Auto-Type invocation still checks its destination."
 msgstr ""
 
-#: keyslot/application.py:1534
+#: keyslot/application.py:1536
 msgid "Your login details will appear here."
 msgstr ""
 
@@ -8747,7 +8795,7 @@ msgstr ""
 msgid "{arg0:g} seconds"
 msgstr ""
 
-#: keyslot/application.py:1477
+#: keyslot/application.py:1479
 #, python-brace-format
 msgid "{arg0} Selected"
 msgstr ""
@@ -8782,14 +8830,14 @@ msgstr ""
 msgid "{connection} (Disconnected)"
 msgstr ""
 
-#: keyslot/application.py:1493
+#: keyslot/application.py:1495
 #, python-brace-format
 msgid "{count} Entry Selected"
 msgid_plural "{count} Entries Selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: keyslot/application.py:1353
+#: keyslot/application.py:1355
 #, python-brace-format
 msgid "{count} entry"
 msgid_plural "{count} entries"

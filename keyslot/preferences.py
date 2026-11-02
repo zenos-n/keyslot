@@ -106,6 +106,62 @@ def show(session):
     automatic.connect("notify::active", changed_saving)
     on_exit.connect("notify::active", changed_saving)
     page.add(saving)
+    backups = Adw.PreferencesGroup(title=_tr("Backups"), description=_tr(
+        "Keep an encrypted copy of the previous file before saving. Relative paths use the database folder. "
+        "Use {DB_FILENAME} for its name, {TIME} for the current time, or {TIME:yyyy-MM-dd_hh-mm-ss} for a custom time format."))
+    backup = Adw.SwitchRow(title=_tr("Back Up Before Saving"), active=settings.backup_before_save)
+    pattern = Adw.EntryRow(title=_tr("Backup File Path Pattern"), text=settings.backup_path_pattern,
+                           show_apply_button=True, sensitive=settings.backup_before_save)
+    folder = Gtk.Button(icon_name="folder-open-symbolic", tooltip_text=_tr("Choose Backup Folder"), valign=Gtk.Align.CENTER)
+    pattern.add_suffix(folder)
+    backups.add(backup)
+    backups.add(pattern)
+    changing_backup = [False]
+    def changed_backup(*_):
+        if changing_backup[0]:
+            return
+        old = settings.backup_before_save, settings.backup_path_pattern
+        chosen = backup.get_active(), pattern.get_text()
+        def restore():
+            changing_backup[0] = True
+            backup.set_active(settings.backup_before_save)
+            pattern.set_text(settings.backup_path_pattern)
+            pattern.set_sensitive(settings.backup_before_save)
+            changing_backup[0] = False
+            backups.set_sensitive(True)
+        if session.busy:
+            restore()
+            return
+        sessions = list(session.application.sessions)
+        def apply():
+            try:
+                for item in sessions:
+                    item.vault.backup_policy(*chosen)
+                settings.save(settings.remember, settings.login, settings.vault,
+                              backup_before_save=chosen[0], backup_path_pattern=chosen[1])
+            except Exception as error:
+                for item in sessions:
+                    try:
+                        item.vault.backup_policy(*old)
+                    except (OSError, ValueError, VaultError):
+                        pass
+                if isinstance(error, (OSError, ValueError, VaultError)):
+                    return str(error)
+                raise
+        def completed(message):
+            restore()
+            if message:
+                session.error(message)
+        backups.set_sensitive(False)
+        if not session.run_job(apply, completed):
+            restore()
+    def selected_backup_folder(path):
+        pattern.set_text(str(Path(path) / "{DB_FILENAME}.old.kdbx"))
+        changed_backup()
+    folder.connect("clicked", lambda *_: session.choose_file(selected_backup_folder, folder=True))
+    backup.connect("notify::active", changed_backup)
+    pattern.connect("apply", changed_backup)
+    page.add(backups)
     from .entry_defaults import preferences as entry_preferences
     entry_preferences(session, page)
     locking = Adw.PreferencesGroup(title=_tr("Automatic Locking"),

@@ -1,8 +1,9 @@
 # English, Polish and Romanian
 
 English is the source and fallback language. Keyslot's GTK gettext catalogs are
-limited to Polish (`pl`) and Romanian (`ro`). Translation is still in progress;
-untranslated messages appear in English. This does not change the existing
+limited to Polish (`pl`) and Romanian (`ro`). The currently marked GTK/diagnostic
+corpus has both translations; unmarked/dynamic messages can still appear in
+English. This does not change the existing
 upstream native-core translation assets.
 
 The application follows the desktop/process language environment. The separate

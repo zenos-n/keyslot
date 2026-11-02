@@ -26,6 +26,8 @@ STARTUP_KEYS = {
     "auto_reload": ("global", "AutoReloadOnChange", True),
     "auto_save": ("global", "AutoSaveAfterEveryChange", True),
     "auto_save_on_exit": ("global", "AutoSaveOnExit", True),
+    "backup_before_save": ("global", "BackupBeforeSave", False),
+    "backup_path_pattern": ("global", "BackupFilePathPattern", "{DB_FILENAME}.old.kdbx"),
     "lock_on_screen": ("global", "Security/LockDatabaseScreenLock", True),
     "lock_on_user_switch": ("global", "Security/LockDatabaseOnUserSwitch", True),
     "lock_on_minimize": ("global", "Security/LockDatabaseMinimize", False),
