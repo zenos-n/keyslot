@@ -15,7 +15,7 @@ class Pending:
     session: object
     epoch: int
     identity: object
-    policy: tuple
+    policy: tuple | None
     dismiss: object = None
 
 
@@ -60,7 +60,7 @@ class BrowserRequests:
 
     def _valid(self, request):
         return (self.pending.get(request.identifier) is request and self._session_valid(request)
-                and request.policy == self.app.startup.browser_policy_value)
+                and (request.policy is None or request.policy == self.app.startup.browser_policy_value))
 
     def _drop(self, request):
         if self.pending.get(request.identifier) is not request:
@@ -179,7 +179,7 @@ class BrowserRequests:
             self.reply({"id": identifier, "error_code": 6})
             return
         request = Pending(identifier, client, event, session, session.epoch, session.vault.identity,
-                          self.app.startup.browser_policy_value)
+                          self.app.startup.browser_policy_value if action == "get-logins" else None)
         self.pending[identifier] = request
         vault = session.vault
         if action == "get-databasehash":

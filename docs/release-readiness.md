@@ -706,8 +706,8 @@ legacy/modern-key/read-write/backup-failure/concurrent-writer acceptance remains
 R08 browser matching now maps the stock BestMatchOnly/AllowExpiredCredentials/
 MatchUrlScheme/SupportKphFields flags through INI/private preferences, GTK rows and
 native lookup request parameters. All retain stock defaults; matching/release
-algorithms remain native. Each request captures the committed policy tuple;
-policy changes dismiss pending prompts, reject old worker/reply callbacks and
+algorithms remain native. Each login lookup captures the committed policy tuple;
+policy changes dismiss pending login prompts, reject old worker/reply callbacks and
 notify browser state without removing associations. Row changes merge only their
 field into current shared state. Nine captions have PL/RO translations. Runtime/
 Python/gettext compilation and static artifact review only; no tests or browser/

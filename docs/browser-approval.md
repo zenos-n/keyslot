@@ -57,4 +57,5 @@ accessibility and trust/revocation acceptance remains pending.
 match, expired-entry, URL-scheme and legacy-KPH controls into each native lookup.
 Trust does not override those choices; expired entries are excluded by default
 and can match when the user explicitly enables the expired-login option.
-Changing matching policy invalidates pending consent/results without unpairing.
+Changing matching policy invalidates pending login consent/results without
+unpairing or cancelling unrelated save/pair/passkey operations.

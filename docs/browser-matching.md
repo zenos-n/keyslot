@@ -16,7 +16,7 @@ profile adapter reads/writes these exact keys and preserves unrelated settings.
 Changing one row merges just that field into the current shared policy so a stale
 second preferences window does not overwrite the other matching choices.
 
-Each browser request captures one immutable tuple published after a successful
+Each login-lookup request captures one immutable tuple published after a successful
 preference save. Login lookup forwards all four fields to the existing native
 browser helper. No URL matching or result construction is duplicated in GTK.
 The native request already retains best-match/expired/custom-field options for
@@ -24,12 +24,13 @@ release, reduces best matches after selection/permission checks, and checks
 entry access again before returning results. Scheme matching is used by native
 candidate search. Legacy KPH fields appear only in approved browser results.
 
-Preference changes cancel pending requests and dismiss their GTK/Shell prompts;
+Preference changes cancel pending login lookups and dismiss their GTK/Shell prompts;
 workers check the captured policy before operations and before replying. A late
 result cannot be returned through an old request after policy changes. The
 existing database-state notification lets the browser refresh/retry. Browser
 associations are retained; changing matching does not pair/unpair a browser or
-grant access. Already returned data in a browser is outside this request lifetime.
+grant access. Unrelated save/delete/pair/passkey operations keep their original
+request lifetimes. Already returned data in a browser is outside this request lifetime.
 
 Per-connection trust, remembered site decisions, hidden/recycled entries,
 connection restrictions, HTTP-auth rules, one-use native requests and vault/

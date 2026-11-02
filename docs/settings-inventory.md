@@ -218,7 +218,7 @@ The browser matching follow-up now maps Browser/BestMatchOnly,
 Browser/AllowExpiredCredentials, Browser/MatchUrlScheme and Browser/SupportKphFields
 through profiles/private preferences, GTK controls and the existing native
 best_match/allow_expired/match_scheme/custom_fields request fields. Immutable
-policy capture invalidates pending requests on a preference change while
+policy capture invalidates pending login requests on a preference change while
 retaining browser associations. See [matching behavior](browser-matching.md).
 These four formerly unmatched frozen rows now have concrete implementation;
 manual acceptance, other Browser/* settings and the finite166-row review remain

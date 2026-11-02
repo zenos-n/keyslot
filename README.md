@@ -1013,5 +1013,5 @@ revision conflict checks remain enforced. See [backup behavior](docs/backups.md)
 Preferences → Browser Matching now honors stock best-match, expired-login,
 HTTP/HTTPS scheme and legacy KPH-field settings. Profile and private preferences
 feed the existing native matching implementation. Changing policy cancels old
-pending consent/results while retaining pairing. See [matching preferences](docs/browser-matching.md)
+pending login consent/results while retaining pairing and unrelated operations. See [matching preferences](docs/browser-matching.md)
 for defaults, request lifetime and manual acceptance limits.
