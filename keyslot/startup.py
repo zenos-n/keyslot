@@ -9,7 +9,7 @@ from . import APP_ID
 
 AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False,
                           delay=25, start_delay=500, retype_seconds=15, always_ask=True, skip_main_confirmation=False,
-                          sort_column=0, sort_order=0, portal_mode=1, portal_connection=False)
+                          sort_column=0, sort_order=0, portal_mode=1, portal_connection=False, portal_clipboard=False)
 SECRET_SERVICE_DEFAULTS = dict(enabled=False, confirm_access=True, confirm_delete=True, notify=True, unlock_before_search=True)
 LOCK_DEFAULTS = dict(lock_on_screen=True, lock_on_user_switch=True, lock_on_minimize=False)
 PRIVACY_DEFAULTS = dict(hide_usernames=False, hide_notes=False, hide_password_preview=True,
@@ -25,15 +25,16 @@ def _xdg_directory(name, fallback):
 
 
 def _autotype_options(value):
-    permission_options = set(AUTO_TYPE_DEFAULTS) - {"portal_connection"}
+    connection_options = set(AUTO_TYPE_DEFAULTS) - {"portal_clipboard"}
+    permission_options = connection_options - {"portal_connection"}
     sorted_options = permission_options - {"portal_mode"}
     previous = sorted_options - {"sort_column", "sort_order"}
     legacy = previous - {"always_ask", "skip_main_confirmation"}
-    if isinstance(value, dict) and set(value) in (permission_options, sorted_options, previous, legacy, legacy - {"retype_seconds"}):
+    if isinstance(value, dict) and set(value) in (connection_options, permission_options, sorted_options, previous, legacy, legacy - {"retype_seconds"}):
         value = {**AUTO_TYPE_DEFAULTS, **value}
     if not isinstance(value, dict) or set(value) != set(AUTO_TYPE_DEFAULTS):
         raise ValueError("The auto-type settings are invalid.")
-    for key in ("match_title", "match_url", "hide_expired", "relock", "always_ask", "skip_main_confirmation", "portal_connection"):
+    for key in ("match_title", "match_url", "hide_expired", "relock", "always_ask", "skip_main_confirmation", "portal_connection", "portal_clipboard"):
         if type(value[key]) is not bool:
             raise ValueError("The auto-type switches are invalid.")
     for key, low, high in (("delay", 0, 500), ("start_delay", 100, 10000), ("retype_seconds", 0, 60)):

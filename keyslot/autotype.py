@@ -49,6 +49,7 @@ class PortalKeyboard:
         self.owner_subscription = 0
         self.disposed = False
         self.close_mutex = threading.Lock()
+        self.clipboard = None
 
     def _check(self):
         if (not self.valid() or self.closed or self.disposed
@@ -119,6 +120,13 @@ class PortalKeyboard:
         except GLib.Error:
             return False
 
+    def _ended(self):
+        if self.closed or self.disposed:
+            return
+        self.closed = True
+        if self.permissions:
+            self.permissions.application.portal_connections.invalidate(self)
+
     def open(self, ticket=None):
         if self.permissions:
             self.ticket = self.permissions.capture() if ticket is None else ticket
@@ -132,23 +140,29 @@ class PortalKeyboard:
         self.owner = self._current_owner()
         def owner_changed(_connection, _sender, _path, _interface, _signal, parameters):
             if parameters.unpack()[2] != self.owner:
-                self.closed = True
+                self._ended()
         self.owner_subscription = self.connection.signal_subscribe("org.freedesktop.DBus", "org.freedesktop.DBus",
             "NameOwnerChanged", "/org/freedesktop/DBus", PORTAL_NAME, Gio.DBusSignalFlags.NONE, owner_changed)
         returned = self._request("CreateSession").get("session_handle")
         if returned != self.session:
             raise VaultError("The keyboard portal returned an invalid session.")
         self.subscription = self.connection.signal_subscribe(self.owner, "org.freedesktop.portal.Session",
-            "Closed", self.session, None, Gio.DBusSignalFlags.NONE, lambda *_: setattr(self, "closed", True))
+            "Closed", self.session, None, Gio.DBusSignalFlags.NONE, lambda *_: self._ended())
         self.persistence_supported = type(version) is int and version >= 2
         if self.permissions:
             self.ticket, self.restore_token = self.permissions.begin(self.persistence_supported, self.ticket)
             self.persist_mode = self.ticket[2]
         self._request("SelectDevices")
+        if self.permissions and self.permissions.application.startup.autotype["portal_clipboard"]:
+            from .portal_clipboard import PortalClipboard
+            self.clipboard = PortalClipboard(self, self.permissions.application)
+            self.clipboard.request()
         result = self._request("Start")
         devices = result.get("devices", 0)
         if type(devices) is not int or devices < 0 or devices & 1 == 0:
             raise VaultError("The portal did not grant keyboard access.")
+        if self.clipboard:
+            self.clipboard.enabled = self.clipboard.requested and result.get("clipboard_enabled") is True
         if self.ticket is not None and self.persistence_supported:
             self.permissions.granted(self.ticket, result.get("restore_token", ""))
         self._check()
@@ -168,6 +182,8 @@ class PortalKeyboard:
             self.valid = lambda: False
             self.restore_token = ""
             self.ticket = None
+            if self.clipboard:
+                self.clipboard.close()
             for key in reversed(self.pressed):
                 try:
                     self._notify(key, False, cleanup=True)

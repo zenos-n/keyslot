@@ -1,11 +1,20 @@
 # Clipboard ownership and expiration
 
-Explicit Copy actions publish text to the regular clipboard and primary
+Standard GTK explicit Copy actions publish text to the regular clipboard and primary
 selection, with the Linux `x-kde-passwordManagerHint=secret` format used by
 KeePassXC. Repeated copies replace the provider directly, including empty
 strings, without a clear/reclaim gap. Primary selection is available where the
 display backend supports it; failure to claim the regular clipboard reports
 failure rather than a successful Copy toast.
+
+The opt-in [Wayland portal Copy](autotype-clipboard.md) path implements stock
+AutoTypeDesktopPortalUseClipboard for explicit Copy, including selector field
+Copy. It publishes the regular clipboard through the granted portal connection,
+uses the same timeout/Never and source-lock policy, waits for completion before
+minimize/background actions, and preserves the standard path for safe pre-claim
+fallback. GTK automatic selections remain on their existing path. Closing a
+portal selection releases its session rather than claiming an empty selection;
+the shared portal connection also closes at the any-vault security boundary.
 
 One application-wide registry tracks process-local providers on each display.
 The same configured timeout also covers native GTK selections and built-in
@@ -40,8 +49,8 @@ Keyslot never requests clipboard persistence with `store_async`. Transient
 GTK/Python strings are not guaranteed to be securely zeroed.
 
 References (behavior/API only; implementation is GPL3-only):
-- KeePassXC 2.7.12 `src/gui/Clipboard.cpp` (GPL2-or-3):
-  https://github.com/keepassxreboot/keepassxc/blob/2.7.12/src/gui/Clipboard.cpp
+- KeePassXC 2.8.0 `src/gui/Clipboard.cpp` (GPL2-or-3):
+  https://github.com/keepassxreboot/keepassxc/blob/2.8.0/src/gui/Clipboard.cpp
 - GTK 4.22.4 provider ownership and content-change signals (LGPL2.1-or-later):
   https://github.com/GNOME/gtk/blob/4.22.4/gdk/gdkclipboard.c
 - GTK 4.22.4 buffer selection lifetime (LGPL2.1-or-later):

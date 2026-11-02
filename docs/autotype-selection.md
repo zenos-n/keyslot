@@ -39,8 +39,9 @@ This adds the selection-memory workflow, not a complete Auto-Type parity claim.
 variants. [Locked-vault resumption](autotype-unlock.md) and immediate temporary-vault
 relocking and a locked-vault chooser are implemented. [Sort controls](autotype-search.md)
 and [portal permission lifetimes](autotype-permissions.md) are implemented;
-protected/reference display ordering and clipboard
-typing and broader platform behavior remain separate gaps.
+protected/reference display ordering and broader platform behavior remain gaps.
+The optional [portal Copy](autotype-clipboard.md) path now implements the stock
+clipboard setting; its ownership/FD/lifecycle acceptance remains manual.
 Confirmation preferences follow the linked policy.
 
 References: KeePassXC Team/Felix Geyer GPL2-or-3 source; this independent adapter

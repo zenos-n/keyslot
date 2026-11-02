@@ -300,19 +300,23 @@ def _choose_match(session, target, matches, contexts, *, flow):
         def copied(value):
             if not current() or not flow.valid():
                 return
-            state["copying"] = False
-            rows.set_sensitive(True)
-            search.set_sensitive(True)
-            scope.set_sensitive(bool(matches))
-            sort_button.set_sensitive(True)
-            proceed.set_sensitive(rows.get_selected_row() is not None)
-            update_fields()
-            if session.application.clipboards.copy(owner, value):
-                seconds = session.application.startup.clipboard_seconds
-                session.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
-                session.windows.copied()
-            else:
-                session.toast("Could not copy to the clipboard")
+            def published(success):
+                if not current() or not flow.valid():
+                    return
+                state["copying"] = False
+                rows.set_sensitive(True)
+                search.set_sensitive(True)
+                scope.set_sensitive(bool(matches))
+                sort_button.set_sensitive(True)
+                proceed.set_sensitive(rows.get_selected_row() is not None)
+                update_fields()
+                if success:
+                    seconds = session.application.startup.clipboard_seconds
+                    session.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
+                    session.windows.copied()
+                else:
+                    session.toast("Could not copy to the clipboard")
+            session.application.clipboards.copy(owner, value, published, valid=flow.valid)
         flow.run(owner, read, copied)
     def field_action(name, copy=False):
         if not ready() or not info.available(name, typing=not copy):
@@ -651,11 +655,15 @@ def add_preferences(session, page):
     keep_connection = Adw.SwitchRow(title="Keep Keyboard Connection Open",
         subtitle="Reuse the desktop connection between invocations; locking a vault closes it",
         active=config.autotype["portal_connection"])
+    use_clipboard = Adw.SwitchRow(title="Use Desktop Portal for Clipboard",
+        subtitle="Allow Copy through the Wayland keyboard connection",
+        active=config.autotype["portal_clipboard"])
     forget = Adw.ActionRow(title="Forget Remembered Access", activatable=True,
         subtitle="Clear remembered access; the desktop controls future prompts")
     forget.add_suffix(Gtk.Image(icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER))
     permission_group.add(policy)
     permission_group.add(keep_connection)
+    permission_group.add(use_clipboard)
     permission_group.add(forget)
     page.add(permission_group)
     permission_state = {"updating": False, "busy": False}
@@ -663,6 +671,7 @@ def add_preferences(session, page):
         permission_state["updating"] = True
         policy.set_selected(config.autotype["portal_mode"])
         keep_connection.set_active(config.autotype["portal_connection"])
+        use_clipboard.set_active(config.autotype["portal_clipboard"])
         permission_state["updating"] = False
         permission_state["busy"] = False
         permission_group.set_sensitive(True)
@@ -671,8 +680,10 @@ def add_preferences(session, page):
             return
         selected_mode = policy.get_selected()
         selected_connection = keep_connection.get_active()
+        selected_clipboard = use_clipboard.get_active()
         change_permission = clear_only or selected_mode != config.autotype["portal_mode"]
-        if not change_permission and selected_connection == config.autotype["portal_connection"]:
+        if (not change_permission and selected_connection == config.autotype["portal_connection"]
+                and selected_clipboard == config.autotype["portal_clipboard"]):
             return
         if session.busy or session.jobs.closed:
             restore_permission()
@@ -694,7 +705,7 @@ def add_preferences(session, page):
                         raise VaultError("The configuration changed. Open Preferences again.")
                     config.save(config.remember, config.login, config.vault,
                                 autotype=dict(config.autotype, portal_mode=selected_mode,
-                                              portal_connection=selected_connection))
+                                              portal_connection=selected_connection, portal_clipboard=selected_clipboard))
             session.application.portal_connections.invalidate()
         def saved(_result):
             restore_permission()
@@ -708,4 +719,5 @@ def add_preferences(session, page):
             restore_permission()
     policy.connect("notify::selected", permission_changed)
     keep_connection.connect("notify::active", permission_changed)
+    use_clipboard.connect("notify::active", permission_changed)
     forget.connect("activated", lambda *_: permission_changed(clear_only=True))

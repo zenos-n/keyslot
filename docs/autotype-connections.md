@@ -24,7 +24,9 @@ acquisition also checks monotonic expiry, so a delayed timer cannot extend reuse
 The idle marker changes on every reuse, preventing a canceled old timer from
 closing that same transport after a later invocation has returned it to idle.
 Failure to start a timer or close thread falls back to closing the transport.
-Persistent mode omits the timer. Turning persistence off closes the old transport;
+Persistent mode omits the timer. A granted [portal Copy](autotype-clipboard.md)
+selection also holds its connection until ownership is lost or its data is
+cleared; copy expiry/clear releases that session. Turning persistence off closes the old transport;
 changing only this flag leaves remembered permission intact. Other Auto-Type
 policy changes close the connection as well, including timeout changes.
 
@@ -42,7 +44,9 @@ reuse also checks the current owner directly. A stale cached owner causes a fres
 session negotiation before any new sequence is prepared or sent. Queued signals
 and timers refer only to their old transport and cannot retarget a new session.
 Close is serialized/idempotent, and modifier-release cleanup retains its existing
-behavior. No clipboard, screen capture, pointer or EIS access is added.
+behavior. [Portal Copy](autotype-clipboard.md) now requests clipboard access only
+when its separate preference is enabled. Screen capture, pointer and EIS access
+are not requested.
 
 Runtime/Python compilation only. No tests/harnesses or automated transport,
 portal, GUI, timer, keyboard, clipboard, profile or vault behavior runs. Manual
@@ -50,8 +54,8 @@ acceptance remains for persistent/default/zero/max idle timing, rapid repeated
 invocations, multi-vault lock/cancel/temporary relock, cleanup reservations,
 service-owner and session changes, denial/revocation, policy/Forget/shutdown
 races, old portals, focus, keyboard and accessibility. No full-parity or
-production claim is made; clipboard typing and wider Auto-Type/desktop workflows
-remain separate work.
+production claim is made; portal Copy and wider Auto-Type/desktop workflows
+still need manual acceptance.
 
 Independent GPL3-only integration; KeePassXC Team/Felix Geyer behavior is
 attributed to its GPL2-or-3 sources. Portal API documentation is by the XDG

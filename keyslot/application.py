@@ -368,23 +368,27 @@ class VaultSession:
     def toast(self, message):
         self.window.toasts.add_toast(Adw.Toast(title=message))
 
-    def copy(self, value):
+    def copy(self, value, done=None):
         if not self.active or self.jobs.closed:
             return False
-        if not self.application.clipboards.copy(self, value):
-            self.toast("Could not copy to the clipboard")
-            return False
-        seconds = self.application.startup.clipboard_seconds
-        self.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
-        return True
+        def copied(success):
+            if not self.active or self.jobs.closed:
+                return
+            if success:
+                seconds = self.application.startup.clipboard_seconds
+                self.toast(f"Copied · clipboard clears in {seconds} seconds" if seconds else "Copied")
+            else:
+                self.toast("Could not copy to the clipboard")
+            if done:
+                done(success)
+        return self.application.clipboards.copy(self, value, copied)
 
     def clear_clipboard(self):
         self.application.clipboards.clear(self)
         return GLib.SOURCE_REMOVE
 
     def copy_entry(self, value):
-        if self.copy(value):
-            self.windows.copied()
+        self.copy(value, lambda success: self.windows.copied() if success else None)
 
     def choose_file(self, callback, save=False, name=None, kdbx=False, folder=False):
         if not self.active or self.jobs.closed:

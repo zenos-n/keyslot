@@ -15,7 +15,9 @@ The desktop decides whether to grant persistence and may show a prompt again.
 The portal's interface version is read before negotiation; version 1 or a failed
 version lookup uses a normal temporary request without persistence options.
 Saved tokens are not consumed on that fallback. Only keyboard access is requested;
-no pointer, screen capture, clipboard or EIS connection is requested here.
+no pointer, screen capture or EIS access is requested. The separate opt-in
+[portal Copy](autotype-clipboard.md) preference requests clipboard access before
+Start when enabled.
 
 Restore tokens are single-use. A persisted token is read and cleared with an
 expected-value configuration transaction before submission; an in-memory token
@@ -47,8 +49,9 @@ Every invocation still captures a destination, applies its configured entry and
 field confirmation policy, prepares a native one-use token, and checks the vault,
 flow, focus lease, deadline and portal session while waiting and sending keys.
 Portal connections now use the separate stock keep-open preference and idle
-timeout; see [Keyboard connections](autotype-connections.md). Clipboard typing
-remains unimplemented. Tokens are
+timeout; see [Keyboard connections](autotype-connections.md). The separate
+[portal Copy](autotype-clipboard.md) option implements the native clipboard setting;
+Auto-Type still emits its parsed key sequence. Tokens are
 opaque portal access metadata, never a substitute for master credentials, quick
 unlock, keyring enrollment or automatic approval of a different destination.
 

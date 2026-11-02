@@ -402,6 +402,12 @@ fresh invocation lease; vault locking, Forget, policy changes and shutdown close
 the connection. See [Keyboard connections](docs/autotype-connections.md) for
 owner, timer, cleanup and manual acceptance boundaries.
 
+The optional **Use Desktop Portal for Clipboard** setting routes explicit Copy
+through the Wayland connection using the Clipboard portal's owned text/Unix-FD
+protocol. Copy completion, timeout/Never, source locking and minimize/background
+behavior remain guarded. See [Portal Copy](docs/autotype-clipboard.md) for fallback,
+ownership, payload bounds and manual acceptance limits.
+
 Encrypted vault files are monitored for external changes, including atomic
 replacements by sync clients. Asynchronous metadata polling also covers missed
 filesystem notifications. The native core checks the ciphertext against its

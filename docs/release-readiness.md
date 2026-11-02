@@ -587,7 +587,8 @@ the profile-local restore-token key. Version2 negotiation, old-version transient
 fallback, one-use consumption/rotation, empty-slot CAS and immediate policy/
 Forget/shutdown invalidation are implemented; tokens never replace per-invocation
 vault/focus/sequence checks. [Portal connections](autotype-connections.md) now
-implement keep-open/idle closure; clipboard typing remains a separate gap. Runtime/Python compilation only; no tests/harnesses or
+implement keep-open/idle closure; [portal Copy](autotype-clipboard.md) now
+implements the native clipboard option without changing key-event Auto-Type. Runtime/Python compilation only; no tests/harnesses or
 portal/input/profile/token/vault behavior runs. All desktop permission, rotation,
 revocation, profile/error/cancellation and accessibility acceptance remains
 manual. See [Keyboard permission](autotype-permissions.md).
@@ -601,3 +602,15 @@ idempotent close, stale timers and modifier-cleanup reservations. Runtime/Python
 compilation only; no tests/harnesses or automated transport/timer/portal/GUI/
 keyboard/config/vault behavior runs. Reuse/timeout/revocation/owner/lock/cancel/
 shutdown/focus/accessibility acceptance remains manual.
+
+Optional Wayland portal Copy now maps stock AutoTypeDesktopPortalUseClipboard.
+RequestClipboard precedes Start and granted clipboard_enabled gates publication.
+Normal/selector Copy use completion callbacks, current-origin/context guards,
+owned MIME/Unix-FD transfer and clipboard timeout/Never; late claims do not
+fallback over newer clipboard data. Bounded workers/chunks/deadlines and unique
+record/timer markers protect transfer/expiry; cleanup releases only the owning
+portal session. Source review corrected the old inferred clipboard-typing gap:
+this stock option is Clipboard::setText/Copy integration, while Auto-Type retains
+key events. No tests/harnesses or behavior probes; ordinary runtime/Python
+compilation only. All real portal/clipboard/FD/GUI/owner/profile/lock/cancel/fallback
+accessibility and native2.8 workflow acceptance remains manual.

@@ -30,13 +30,47 @@ class PortalConnections:
             except RuntimeError:
                 keyboard.close()
 
-    def invalidate(self):
+    def invalidate(self, keyboard=None):
         with self.mutex:
-            self.epoch += 1
-            keyboard, self.idle = self.idle, None
+            if keyboard is None or keyboard is self.idle or keyboard is self.active:
+                self.epoch += 1
+                idle, self.idle = self.idle, None
+                self.idle_until = 0
+                self._cancel_timer()
+                # Active workers keep their reservation until modifier cleanup finishes.
+                keyboard = idle
+        self._discard(keyboard)
+
+    def _retain(self, keyboard):
+        self._cancel_timer()
+        config = self.application.startup
+        held = keyboard.clipboard is not None and keyboard.clipboard.holds_selection()
+        timeout = None if held or config.autotype["portal_connection"] else config.autotype["retype_seconds"]
+        if timeout == 0:
+            return False
+        self.idle = keyboard
+        self.idle_stamp = object()
+        self.idle_until = float("inf") if timeout is None else time.monotonic() + timeout
+        if timeout is not None:
+            self.timer = threading.Timer(timeout, self._expire, (keyboard, self.idle_stamp))
+            self.timer.daemon = True
+            try:
+                self.timer.start()
+            except RuntimeError:
+                self.idle = self.timer = self.idle_stamp = None
+                self.idle_until = 0
+                return False
+        return True
+
+    def clipboard_released(self, keyboard):
+        with self.mutex:
+            if self.idle is not keyboard or (keyboard.clipboard and keyboard.clipboard.holds_selection()):
+                return
+            if not self.closed and not keyboard.closed and not keyboard.disposed and self._retain(keyboard):
+                return
+            self.idle = None
             self.idle_until = 0
             self._cancel_timer()
-            # Active workers keep their reservation until modifier cleanup finishes.
         self._discard(keyboard)
 
     def take(self, valid):
@@ -94,24 +128,12 @@ class PortalConnections:
         with self.mutex:
             if self.active is not keyboard:
                 return
-            config = self.application.startup
             keep = (success and keyboard.valid() and not keyboard.closed and not keyboard.disposed
                     and keyboard.pool_epoch == self.epoch and not self.closed)
-            timeout = None if config.autotype["portal_connection"] else config.autotype["retype_seconds"]
             # Idle transports must retain no flow, vault, destination or entry closure.
             keyboard.valid = lambda: False
-            if keep and (timeout is None or timeout > 0):
+            if keep and self._retain(keyboard):
                 self.active = None
-                self.idle = keyboard
-                self.idle_stamp = object()
-                self.idle_until = float("inf") if timeout is None else time.monotonic() + timeout
-                if timeout is not None:
-                    self.timer = threading.Timer(timeout, self._expire, (keyboard, self.idle_stamp))
-                    self.timer.daemon = True
-                    try:
-                        self.timer.start()
-                    except RuntimeError:
-                        self._expire(keyboard, self.idle_stamp)
                 return
         try:
             keyboard.close()
