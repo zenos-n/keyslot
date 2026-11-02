@@ -9,6 +9,7 @@ from dataclasses import fields
 from contextlib import contextmanager
 import json
 import os
+import re
 from pathlib import Path
 import selectors
 import shutil
@@ -695,6 +696,25 @@ class Vault:
     def autotype_finish(self, token, pick=(), approved=False):
         with self._mutex:
             return self._rpc("autotype.finish", token=token, pick=list(pick), approved=approved)
+
+    def keeshare_identity(self, path, operation="read", revision="", signer=""):
+        with self._mutex:
+            if self.unlocked:
+                raise VaultError("Use a separate helper for KeeShare identity settings.")
+            if self._process is None or self._process.poll() is not None:
+                self._stop()
+                self._start()
+            if "keeshare-identity" not in self.capabilities:
+                raise VaultError("Update the native engine before managing the KeeShare identity.")
+            data = self._rpc("keeshare.identity", identity=str(path), operation=operation,
+                             revision=revision, signer=signer, _timeout=120)
+            if (not isinstance(data, dict) or set(data) != {"exists", "signer", "fingerprint", "revision"}
+                    or type(data["exists"]) is not bool
+                    or any(not isinstance(data[key], str) for key in ("signer", "fingerprint", "revision"))
+                    or (data["exists"] and (not data["fingerprint"] or not re.fullmatch("[0-9a-f]{64}", data["revision"])))
+                    or (not data["exists"] and (data["revision"] != "missing" or data["signer"] or data["fingerprint"]))):
+                raise VaultError("The engine returned invalid KeeShare identity information.")
+            return data
 
     def keeshare_configure(self, directory, options):
         with self._mutex:

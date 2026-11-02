@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cerrno>
+#include <fcntl.h>
 
 namespace {
 constexpr qint64 MaxShareBytes = 256 * 1024 * 1024;
@@ -74,34 +75,97 @@ void KeyslotKeeShare::configure(const QJsonObject& args) {
     allowExport = outgoing;
     identityPath = path;
 }
+namespace {
+struct IdentityFile { bool exists = false; QByteArray bytes; };
+IdentityFile readIdentity(const QString& path) {
+    const int descriptor = ::open(QFile::encodeName(path), O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+    if (descriptor < 0) {
+        if (errno == ENOENT) return {};
+        reject("file_error", "The KeeShare identity file could not be read safely.");
+    }
+    struct stat info {};
+    if (::fstat(descriptor, &info) || !S_ISREG(info.st_mode) || info.st_uid != ::getuid()
+        || (info.st_mode & 0077) || info.st_size > 65536) {
+        ::close(descriptor);
+        reject("file_error", "The KeeShare identity file must be private and owned by your user.");
+    }
+    QFile input;
+    if (!input.open(descriptor, QIODevice::ReadOnly, QFileDevice::AutoCloseHandle)) {
+        ::close(descriptor);
+        reject("file_error", "The KeeShare identity file could not be read.");
+    }
+    const auto bytes = input.read(65537);
+    if (input.error() != QFileDevice::NoError || !input.atEnd() || bytes.size() != info.st_size)
+        reject("file_error", "The KeeShare identity changed while it was being read.");
+    return {true, bytes};
+}
+QString identityRevision(const IdentityFile& file) {
+    return file.exists ? QString::fromLatin1(QCryptographicHash::hash(file.bytes, QCryptographicHash::Sha256).toHex())
+                       : QStringLiteral("missing");
+}
+KeeShareSettings::Own parseIdentity(const IdentityFile& file) {
+    if (!file.exists) return {};
+    const auto own = KeeShareSettings::Own::deserialize(QString::fromUtf8(file.bytes));
+    if (own.isNull() || own.key.isNull() || own.certificate.isNull())
+        reject("file_error", "The KeeShare identity is invalid. Restore its backup before continuing.");
+    return own;
+}
+QByteArray writeIdentity(const QString& path, const KeeShareSettings::Own& own) {
+    const auto bytes = KeeShareSettings::Own::serialize(own).toUtf8();
+    if (bytes.isEmpty() || bytes.size() > 65536)
+        reject("key_error", "The KeeShare identity could not be serialized.");
+    QSaveFile output(path);
+    output.setDirectWriteFallback(false);
+    if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
+        || output.write(bytes) != bytes.size() || !output.flush() || ::fsync(output.handle()) || !output.commit())
+        reject("file_error", "The KeeShare identity could not be saved.");
+    return bytes;
+}
+}
+QJsonObject KeyslotKeeShare::identitySettings(const QJsonObject& args) {
+    const auto path = text(args, "identity"), operation = text(args, "operation");
+    if (!QFileInfo(path).isAbsolute()) reject("invalid_request", "Choose an absolute KeeShare identity path.");
+    if (operation != "read" && operation != "rename" && operation != "regenerate")
+        reject("invalid_request", "Choose a supported KeeShare identity action.");
+    secureDirectory(QFileInfo(path).absolutePath());
+    QLockFile lock(path + ".lock");
+    if (!lock.tryLock(5000)) reject("busy", "Another Keyslot window is updating the KeeShare identity. Try again.");
+    auto file = readIdentity(path);
+    auto own = parseIdentity(file);
+    if (operation != "read") {
+        if (text(args, "revision", 128) != identityRevision(file))
+            reject("conflict", "The KeeShare identity changed elsewhere. Reload it before updating.");
+        const auto signer = text(args, "signer");
+        if (operation == "rename" && !file.exists) reject("not_found", "Generate a KeeShare identity first.");
+        if (operation == "regenerate") own = KeeShareSettings::Own::generate();
+        if (own.key.isNull() || own.certificate.isNull()) reject("key_error", "KeePassXC could not generate a signing identity.");
+        own.certificate.signer = signer;
+        if (identityRevision(readIdentity(path)) != identityRevision(file))
+            reject("conflict", "The KeeShare identity changed elsewhere. Reload it before updating.");
+        file = {true, writeIdentity(path, own)};
+    }
+    return {{"exists", file.exists}, {"signer", file.exists ? own.certificate.signer : QString()},
+            {"fingerprint", file.exists ? own.certificate.fingerprint() : QString()}, {"revision", identityRevision(file)}};
+}
 void KeyslotKeeShare::identity() {
     if (identityPath.isEmpty()) reject("disabled", "Configure KeeShare before exporting signed containers.");
     secureDirectory(QFileInfo(identityPath).absolutePath());
     QLockFile lock(identityPath + ".lock");
     if (!lock.tryLock(5000)) reject("busy", "Another Keyslot window is updating the KeeShare identity. Try again.");
-    QFile file(identityPath);
-    QByteArray bytes;
-    struct stat info {};
-    if (::lstat(QFile::encodeName(identityPath), &info) == 0) {
-        if (!S_ISREG(info.st_mode) || info.st_uid != ::getuid() || (info.st_mode & 0077)
-            || info.st_size > 65536 || !file.open(QIODevice::ReadOnly))
-            reject("file_error", "The KeeShare identity file is not private or cannot be read.");
-        bytes = file.readAll();
-        const auto own = KeeShareSettings::Own::deserialize(QString::fromUtf8(bytes));
-        if (own.isNull() || own.key.isNull() || own.certificate.isNull())
-            reject("file_error", "The KeeShare identity file is invalid. Restore its backup before exporting.");
-        KeeShare::setOwn(own);
-        return;
+    auto file = readIdentity(identityPath);
+    if (file.exists && QCryptographicHash::hash(file.bytes, QCryptographicHash::Sha256) == signedIdentity) return;
+    auto own = parseIdentity(file);
+    if (!file.exists) {
+        own = KeeShareSettings::Own::generate();
+        if (own.certificate.signer.isEmpty()) own.certificate.signer = "Keyslot";
+        if (own.key.isNull() || own.certificate.isNull()) reject("key_error", "KeePassXC could not generate a KeeShare signing identity.");
+        file = {true, writeIdentity(identityPath, own)};
     }
-    auto own = KeeShareSettings::Own::generate();
-    if (own.certificate.signer.isEmpty()) own.certificate.signer = "Keyslot";
-    if (own.isNull()) reject("key_error", "KeePassXC could not generate a KeeShare signing identity.");
-    bytes = KeeShareSettings::Own::serialize(own).toUtf8();
-    QSaveFile output(identityPath);
-    output.setDirectWriteFallback(false);
-    if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner)
-        || output.write(bytes) != bytes.size() || !output.flush() || ::fsync(output.handle()) || !output.commit())
-        reject("file_error", "The KeeShare identity could not be saved.");
+    const auto revision = QCryptographicHash::hash(file.bytes, QCryptographicHash::Sha256);
+    if (revision != signedIdentity) {
+        exported.clear();
+        signedIdentity = revision;
+    }
     KeeShare::setOwn(own);
 }
 QJsonObject KeyslotKeeShare::settings(const Group* group) const {
@@ -203,6 +267,7 @@ QJsonObject KeyslotKeeShare::sync(const QSharedPointer<Database>& db, const QByt
             if (destinations.value(path) != 1) reject("conflict", "Conflicting KeeShare export destinations were skipped.");
             if (reference.isImporting() && !allowImport)
                 reject("disabled", "Enable imports before exporting a bidirectional KeeShare group.");
+            if (path.endsWith(".kdbx.share")) identity();
             if (!force && exported.value(id) == databaseHash) continue;
             const auto before = digest(path);
             if (reference.isImporting() && !before.isEmpty() && imported.value(id) != before)
@@ -211,7 +276,6 @@ QJsonObject KeyslotKeeShare::sync(const QSharedPointer<Database>& db, const QByt
             QTemporaryDir staging(target.absolutePath() + "/.keyslot-share-XXXXXX");
             if (!staging.isValid()) reject("file_error", "The KeeShare export folder is not writable.");
             const auto stage = staging.path() + (path.endsWith(".kdbx.share") ? "/share.kdbx.share" : "/share.kdbx");
-            if (path.endsWith(".kdbx.share")) identity();
             const auto result = ShareExport::intoContainer(stage, reference, group);
             if (result.isError()) reject("export_error", "KeePassXC could not serialize a KeeShare export.");
             const auto written = digest(stage);

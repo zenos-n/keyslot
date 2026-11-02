@@ -975,3 +975,10 @@ chooser without widening shared metadata snapshots or automatic matching. See
 [Chooser Display](docs/autotype-display.md) for lifecycle, reference/locale and
 manual acceptance limits. Native/runtime compilation only; no tests or automated
 behavior runs.
+
+Preferences → KeeShare → Signing Identity now exposes signer name, fingerprint
+and certificate generation/regeneration, including with a locked vault. Private
+key handling stays native, with revision-checked atomic storage. This newer R01
+implementation is separate from the frozen manual candidate; see [identity
+controls and acceptance limits](docs/keeshare-identity.md). No tests or automated
+identity/vault/GTK behavior runs were performed.

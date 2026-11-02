@@ -110,6 +110,12 @@ def add_preferences(session, page):
     for row in (incoming, outgoing):
         row.connect("notify::active", changed)
         group.add(row)
+    identity = Adw.ActionRow(title="Signing Identity…", subtitle="Signer name, fingerprint and certificate regeneration",
+                             activatable=True)
+    identity.add_suffix(Gtk.Image(icon_name="go-next-symbolic", valign=Gtk.Align.CENTER))
+    from .keeshare_identity_views import show as show_identity
+    identity.connect("activated", lambda *_: show_identity(session))
+    group.add(identity)
     sync = Adw.ActionRow(title="Synchronize Now", activatable=True, sensitive=session.vault.unlocked)
     sync.connect("activated", lambda *_: synchronize(session))
     group.add(sync)

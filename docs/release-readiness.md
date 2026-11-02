@@ -642,3 +642,12 @@ runtime/Python compilation only; no tests or automated reference/vault/GTK/searc
 input runs. User manual protected/reference/locale/multivault/close-lock-race/
 accessibility acceptance remains; exact Qt/GLib collation differences remain.
 See [Chooser Display](autotype-display.md).
+
+R01 signing-identity controls are now implemented in development source: global
+locked-vault-capable public signer/fingerprint UI, explicit generation/regeneration,
+keyless native metadata-only protocol, private bounded fd reads, file locking/
+revision checks/atomic0600 writes, guarded helper lifetime and legacy signed-export
+cache invalidation on identity change. See [KeeShare Identity](keeshare-identity.md).
+The fixed4a65093 manual candidate is unchanged. Native/runtime compilation only;
+no tests or identity/keygen/GTK/share/vault behavior checks. Manual acceptance
+remains, including concurrent writers/cancellation/profile/permission failures.
