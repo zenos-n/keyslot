@@ -214,10 +214,12 @@ value always wins. This is an implementation fix, not manual acceptance.
 Optional backup failure behavior now also matches stock best-effort primary save;
 [backup constraints](backups.md) preserve the main-file conflict/atomic guards.
 
-The read-only review also confirmed that native browser lookup accepts best_match,
-allow_expired, match_scheme and custom_fields parameters, while the GTK request
-path currently invokes the defaults. The corresponding stock global browser
-preferences still need explicit profile/control/forwarding review; per-entry
-rules and per-browser trust do not prove those global settings are honored.
-This is a concrete follow-up, not a claim that all remaining frozen rows are
-missing features or that the 166-row compatibility review is complete.
+The browser matching follow-up now maps Browser/BestMatchOnly,
+Browser/AllowExpiredCredentials, Browser/MatchUrlScheme and Browser/SupportKphFields
+through profiles/private preferences, GTK controls and the existing native
+best_match/allow_expired/match_scheme/custom_fields request fields. Immutable
+policy capture invalidates pending requests on a preference change while
+retaining browser associations. See [matching behavior](browser-matching.md).
+These four formerly unmatched frozen rows now have concrete implementation;
+manual acceptance, other Browser/* settings and the finite166-row review remain
+incomplete. Per-entry rules/trust are still distinct from global matching policy.

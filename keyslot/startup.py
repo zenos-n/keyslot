@@ -19,6 +19,14 @@ WINDOW_DEFAULTS = dict(hide_window_on_copy=False, minimize_on_copy=True, drop_to
 ENTRY_DEFAULTS = dict(inherit_group_icon=True, generate_password_on_create=False)
 BEHAVIOR_DEFAULTS = dict(auto_save_non_data=True, show_expiry_warning=True, expiry_warning_days=3,
                          copy_on_double_click=False, url_double_click_action=0, language="system")
+BROWSER_MATCH_DEFAULTS = dict(best_match=False, allow_expired=False, match_scheme=True, custom_fields=True)
+
+
+def _browser_matching_options(value):
+    if (not isinstance(value, dict) or set(value) != set(BROWSER_MATCH_DEFAULTS)
+            or any(type(item) is not bool for item in value.values())):
+        raise ValueError("Choose supported browser settings.")
+    return dict(value)
 
 
 def _behavior_options(value):
@@ -114,6 +122,7 @@ class Startup:
         self.background = True
         self.browser = False
         self.browser_listing = False
+        self.browser_matching = dict(BROWSER_MATCH_DEFAULTS)
         self.minimize_on_url = False
         self.auto_reload = True
         self.auto_save = self.auto_save_on_exit = True
@@ -144,6 +153,10 @@ class Startup:
             self.background = data.get("background", True) is True
             self.browser = data.get("browser") is True
             self.browser_listing = data.get("browser_listing") is True
+            try:
+                self.browser_matching = _browser_matching_options(data.get("browser_matching", BROWSER_MATCH_DEFAULTS))
+            except ValueError:
+                pass
             self.minimize_on_url = data.get("minimize_on_url") is True
             self.auto_reload = data.get("auto_reload", True) is True
             self.auto_save = data.get("auto_save", True) is True
@@ -211,6 +224,7 @@ class Startup:
             pass
         self.backup_policy_value = self.backup_before_save, self.backup_path_pattern
         self.save_policy_value = self.auto_save, self.auto_save_on_exit, self.auto_save_non_data
+        self.browser_policy_value = tuple(self.browser_matching[name] for name in BROWSER_MATCH_DEFAULTS)
 
     def browser_listing_allowed(self):
         with self.mutex:
@@ -246,12 +260,13 @@ class Startup:
              auto_save=None, auto_save_on_exit=None, lock_on_screen=None, lock_on_user_switch=None, lock_on_minimize=None,
              backup_before_save=None, backup_path_pattern=None,
              auto_save_non_data=None, show_expiry_warning=None, expiry_warning_days=None,
-             copy_on_double_click=None, url_double_click_action=None, language=None,
+             copy_on_double_click=None, url_double_click_action=None, language=None, browser_matching=None,
              hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None,
              hide_window_on_copy=None, minimize_on_copy=None, drop_to_background_on_copy=None,
              minimize_after_unlock=None, minimize_to_background=None,
              inherit_group_icon=None, generate_password_on_create=None):
         with self.mutex:
+            browser_matching = _browser_matching_options(self.browser_matching if browser_matching is None else browser_matching)
             behavior = _behavior_options({name: getattr(self, name) if value is None else value for name, value in (
                 ("auto_save_non_data", auto_save_non_data), ("show_expiry_warning", show_expiry_warning),
                 ("expiry_warning_days", expiry_warning_days), ("copy_on_double_click", copy_on_double_click),
@@ -342,6 +357,7 @@ class Startup:
                        "vault": str(vault) if vault else None}
                 data.update(locks)
                 data.update(behavior)
+                data["browser_matching"] = browser_matching
                 data["backup_before_save"] = backup_before_save
                 data["backup_path_pattern"] = backup_path_pattern
                 data.update(privacy)
@@ -370,6 +386,8 @@ class Startup:
             self.remember, self.login, self.vault = bool(remember), login, vault
             self.background = background
             self.browser = browser
+            self.browser_matching = browser_matching
+            self.browser_policy_value = tuple(browser_matching[name] for name in BROWSER_MATCH_DEFAULTS)
             self.minimize_on_url = minimize_on_url
             self.auto_reload = auto_reload
             self.auto_save, self.auto_save_on_exit = auto_save, auto_save_on_exit

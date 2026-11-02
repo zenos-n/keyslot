@@ -97,6 +97,42 @@ def add_preferences(session, page, preferences):
     group.add(setup)
     group.add(listing)
     page.add(group)
+    matching = Adw.PreferencesGroup(title=_tr("Browser Matching"))
+    matching_rows = {}
+    for name, title, subtitle in (
+        ("best_match", _tr("Return Only the Best Website Match"),
+         _tr("Prefer the closest website match after entry permissions are checked")),
+        ("allow_expired", _tr("Allow Expired Browser Logins"),
+         _tr("Include expired entries; existing browser access rules still apply")),
+        ("match_scheme", _tr("Match Website Protocol"),
+         _tr("Keep HTTP and HTTPS separate when matching logins")),
+        ("custom_fields", _tr("Include Legacy KPH Fields"),
+         _tr("Include legacy KPH: attributes in approved browser results"))):
+        row = Adw.SwitchRow(title=title, subtitle=subtitle, active=settings.browser_matching[name])
+        matching_rows[name] = row
+        matching.add(row)
+    updating_matching = [False]
+    def matching_changed(changed_row, *_):
+        if updating_matching[0] or closed[0]:
+            return
+        options = dict(settings.browser_matching)
+        for name, row in matching_rows.items():
+            if row is changed_row:
+                options[name] = row.get_active()
+        try:
+            settings.save(settings.remember, settings.login, settings.vault,
+                          browser_matching=options)
+        except (OSError, ValueError, VaultError) as error:
+            session.error(str(error))
+        updating_matching[0] = True
+        for name, row in matching_rows.items():
+            row.set_active(settings.browser_matching[name])
+        updating_matching[0] = False
+        if application.browser:
+            application.browser.state_changed()
+    for row in matching_rows.values():
+        row.connect("notify::active", matching_changed)
+    page.add(matching)
     def refreshed_listing(value):
         if not closed[0]:
             changing[0] = True

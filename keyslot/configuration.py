@@ -9,7 +9,8 @@ import threading
 
 from .backend import VaultError
 from .core_backend import Vault, EngineError
-from .startup import AUTO_TYPE_DEFAULTS, _autotype_options, _secret_service_options, _xdg_directory, _behavior_options
+from .startup import (AUTO_TYPE_DEFAULTS, BROWSER_MATCH_DEFAULTS, _autotype_options, _secret_service_options,
+                      _xdg_directory, _behavior_options, _browser_matching_options)
 
 
 STARTUP_KEYS = {
@@ -56,6 +57,8 @@ AUTOTYPE_KEYS = {"match_title": "AutoTypeEntryTitleMatch", "match_url": "AutoTyp
     "portal_clipboard": "AutoTypeDesktopPortalUseClipboard"}
 SECRET_KEYS = {"enabled": "Enabled", "notify": "ShowNotification", "confirm_delete": "ConfirmDeleteItem",
     "confirm_access": "ConfirmAccessItem", "unlock_before_search": "UnlockBeforeSearch"}
+BROWSER_MATCH_KEYS = {"best_match": "BestMatchOnly", "allow_expired": "AllowExpiredCredentials",
+                      "match_scheme": "MatchUrlScheme", "custom_fields": "SupportKphFields"}
 GENERATOR_KEYS = {"lowercase": ("LowerCase", True), "uppercase": ("UpperCase", True),
     "numbers": ("Numbers", True), "extended_ascii": ("EASCII", False),
     "every_group": ("EnsureEvery", True), "exclude_lookalike": ("ExcludeAlike", True),
@@ -83,6 +86,8 @@ for _name, _key in AUTOTYPE_KEYS.items():
     GLOBAL[_key] = AUTO_TYPE_DEFAULTS[_name]
 for _name, _key in SECRET_KEYS.items():
     GLOBAL["FdoSecrets/" + _key] = _name != "enabled"
+for _name, _key in BROWSER_MATCH_KEYS.items():
+    GLOBAL["Browser/" + _key] = BROWSER_MATCH_DEFAULTS[_name]
 for _key, _default in GENERATOR_KEYS.values():
     GLOBAL["PasswordGenerator/" + _key] = _default
 for _key in SYMBOL_KEYS.values():
@@ -306,6 +311,8 @@ class IniProfile:
             data.update(lock_minutes=(seconds + 59) // 60, lock_seconds=seconds, clipboard_seconds=clipboard)
             data["autotype"] = _autotype_options({name: self._get(key) for name, key in AUTOTYPE_KEYS.items()})
             data["secret_service"] = _secret_service_options({name: self._get("FdoSecrets/" + key) for name, key in SECRET_KEYS.items()})
+            data["browser_matching"] = _browser_matching_options({name: self._get("Browser/" + key)
+                                                                  for name, key in BROWSER_MATCH_KEYS.items()})
             data["keeshare"] = {name: self._get("Keyslot/KeeShare" + name.title()) for name in ("import", "export")}
             for value in (data["vault"], data["ssh_socket"], data["ssh_provider"]):
                 if value is not None and (len(value) > 4096 or any(c in value for c in ("\0", "\n", "\r"))):
@@ -352,7 +359,8 @@ class IniProfile:
                 put("Security/ClearClipboard", clipboard != 0)
                 if clipboard:
                     put("Security/ClearClipboardTimeout", clipboard)
-            for field, mapping, prefix in (("autotype", AUTOTYPE_KEYS, ""), ("secret_service", SECRET_KEYS, "FdoSecrets/")):
+            for field, mapping, prefix in (("autotype", AUTOTYPE_KEYS, ""), ("secret_service", SECRET_KEYS, "FdoSecrets/"),
+                                           ("browser_matching", BROWSER_MATCH_KEYS, "Browser/")):
                 for name, key in mapping.items():
                     if data[field][name] != self.startup[field][name]:
                         put(prefix + key, data[field][name])

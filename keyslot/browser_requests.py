@@ -4,6 +4,7 @@ import base64
 
 from .backend import VaultError
 from .core_backend import EngineError
+from .startup import BROWSER_MATCH_DEFAULTS
 
 
 @dataclass(repr=False)
@@ -14,6 +15,7 @@ class Pending:
     session: object
     epoch: int
     identity: object
+    policy: tuple
     dismiss: object = None
 
 
@@ -48,7 +50,7 @@ class BrowserRequests:
         session = self.app.active_session
         identity = session.vault.identity if session and not session.jobs.closed and session.vault.unlocked else None
         root = getattr(getattr(session.vault, "snapshot", None), "root", None) if identity is not None else None
-        return session, identity, root
+        return session, identity, root, self.app.startup.browser_policy_value
 
     def _session_valid(self, item):
         session = item.session
@@ -57,7 +59,8 @@ class BrowserRequests:
                 and session.vault.identity is item.identity)
 
     def _valid(self, request):
-        return self.pending.get(request.identifier) is request and self._session_valid(request)
+        return (self.pending.get(request.identifier) is request and self._session_valid(request)
+                and request.policy == self.app.startup.browser_policy_value)
 
     def _drop(self, request):
         if self.pending.get(request.identifier) is not request:
@@ -70,7 +73,7 @@ class BrowserRequests:
     def _finish(self, request, result=None, error=None):
         if self.pending.get(request.identifier) is not request:
             return
-        if error is None and not self._session_valid(request):
+        if error is None and not self._valid(request):
             error = 1
         self._drop(request)
         self.reply({"id": request.identifier, "error_code": error} if error is not None
@@ -80,7 +83,7 @@ class BrowserRequests:
         if self.closed:
             return
         for request in list(self.pending.values()):
-            if not self._session_valid(request):
+            if not self._valid(request):
                 self._finish(request, error=1)
         for client, association in list(self.associations.items()):
             if not self._session_valid(association):
@@ -175,7 +178,8 @@ class BrowserRequests:
         if identifier in self.pending or len(self.pending) >= 128:
             self.reply({"id": identifier, "error_code": 6})
             return
-        request = Pending(identifier, client, event, session, session.epoch, session.vault.identity)
+        request = Pending(identifier, client, event, session, session.epoch, session.vault.identity,
+                          self.app.startup.browser_policy_value)
         self.pending[identifier] = request
         vault = session.vault
         if action == "get-databasehash":
@@ -530,4 +534,4 @@ class BrowserRequests:
                     "http_auth": body.get("httpAuth") == "true"},
                     chosen, foreground=False)
         self._job(request, lambda: (vault.browser_info(), vault.browser_lookup(association.identifier, association.key,
-            url, form, http_auth=body.get("httpAuth") == "true")), found)
+            url, form, http_auth=body.get("httpAuth") == "true", **dict(zip(BROWSER_MATCH_DEFAULTS, request.policy)))), found)

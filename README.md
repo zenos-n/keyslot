@@ -1009,3 +1009,9 @@ Compatibility follow-up: pre-version-2 OpenURLOnDoubleClick profiles retain thei
 Open/Edit behavior unless an explicit modern URLDoubleClickAction overrides it. Optional
 backup write failures use stock best-effort semantics; primary atomic writes and
 revision conflict checks remain enforced. See [backup behavior](docs/backups.md).
+
+Preferences → Browser Matching now honors stock best-match, expired-login,
+HTTP/HTTPS scheme and legacy KPH-field settings. Profile and private preferences
+feed the existing native matching implementation. Changing policy cancels old
+pending consent/results while retaining pairing. See [matching preferences](docs/browser-matching.md)
+for defaults, request lifetime and manual acceptance limits.

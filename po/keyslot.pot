@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Keyslot 0.2.0\n"
 "Report-Msgid-Bugs-To: https://github.com/zenos-n/keyslot/issues\n"
-"POT-Creation-Date: 2026-11-02 12:48+0000\n"
+"POT-Creation-Date: 2026-11-02 13:02+0000\n"
 "PO-Revision-Date: 2026-11-02 00:00+0000\n"
 "Last-Translator: Keyslot Contributors\n"
 "Language-Team: Keyslot and KeePassXC translators\n"
@@ -13,6 +13,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
 
 
 #: keyslot/app.py:39
@@ -54,7 +55,7 @@ msgid "Lock All Databases"
 msgstr ""
 
 #: keyslot/app.py:620 keyslot/application.py:1286
-#: keyslot/browser_dialogs.py:567
+#: keyslot/browser_dialogs.py:599
 msgid "Database"
 msgstr ""
 
@@ -128,10 +129,10 @@ msgstr ""
 #: keyslot/appearance.py:178 keyslot/application.py:822
 #: keyslot/application.py:867 keyslot/application.py:1124
 #: keyslot/auth_views.py:33 keyslot/breach_views.py:61
-#: keyslot/browser_dialogs.py:88 keyslot/browser_dialogs.py:169
-#: keyslot/browser_dialogs.py:313 keyslot/browser_dialogs.py:334
-#: keyslot/browser_dialogs.py:389 keyslot/browser_dialogs.py:450
-#: keyslot/browser_dialogs.py:537 keyslot/database_views.py:570
+#: keyslot/browser_dialogs.py:88 keyslot/browser_dialogs.py:201
+#: keyslot/browser_dialogs.py:345 keyslot/browser_dialogs.py:366
+#: keyslot/browser_dialogs.py:421 keyslot/browser_dialogs.py:482
+#: keyslot/browser_dialogs.py:569 keyslot/database_views.py:570
 #: keyslot/database_views.py:596 keyslot/database_views.py:609
 #: keyslot/database_views.py:666 keyslot/drag_drop.py:256
 #: keyslot/drag_drop.py:287 keyslot/entry_actions.py:112
@@ -376,7 +377,7 @@ msgstr ""
 msgid "Edit Entry"
 msgstr ""
 
-#: keyslot/application.py:718 keyslot/browser_dialogs.py:248
+#: keyslot/application.py:718 keyslot/browser_dialogs.py:280
 #: keyslot/passkey_views.py:161 keyslot/shortcuts.py:48
 msgid "New Entry"
 msgstr ""
@@ -393,14 +394,14 @@ msgstr ""
 
 #: keyslot/application.py:727 keyslot/application.py:789
 #: keyslot/application.py:1584 keyslot/autotype_views.py:227
-#: keyslot/browser_dialogs.py:422 keyslot/database_views.py:104
+#: keyslot/browser_dialogs.py:454 keyslot/database_views.py:104
 #: keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Username"
 msgstr ""
 
 #: keyslot/application.py:728 keyslot/application.py:791
-#: keyslot/application.py:1587 keyslot/browser_dialogs.py:237
-#: keyslot/browser_dialogs.py:412 keyslot/browser_dialogs.py:562
+#: keyslot/application.py:1587 keyslot/browser_dialogs.py:269
+#: keyslot/browser_dialogs.py:444 keyslot/browser_dialogs.py:594
 #: keyslot/browser_options.py:164 keyslot/browser_options.py:172
 #: keyslot/history_views.py:13 keyslot/icon_views.py:129
 #: keyslot/passkey_views.py:115 keyslot/passkey_views.py:155
@@ -413,7 +414,7 @@ msgid "New Password"
 msgstr ""
 
 #: keyslot/application.py:729 keyslot/application.py:790
-#: keyslot/application.py:1585 keyslot/browser_dialogs.py:423
+#: keyslot/application.py:1585 keyslot/browser_dialogs.py:455
 #: keyslot/database_views.py:104 keyslot/database_views.py:433
 #: keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Password"
@@ -424,7 +425,7 @@ msgid "Leave the password unchanged to keep the current one."
 msgstr ""
 
 #: keyslot/application.py:740 keyslot/autotype_views.py:227
-#: keyslot/browser_dialogs.py:253 keyslot/browser_dialogs.py:446
+#: keyslot/browser_dialogs.py:285 keyslot/browser_dialogs.py:478
 #: keyslot/database_views.py:104 keyslot/passkey_views.py:164
 #: keyslot/secret_views.py:21
 msgid "Group"
@@ -491,8 +492,8 @@ msgstr ""
 msgid "Group name"
 msgstr ""
 
-#: keyslot/application.py:823 keyslot/browser_dialogs.py:274
-#: keyslot/browser_dialogs.py:390
+#: keyslot/application.py:823 keyslot/browser_dialogs.py:306
+#: keyslot/browser_dialogs.py:422
 msgid "Create"
 msgstr ""
 
@@ -652,7 +653,7 @@ msgstr ""
 msgid "Delete Selected Entries"
 msgstr ""
 
-#: keyslot/application.py:1181 keyslot/browser_dialogs.py:572
+#: keyslot/application.py:1181 keyslot/browser_dialogs.py:604
 #: keyslot/property_views.py:55 keyslot/reports_views.py:168
 msgid "Entries"
 msgstr ""
@@ -699,7 +700,7 @@ msgstr ""
 
 #: keyslot/application.py:1361 keyslot/application.py:1364
 #: keyslot/autotype_views.py:394 keyslot/breach_views.py:183
-#: keyslot/browser_dialogs.py:421 keyslot/browser_dialogs.py:575
+#: keyslot/browser_dialogs.py:453 keyslot/browser_dialogs.py:607
 #: keyslot/passkey_views.py:64 keyslot/passkey_views.py:71
 #: keyslot/passkey_views.py:114 keyslot/reference_views.py:102
 #: keyslot/reports_views.py:142 keyslot/reports_views.py:188
@@ -1560,7 +1561,7 @@ msgid ""
 "Share all entry titles, IDs and resolved website fields with paired browsers"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:31 keyslot/browser_dialogs.py:119
+#: keyslot/browser_dialogs.py:31 keyslot/browser_dialogs.py:151
 msgid "Browser Setup"
 msgstr ""
 
@@ -1604,200 +1605,236 @@ msgstr ""
 msgid "Allow Listing"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:120
+#: keyslot/browser_dialogs.py:100
+msgid "Browser Matching"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:103
+msgid "Return Only the Best Website Match"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:104
+msgid "Prefer the closest website match after entry permissions are checked"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:105
+msgid "Allow Expired Browser Logins"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:106
+msgid "Include expired entries; existing browser access rules still apply"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:107
+msgid "Match Website Protocol"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:108
+msgid "Keep HTTP and HTTPS separate when matching logins"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:109
+msgid "Include Legacy KPH Fields"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:110
+msgid "Include legacy KPH: attributes in approved browser results"
+msgstr ""
+
+#: keyslot/browser_dialogs.py:152
 msgid ""
 "Enable Browser Integration in Preferences, then install KeePassXC-Browser in "
 "the browsers you select. Turning a browser off restores its previous "
 "connection settings."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:122
+#: keyslot/browser_dialogs.py:154
 msgid "Browsers"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:134
+#: keyslot/browser_dialogs.py:166
 msgid "Connected to Keyslot"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:135
+#: keyslot/browser_dialogs.py:167
 msgid "Another connection is configured"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:135
+#: keyslot/browser_dialogs.py:167
 msgid "Not configured"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:148
+#: keyslot/browser_dialogs.py:180
 msgid "Start browser integration before connecting a browser."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:167
+#: keyslot/browser_dialogs.py:199
 #, python-brace-format
 msgid "Use Keyslot for {arg0}?"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:168
+#: keyslot/browser_dialogs.py:200
 msgid ""
 "This replaces the browser’s current KeePassXC connection. Its settings will "
 "be saved so you can restore them."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:170
+#: keyslot/browser_dialogs.py:202
 msgid "Use Keyslot"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:225
+#: keyslot/browser_dialogs.py:257
 msgid "Entry deleted"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:229
+#: keyslot/browser_dialogs.py:261
 msgid "Passkey saved"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:233
+#: keyslot/browser_dialogs.py:265
 msgid "Create Passkey"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:233
+#: keyslot/browser_dialogs.py:265
 msgid "Sign In with Passkey"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:235
+#: keyslot/browser_dialogs.py:267
 msgid "Create a passkey for this account."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:235
+#: keyslot/browser_dialogs.py:267
 msgid "Choose a passkey to sign in."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:238
+#: keyslot/browser_dialogs.py:270
 msgid "Website requesting a passkey"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:239
+#: keyslot/browser_dialogs.py:271
 msgid "Passkey domain"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:243 keyslot/passkey_views.py:115
+#: keyslot/browser_dialogs.py:275 keyslot/passkey_views.py:115
 #: keyslot/passkey_views.py:156
 msgid "Account"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:244 keyslot/browser_dialogs.py:262
+#: keyslot/browser_dialogs.py:276 keyslot/browser_dialogs.py:294
 msgid "Unnamed Account"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:248 keyslot/passkey_views.py:161
+#: keyslot/browser_dialogs.py:280 keyslot/passkey_views.py:161
 msgid "Save To"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:259
+#: keyslot/browser_dialogs.py:291
 msgid "Accounts"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:274
+#: keyslot/browser_dialogs.py:306
 msgid "Sign In"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:285
+#: keyslot/browser_dialogs.py:317
 #, python-brace-format
 msgid "Request expires in {count} second"
 msgid_plural "Request expires in {count} seconds"
 msgstr[0] ""
 msgstr[1] ""
 
-#: keyslot/browser_dialogs.py:285
+#: keyslot/browser_dialogs.py:317
 msgid "Request expired"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:310
+#: keyslot/browser_dialogs.py:342
 msgid "Replace Existing Passkey?"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:314
+#: keyslot/browser_dialogs.py:346
 msgid "Replace Passkey"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:330
+#: keyslot/browser_dialogs.py:362
 msgid "Delete Entry Permanently?"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:330
+#: keyslot/browser_dialogs.py:362
 msgid "Move Entry to Recycle Bin?"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:335
+#: keyslot/browser_dialogs.py:367
 msgid "Delete Permanently"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:335
+#: keyslot/browser_dialogs.py:367
 msgid "Move to Recycle Bin"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:357
+#: keyslot/browser_dialogs.py:389
 msgid "Login saved"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:370
+#: keyslot/browser_dialogs.py:402
 msgid "Login saved; its website icon could not be started"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:379
+#: keyslot/browser_dialogs.py:411
 msgid "Group created"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:382
+#: keyslot/browser_dialogs.py:414
 msgid "Create Group"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:383
+#: keyslot/browser_dialogs.py:415
 msgid ""
 "A browser wants to create this group. Missing parent groups will also be "
 "created."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:386 keyslot/browser_dialogs.py:511
-#: keyslot/browser_dialogs.py:567
+#: keyslot/browser_dialogs.py:418 keyslot/browser_dialogs.py:543
+#: keyslot/browser_dialogs.py:599
 msgid "Password Database"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:409 keyslot/browser_dialogs.py:451
+#: keyslot/browser_dialogs.py:441 keyslot/browser_dialogs.py:483
 msgid "Update Login"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:409 keyslot/browser_dialogs.py:451
+#: keyslot/browser_dialogs.py:441 keyslot/browser_dialogs.py:483
 msgid "Save Login"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:410
+#: keyslot/browser_dialogs.py:442
 msgid "A browser wants to update this login."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:410
+#: keyslot/browser_dialogs.py:442
 msgid "A browser wants to save a new login."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:416 keyslot/browser_dialogs.py:570
+#: keyslot/browser_dialogs.py:448 keyslot/browser_dialogs.py:602
 msgid "Sign-in form destination"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:418
+#: keyslot/browser_dialogs.py:450
 msgid "Current entry website"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:420
+#: keyslot/browser_dialogs.py:452
 msgid "Original Password Entry"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:420
+#: keyslot/browser_dialogs.py:452
 msgid "Entry"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:421
+#: keyslot/browser_dialogs.py:453
 msgid "New entry"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:422 keyslot/database_views.py:168
+#: keyslot/browser_dialogs.py:454 keyslot/database_views.py:168
 #: keyslot/database_views.py:169 keyslot/passkey_views.py:116
 #: keyslot/passkey_views.py:155 keyslot/passkey_views.py:156
 #: keyslot/property_views.py:36 keyslot/property_views.py:101
@@ -1805,98 +1842,98 @@ msgstr ""
 msgid "None"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:423
+#: keyslot/browser_dialogs.py:455
 msgid "The browser supplied a password"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:438 keyslot/icon_views.py:127
+#: keyslot/browser_dialogs.py:470 keyslot/icon_views.py:127
 msgid "Download Website Icon"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:440
+#: keyslot/browser_dialogs.py:472
 msgid ""
 "The browser requested an icon. The login is saved before the download starts."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:445
+#: keyslot/browser_dialogs.py:477
 msgid "KeePassXC-Browser Passwords (Default)"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:510 keyslot/browser_dialogs.py:518
+#: keyslot/browser_dialogs.py:542 keyslot/browser_dialogs.py:550
 msgid "Connect Browser"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:512
+#: keyslot/browser_dialogs.py:544
 msgid ""
 "A browser wants to connect to this database. Give the connection a name you "
 "can recognize later."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:515
+#: keyslot/browser_dialogs.py:547
 msgid "Connection Name"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:535
+#: keyslot/browser_dialogs.py:567
 msgid "Replace Browser Connection?"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:536
+#: keyslot/browser_dialogs.py:568
 #, python-brace-format
 msgid ""
 "“{arg0}” is already connected. Replacing it will require the previous "
 "browser to connect again."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:538
+#: keyslot/browser_dialogs.py:570
 msgid "Replace Connection"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:560 keyslot/reports_views.py:36
+#: keyslot/browser_dialogs.py:592 keyslot/reports_views.py:36
 #: keyslot/reports_views.py:210
 msgid "Browser Access"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:561
+#: keyslot/browser_dialogs.py:593
 msgid ""
 "A browser wants credentials for this website. Choose which entries to share."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:564
+#: keyslot/browser_dialogs.py:596
 msgid "HTTP authentication request"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:565
+#: keyslot/browser_dialogs.py:597
 msgid "Website requesting access"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:566
+#: keyslot/browser_dialogs.py:598
 msgid "Browser connection"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:584
+#: keyslot/browser_dialogs.py:616
 msgid "Remember This Decision"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:584
+#: keyslot/browser_dialogs.py:616
 msgid "Save access rules in this encrypted database"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:587
+#: keyslot/browser_dialogs.py:619
 msgid "Fully Trust This Browser"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:589
+#: keyslot/browser_dialogs.py:621
 msgid ""
 "Automatically share matching logins with this browser in this database. "
 "Hidden entries and denied websites stay blocked. Manage trust in Database "
 "Settings → Browser Connections."
 msgstr ""
 
-#: keyslot/browser_dialogs.py:593
+#: keyslot/browser_dialogs.py:625
 msgid "Deny All"
 msgstr ""
 
-#: keyslot/browser_dialogs.py:594
+#: keyslot/browser_dialogs.py:626
 msgid "Allow Selected"
 msgstr ""
 
@@ -5982,8 +6019,8 @@ msgstr ""
 msgid "The database changed or the deletion confirmation expired. Try again."
 msgstr ""
 
-#: engine/BrowserDatabase.cpp:252 keyslot/browser_requests.py:336
-#: keyslot/browser_requests.py:339
+#: engine/BrowserDatabase.cpp:252 keyslot/browser_requests.py:340
+#: keyslot/browser_requests.py:343
 msgid "Access to all entries is denied."
 msgstr ""
 
@@ -6225,152 +6262,152 @@ msgstr ""
 msgid "Auto-type could not send a key. Release modifiers and check Caps Lock."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:34
+#: engine/KeyslotConfig.cpp:35
 msgid ""
 "This build cannot safely decode a value in the Qt configuration. Original "
 "files have been preserved."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:42
+#: engine/KeyslotConfig.cpp:43
 msgid "Choose a regular configuration file."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:49
+#: engine/KeyslotConfig.cpp:50
 msgid "The configuration could not be read."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:51
+#: engine/KeyslotConfig.cpp:52
 msgid "The configuration exceeds the 16 MiB limit."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:52
+#: engine/KeyslotConfig.cpp:53
 msgid "The configuration could not be read completely."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:67
+#: engine/KeyslotConfig.cpp:68
 msgid "The configuration contains an invalid integer."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:72 engine/KeyslotConfig.cpp:89
-#: engine/KeyslotConfig.cpp:95
+#: engine/KeyslotConfig.cpp:73 engine/KeyslotConfig.cpp:90
+#: engine/KeyslotConfig.cpp:96
 msgid "The configuration schema is invalid."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:77
+#: engine/KeyslotConfig.cpp:78
 msgid "The configuration contains an unsupported dictionary."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:86
+#: engine/KeyslotConfig.cpp:87
 msgid "The configuration dictionary must contain strings."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:93
+#: engine/KeyslotConfig.cpp:94
 msgid "The configuration schema is missing."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:98
+#: engine/KeyslotConfig.cpp:99
 msgid "The configuration key is invalid."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:107
+#: engine/KeyslotConfig.cpp:108
 msgid "The configuration is unreadable or is not a valid Qt INI file."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:123
+#: engine/KeyslotConfig.cpp:131
 msgid "Choose one or two configuration files."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:126
+#: engine/KeyslotConfig.cpp:134
 msgid "The configuration request is invalid."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:128
+#: engine/KeyslotConfig.cpp:136
 msgid "The configuration file was supplied twice."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:147
+#: engine/KeyslotConfig.cpp:155
 msgid "A private configuration snapshot could not be created."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:153
+#: engine/KeyslotConfig.cpp:161
 msgid "The configuration changed while it was read. Try again."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:168
+#: engine/KeyslotConfig.cpp:176
 msgid "The configuration folder could not be created."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:170
+#: engine/KeyslotConfig.cpp:178
 msgid "Another application is saving the configuration. Try again."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:174
+#: engine/KeyslotConfig.cpp:182
 msgid "A private configuration staging folder could not be created."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:183
+#: engine/KeyslotConfig.cpp:191
 msgid "The configuration is read-only. Original files have been preserved."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:191
+#: engine/KeyslotConfig.cpp:199
 msgid "The original configuration could not be staged safely."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:200
+#: engine/KeyslotConfig.cpp:208
 msgid "The configuration comparison is invalid."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:202
+#: engine/KeyslotConfig.cpp:210
 msgid "This setting changed in another application. Reopen it before saving."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:205
+#: engine/KeyslotConfig.cpp:213
 msgid "The configuration update is invalid."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:207
+#: engine/KeyslotConfig.cpp:215
 msgid ""
 "This setting changed in another application. Reopen Keyslot before saving it."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:210
+#: engine/KeyslotConfig.cpp:218
 msgid "The configuration value has the wrong type."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:212
+#: engine/KeyslotConfig.cpp:220
 msgid "The configuration list must contain strings."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:216
+#: engine/KeyslotConfig.cpp:224
 msgid "Specify individual settings to reset."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:222
+#: engine/KeyslotConfig.cpp:230
 msgid "The configuration reset is invalid."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:224
+#: engine/KeyslotConfig.cpp:232
 msgid ""
 "This setting changed in another application. Reopen it before resetting it."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:226
+#: engine/KeyslotConfig.cpp:234
 msgid "Only individual configuration values can be reset."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:232
+#: engine/KeyslotConfig.cpp:240
 msgid "The configuration update could not be staged."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:238
+#: engine/KeyslotConfig.cpp:246
 msgid "Configuration recovery information could not be staged."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:243
+#: engine/KeyslotConfig.cpp:251
 msgid "The configuration changed before it could be saved. Try again."
 msgstr ""
 
-#: engine/KeyslotConfig.cpp:247
+#: engine/KeyslotConfig.cpp:255
 msgid "The configuration could not be saved atomically."
 msgstr ""
 
@@ -6534,11 +6571,11 @@ msgstr ""
 msgid "The icon download status is invalid."
 msgstr ""
 
-#: engine/KeyslotIcons.cpp:252 engine/main.cpp:1468
+#: engine/KeyslotIcons.cpp:252 engine/main.cpp:1479
 msgid "The icon is too large."
 msgstr ""
 
-#: engine/KeyslotIcons.cpp:255 engine/main.cpp:1470
+#: engine/KeyslotIcons.cpp:255 engine/main.cpp:1481
 msgid "The icon encoding is invalid."
 msgstr ""
 
@@ -6797,7 +6834,7 @@ msgstr ""
 msgid "The linked-vault credential was not accepted. Unlock it manually."
 msgstr ""
 
-#: engine/KeyslotPasskeys.cpp:31 engine/main.cpp:1592
+#: engine/KeyslotPasskeys.cpp:31 engine/main.cpp:1603
 msgid "This entry has no passkey."
 msgstr ""
 
@@ -7920,59 +7957,59 @@ msgstr ""
 msgid "The backup path would replace an active database."
 msgstr ""
 
-#: engine/main.cpp:269
+#: engine/main.cpp:280
 msgid "The unsaved-vault recovery record is not a private regular file."
 msgstr ""
 
-#: engine/main.cpp:271
+#: engine/main.cpp:282
 msgid "The recovery record could not be read."
 msgstr ""
 
-#: engine/main.cpp:280
+#: engine/main.cpp:291
 msgid "The recovery record is invalid or belongs to another vault."
 msgstr ""
 
-#: engine/main.cpp:284
+#: engine/main.cpp:295
 msgid "The encrypted recovery snapshot is not a private regular file."
 msgstr ""
 
-#: engine/main.cpp:293
+#: engine/main.cpp:304
 msgid "The recovery record could not be removed."
 msgstr ""
 
-#: engine/main.cpp:304 engine/main.cpp:883
+#: engine/main.cpp:315 engine/main.cpp:894
 msgid "The vault owning this recovery copy is still open."
 msgstr ""
 
-#: engine/main.cpp:306
+#: engine/main.cpp:317
 msgid "Another process is already saving this recovery snapshot."
 msgstr ""
 
-#: engine/main.cpp:312
+#: engine/main.cpp:323
 msgid ""
 "The encrypted recovery snapshot changed. It was not saved over the vault."
 msgstr ""
 
-#: engine/main.cpp:317
+#: engine/main.cpp:328
 msgid ""
 "The vault changed elsewhere. The unsaved encrypted copy was kept for "
 "recovery."
 msgstr ""
 
-#: engine/main.cpp:321
+#: engine/main.cpp:332
 msgid "The vault is read-only. Its unsaved encrypted copy was kept."
 msgstr ""
 
-#: engine/main.cpp:382 keyslot/core_backend.py:588
+#: engine/main.cpp:393 keyslot/core_backend.py:588
 msgid "CSV options must be an object."
 msgstr ""
 
-#: engine/main.cpp:387
+#: engine/main.cpp:398
 msgid ""
 "The import source changed since review. Review it again before importing."
 msgstr ""
 
-#: engine/main.cpp:414 keyslot/backend.py:366 keyslot/core_backend.py:452
+#: engine/main.cpp:425 keyslot/backend.py:366 keyslot/core_backend.py:452
 #: keyslot/core_backend.py:461 keyslot/core_backend.py:892
 #: keyslot/core_backend.py:898 keyslot/core_backend.py:904
 #: keyslot/core_backend.py:1205 keyslot/core_backend.py:1213
@@ -7980,869 +8017,869 @@ msgstr ""
 msgid "Unlock a database first."
 msgstr ""
 
-#: engine/main.cpp:417 keyslot/backend.py:286
+#: engine/main.cpp:428 keyslot/backend.py:286
 msgid "Another application changed this database. Refresh before continuing."
 msgstr ""
 
-#: engine/main.cpp:423
+#: engine/main.cpp:434
 msgid "The entry no longer exists. Refresh the database."
 msgstr ""
 
-#: engine/main.cpp:429
+#: engine/main.cpp:440
 msgid "The database changed since history was reviewed. Open history again."
 msgstr ""
 
-#: engine/main.cpp:434
+#: engine/main.cpp:445
 msgid "Select a valid history version."
 msgstr ""
 
-#: engine/main.cpp:441
+#: engine/main.cpp:452
 msgid "The group no longer exists. Refresh the database."
 msgstr ""
 
-#: engine/main.cpp:450
+#: engine/main.cpp:461
 msgid "The key file could not be loaded."
 msgstr ""
 
-#: engine/main.cpp:457 keyslot/backend.py:261
+#: engine/main.cpp:468 keyslot/backend.py:261
 msgid "Use hardware key slot 1 or 2, optionally followed by :serial."
 msgstr ""
 
-#: engine/main.cpp:460
+#: engine/main.cpp:471
 msgid "The hardware key serial is invalid."
 msgstr ""
 
-#: engine/main.cpp:464
+#: engine/main.cpp:475
 msgid "This engine was built without hardware-key support."
 msgstr ""
 
-#: engine/main.cpp:467
+#: engine/main.cpp:478
 msgid "Choose a password, a key file, or a hardware key."
 msgstr ""
 
-#: engine/main.cpp:489
+#: engine/main.cpp:500
 msgid "An encrypted recovery snapshot could not be created."
 msgstr ""
 
-#: engine/main.cpp:492
+#: engine/main.cpp:503
 msgid "The encrypted recovery snapshot could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:497
+#: engine/main.cpp:508
 msgid "A private unsaved-vault directory could not be created."
 msgstr ""
 
-#: engine/main.cpp:500
+#: engine/main.cpp:511
 msgid "The recovery checkpoint could not be reserved."
 msgstr ""
 
-#: engine/main.cpp:506
+#: engine/main.cpp:517
 msgid "The unsaved-vault journal could not be prepared."
 msgstr ""
 
-#: engine/main.cpp:511
+#: engine/main.cpp:522
 msgid "The recovery checkpoint is in use."
 msgstr ""
 
-#: engine/main.cpp:513
+#: engine/main.cpp:524
 msgid "The recovery snapshot could not be staged."
 msgstr ""
 
-#: engine/main.cpp:521
+#: engine/main.cpp:532
 msgid "The encrypted checkpoint could not be verified."
 msgstr ""
 
-#: engine/main.cpp:528
+#: engine/main.cpp:539
 msgid ""
 "The encrypted checkpoint could not be recorded. The previous state was kept."
 msgstr ""
 
-#: engine/main.cpp:538
+#: engine/main.cpp:549
 msgid "Save, merge or discard the unsaved changes before reloading."
 msgstr ""
 
-#: engine/main.cpp:543
+#: engine/main.cpp:554
 msgid ""
 "The database could not be reopened. The currently open data is still "
 "available to save as a copy."
 msgstr ""
 
-#: engine/main.cpp:558 keyslot/backend.py:368
+#: engine/main.cpp:569 keyslot/backend.py:368
 msgid "The database is read-only."
 msgstr ""
 
-#: engine/main.cpp:560
+#: engine/main.cpp:571
 msgid "An encrypted staging directory could not be created."
 msgstr ""
 
-#: engine/main.cpp:562
+#: engine/main.cpp:573
 msgid "KeePassXC could not save the encrypted database."
 msgstr ""
 
-#: engine/main.cpp:564
+#: engine/main.cpp:575
 msgid "The encrypted staging file permissions could not be secured."
 msgstr ""
 
-#: engine/main.cpp:569
+#: engine/main.cpp:580
 msgid "The database could not be created. A file may already exist there."
 msgstr ""
 
-#: engine/main.cpp:586
+#: engine/main.cpp:597
 msgid "The merge source changed before the merge began."
 msgstr ""
 
-#: engine/main.cpp:593
+#: engine/main.cpp:604
 msgid ""
 "An encrypted recovery snapshot could not be created. The vault was not "
 "changed."
 msgstr ""
 
-#: engine/main.cpp:600
+#: engine/main.cpp:611
 msgid ""
 "The database changed while preparing recovery. Refresh before continuing."
 msgstr ""
 
-#: engine/main.cpp:602
+#: engine/main.cpp:613
 msgid ""
 "The encrypted recovery snapshot could not be prepared. The vault was not "
 "changed."
 msgstr ""
 
-#: engine/main.cpp:685
+#: engine/main.cpp:696
 msgid "This KDF is not supported by the current database format."
 msgstr ""
 
-#: engine/main.cpp:688
+#: engine/main.cpp:699
 msgid "The selected KDF is unavailable."
 msgstr ""
 
-#: engine/main.cpp:690
+#: engine/main.cpp:701
 msgid "The KDF iteration count is invalid."
 msgstr ""
 
-#: engine/main.cpp:693
+#: engine/main.cpp:704
 msgid "The KDF memory setting is invalid."
 msgstr ""
 
-#: engine/main.cpp:695
+#: engine/main.cpp:706
 msgid "The KDF parallelism setting is invalid."
 msgstr ""
 
-#: engine/main.cpp:728
+#: engine/main.cpp:739
 msgid "Entry fields must be an object."
 msgstr ""
 
-#: engine/main.cpp:733
+#: engine/main.cpp:744
 msgid "An entry field is invalid."
 msgstr ""
 
-#: engine/main.cpp:735
+#: engine/main.cpp:746
 msgid "Enter a valid expiry timestamp."
 msgstr ""
 
-#: engine/main.cpp:739
+#: engine/main.cpp:750
 msgid "Enter a valid TOTP URI."
 msgstr ""
 
-#: engine/main.cpp:762
+#: engine/main.cpp:773
 msgid "Choose a valid entry color or leave it empty for the default."
 msgstr ""
 
-#: engine/main.cpp:771
+#: engine/main.cpp:782
 msgid "The selected custom icon is no longer available."
 msgstr ""
 
-#: engine/main.cpp:777
+#: engine/main.cpp:788
 msgid "The icon is too large to preview."
 msgstr ""
 
-#: engine/main.cpp:783
+#: engine/main.cpp:794
 msgid "Convert this image to PNG before importing it."
 msgstr ""
 
-#: engine/main.cpp:793
+#: engine/main.cpp:804
 msgid "This icon has no supported image size."
 msgstr ""
 
-#: engine/main.cpp:797
+#: engine/main.cpp:808
 msgid "Choose an image with dimensions of at most 4096 by 4096 pixels."
 msgstr ""
 
-#: engine/main.cpp:800
+#: engine/main.cpp:811
 msgid "The icon image could not be decoded."
 msgstr ""
 
-#: engine/main.cpp:803
+#: engine/main.cpp:814
 msgid "The icon image could not be converted."
 msgstr ""
 
-#: engine/main.cpp:853 keyslot/core_backend.py:573
+#: engine/main.cpp:864 keyslot/core_backend.py:573
 msgid "Choose a supported import format."
 msgstr ""
 
-#: engine/main.cpp:854
+#: engine/main.cpp:865
 msgid ""
 "KeePassXC could not import this source. Check the export format and source "
 "credentials."
 msgstr ""
 
-#: engine/main.cpp:885
+#: engine/main.cpp:896
 msgid "This encrypted recovery copy is in use."
 msgstr ""
 
-#: engine/main.cpp:889
+#: engine/main.cpp:900
 msgid "The recovery copy changed after it was opened. It was kept for review."
 msgstr ""
 
-#: engine/main.cpp:893
+#: engine/main.cpp:904
 msgid ""
 "The encrypted recovery snapshot changed. It was kept for manual recovery."
 msgstr ""
 
-#: engine/main.cpp:895
+#: engine/main.cpp:906
 msgid "An independent encrypted working copy could not be created."
 msgstr ""
 
-#: engine/main.cpp:905
+#: engine/main.cpp:916
 msgid "Close the recipient vault before opening a linked vault."
 msgstr ""
 
-#: engine/main.cpp:909
+#: engine/main.cpp:920
 msgid ""
 "Open this linked vault manually to review its unsaved recovery copy first."
 msgstr ""
 
-#: engine/main.cpp:930
+#: engine/main.cpp:941
 msgid "Lock the vault before requesting system authentication."
 msgstr ""
 
-#: engine/main.cpp:932
+#: engine/main.cpp:943
 msgid "The vault file is unavailable."
 msgstr ""
 
-#: engine/main.cpp:934
+#: engine/main.cpp:945
 msgid "The native session credential is invalid."
 msgstr ""
 
-#: engine/main.cpp:936
+#: engine/main.cpp:947
 msgid "This session credential belongs to another vault."
 msgstr ""
 
-#: engine/main.cpp:941
+#: engine/main.cpp:952
 msgid "This system authentication operation is unavailable."
 msgstr ""
 
-#: engine/main.cpp:947
+#: engine/main.cpp:958
 msgid "Choose a short password with 4 to 128 characters."
 msgstr ""
 
-#: engine/main.cpp:952
+#: engine/main.cpp:963
 msgid "The unlock credential is too large for quick unlock."
 msgstr ""
 
-#: engine/main.cpp:957
+#: engine/main.cpp:968
 msgid "The quick-unlock key could not be created."
 msgstr ""
 
-#: engine/main.cpp:966
+#: engine/main.cpp:977
 msgid "The quick-unlock credential could not be encrypted."
 msgstr ""
 
-#: engine/main.cpp:971 engine/main.cpp:973 engine/main.cpp:983
+#: engine/main.cpp:982 engine/main.cpp:984 engine/main.cpp:994
 msgid "The quick-unlock credential is invalid."
 msgstr ""
 
-#: engine/main.cpp:981
+#: engine/main.cpp:992
 msgid "The short password is incorrect."
 msgstr ""
 
-#: engine/main.cpp:986
+#: engine/main.cpp:997
 msgid "This quick-unlock credential belongs to another vault."
 msgstr ""
 
-#: engine/main.cpp:999
+#: engine/main.cpp:1010
 msgid "The CSV source changed while being read."
 msgstr ""
 
-#: engine/main.cpp:1009 engine/main.cpp:1030
+#: engine/main.cpp:1020 engine/main.cpp:1041
 msgid "The import source changed while being read."
 msgstr ""
 
-#: engine/main.cpp:1020
+#: engine/main.cpp:1031
 msgid "Save or discard the open vault before importing another database."
 msgstr ""
 
-#: engine/main.cpp:1022 engine/main.cpp:1063 keyslot/backend.py:301
+#: engine/main.cpp:1033 engine/main.cpp:1074 keyslot/backend.py:301
 msgid "A file already exists at that location."
 msgstr ""
 
-#: engine/main.cpp:1035
+#: engine/main.cpp:1046
 msgid "KeePassXC could not set the imported database's unlock key."
 msgstr ""
 
-#: engine/main.cpp:1042
+#: engine/main.cpp:1053
 msgid "Save or discard the open vault before opening another database."
 msgstr ""
 
-#: engine/main.cpp:1047
+#: engine/main.cpp:1058
 msgid "Select a database path."
 msgstr ""
 
-#: engine/main.cpp:1054
+#: engine/main.cpp:1065
 msgid ""
 "Open the source vault to review an independent recovery copy. Recovery "
 "checkpoints cannot be edited directly."
 msgstr ""
 
-#: engine/main.cpp:1056
+#: engine/main.cpp:1067
 msgid ""
 "An unsaved encrypted recovery copy is available. Open this vault in Keyslot "
 "to review it first."
 msgstr ""
 
-#: engine/main.cpp:1058
+#: engine/main.cpp:1069
 msgid ""
 "KeePassXC could not unlock the database. Check your credentials and hardware "
 "key."
 msgstr ""
 
-#: engine/main.cpp:1059
+#: engine/main.cpp:1070
 msgid "The database changed while being unlocked."
 msgstr ""
 
-#: engine/main.cpp:1066
+#: engine/main.cpp:1077
 msgid "KeePassXC could not set the database key."
 msgstr ""
 
-#: engine/main.cpp:1090
+#: engine/main.cpp:1101
 msgid "Specify supported keyboard shortcuts."
 msgstr ""
 
-#: engine/main.cpp:1094
+#: engine/main.cpp:1105
 msgid "A keyboard shortcut is invalid."
 msgstr ""
 
-#: engine/main.cpp:1119 engine/main.cpp:1150 keyslot/wordlists.py:57
+#: engine/main.cpp:1130 engine/main.cpp:1161 keyslot/wordlists.py:57
 msgid "Choose a regular word-list file."
 msgstr ""
 
-#: engine/main.cpp:1124
+#: engine/main.cpp:1135
 msgid "This file contains no usable passphrase words."
 msgstr ""
 
-#: engine/main.cpp:1148
+#: engine/main.cpp:1159
 msgid "Choose a readable word list."
 msgstr ""
 
-#: engine/main.cpp:1154
+#: engine/main.cpp:1165
 msgid "Choose an installed word list or an absolute custom word-list path."
 msgstr ""
 
-#: engine/main.cpp:1161
+#: engine/main.cpp:1172
 msgid "Choose a supported word case."
 msgstr ""
 
-#: engine/main.cpp:1165
+#: engine/main.cpp:1176
 msgid "Choose a readable word list containing at least one word."
 msgstr ""
 
-#: engine/main.cpp:1190
+#: engine/main.cpp:1201
 msgid "The password generator settings are invalid."
 msgstr ""
 
-#: engine/main.cpp:1197
+#: engine/main.cpp:1208
 msgid "A key-file staging directory could not be created."
 msgstr ""
 
-#: engine/main.cpp:1200
+#: engine/main.cpp:1211
 msgid "The key file could not be generated."
 msgstr ""
 
-#: engine/main.cpp:1203
+#: engine/main.cpp:1214
 msgid "The key file could not be synchronized to disk."
 msgstr ""
 
-#: engine/main.cpp:1205
+#: engine/main.cpp:1216
 msgid "The key file could not be created. A file may already exist there."
 msgstr ""
 
-#: engine/main.cpp:1210
+#: engine/main.cpp:1221
 msgid "The icon download address is invalid."
 msgstr ""
 
-#: engine/main.cpp:1228
+#: engine/main.cpp:1239
 msgid "This properties operation is not supported."
 msgstr ""
 
-#: engine/main.cpp:1249
+#: engine/main.cpp:1260
 msgid "This remote operation is not supported."
 msgstr ""
 
-#: engine/main.cpp:1263
+#: engine/main.cpp:1274
 msgid "This entry action is not supported."
 msgstr ""
 
-#: engine/main.cpp:1285
+#: engine/main.cpp:1296
 msgid "This icon operation is not supported."
 msgstr ""
 
-#: engine/main.cpp:1331
+#: engine/main.cpp:1342
 msgid "Choose an existing destination folder."
 msgstr ""
 
-#: engine/main.cpp:1334 engine/main.cpp:1348
+#: engine/main.cpp:1345 engine/main.cpp:1359
 msgid "Choose a destination outside Keyslot’s private recovery storage."
 msgstr ""
 
-#: engine/main.cpp:1336
+#: engine/main.cpp:1347
 msgid "Choose a regular file, not a link or a folder."
 msgstr ""
 
-#: engine/main.cpp:1343
+#: engine/main.cpp:1354
 msgid ""
 "The working vault changed while choosing its destination. Save it again."
 msgstr ""
 
-#: engine/main.cpp:1346
+#: engine/main.cpp:1357
 msgid "The destination folder is unavailable."
 msgstr ""
 
-#: engine/main.cpp:1352
+#: engine/main.cpp:1363
 msgid "Review the existing destination before replacing it."
 msgstr ""
 
-#: engine/main.cpp:1356
+#: engine/main.cpp:1367
 msgid "The destination changed into a link or a folder."
 msgstr ""
 
-#: engine/main.cpp:1359
+#: engine/main.cpp:1370
 msgid ""
 "The destination changed after review. Choose it again before replacing it."
 msgstr ""
 
-#: engine/main.cpp:1360
+#: engine/main.cpp:1371
 msgid "The destination is read-only."
 msgstr ""
 
-#: engine/main.cpp:1361
+#: engine/main.cpp:1372
 msgid "A file appeared at the destination. It was not replaced."
 msgstr ""
 
-#: engine/main.cpp:1369
+#: engine/main.cpp:1380
 msgid "The destination could not be staged."
 msgstr ""
 
-#: engine/main.cpp:1378
+#: engine/main.cpp:1389
 msgid "The destination could not be created. A file may already exist there."
 msgstr ""
 
-#: engine/main.cpp:1390
+#: engine/main.cpp:1401
 msgid ""
 "The unsaved vault changed after review. Review it again before continuing."
 msgstr ""
 
-#: engine/main.cpp:1393
+#: engine/main.cpp:1404
 msgid ""
 "The file changed again after review. Review the new changes before "
 "continuing."
 msgstr ""
 
-#: engine/main.cpp:1395
+#: engine/main.cpp:1406
 msgid "Review both versions before overwriting disk changes."
 msgstr ""
 
-#: engine/main.cpp:1402
+#: engine/main.cpp:1413
 msgid "The changed vault requires its current credential before merging."
 msgstr ""
 
-#: engine/main.cpp:1403
+#: engine/main.cpp:1414
 msgid "The changed vault changed again while being opened."
 msgstr ""
 
-#: engine/main.cpp:1407
+#: engine/main.cpp:1418
 msgid "The vault changed again during the merge."
 msgstr ""
 
-#: engine/main.cpp:1415
+#: engine/main.cpp:1426
 msgid ""
 "The vault credential could not be verified. Check the password and key file."
 msgstr ""
 
-#: engine/main.cpp:1435
+#: engine/main.cpp:1446
 msgid "This entry transfer operation is unavailable."
 msgstr ""
 
-#: engine/main.cpp:1446 engine/main.cpp:1482
+#: engine/main.cpp:1457 engine/main.cpp:1493
 msgid "This custom icon is unavailable."
 msgstr ""
 
-#: engine/main.cpp:1452
+#: engine/main.cpp:1463
 msgid "The standard icon assets are unavailable."
 msgstr ""
 
-#: engine/main.cpp:1454
+#: engine/main.cpp:1465
 msgid "The standard icon could not be read."
 msgstr ""
 
-#: engine/main.cpp:1461
+#: engine/main.cpp:1472
 msgid "The icon could not be exported."
 msgstr ""
 
-#: engine/main.cpp:1596 keyslot/core_backend.py:919
+#: engine/main.cpp:1607 keyslot/core_backend.py:919
 msgid "An unencrypted passkey cannot replace the database."
 msgstr ""
 
-#: engine/main.cpp:1601
+#: engine/main.cpp:1612
 msgid "Restore this entry before removing its passkey."
 msgstr ""
 
-#: engine/main.cpp:1668
+#: engine/main.cpp:1679
 msgid "Choose a nonempty browser connection name."
 msgstr ""
 
-#: engine/main.cpp:1671 engine/main.cpp:1681
+#: engine/main.cpp:1682 engine/main.cpp:1692
 msgid "The browser connection no longer exists."
 msgstr ""
 
-#: engine/main.cpp:1673
+#: engine/main.cpp:1684
 msgid "The browser connection changed. Open the connection list again."
 msgstr ""
 
-#: engine/main.cpp:1688
+#: engine/main.cpp:1699
 msgid "The browser identification key is invalid."
 msgstr ""
 
-#: engine/main.cpp:1693
+#: engine/main.cpp:1704
 msgid "That browser connection name is already in use."
 msgstr ""
 
-#: engine/main.cpp:1700
+#: engine/main.cpp:1711
 msgid "Unknown browser operation."
 msgstr ""
 
-#: engine/main.cpp:1705
+#: engine/main.cpp:1716
 msgid "An unknown KDF benchmark option was supplied."
 msgstr ""
 
-#: engine/main.cpp:1709
+#: engine/main.cpp:1720
 msgid "KeePassXC could not calibrate these KDF settings."
 msgstr ""
 
-#: engine/main.cpp:1716
+#: engine/main.cpp:1727
 msgid "An unknown database setting was supplied."
 msgstr ""
 
-#: engine/main.cpp:1719
+#: engine/main.cpp:1730
 msgid "The selected cipher is unavailable."
 msgstr ""
 
-#: engine/main.cpp:1738
+#: engine/main.cpp:1749
 msgid "KeePassXC could not apply the KDF settings."
 msgstr ""
 
-#: engine/main.cpp:1744
+#: engine/main.cpp:1755
 msgid "An unknown unlock-key option was supplied."
 msgstr ""
 
-#: engine/main.cpp:1747
+#: engine/main.cpp:1758
 msgid "Choose replacement or removal of the password."
 msgstr ""
 
-#: engine/main.cpp:1748
+#: engine/main.cpp:1759
 msgid "Choose replacement or removal of the key file."
 msgstr ""
 
-#: engine/main.cpp:1749
+#: engine/main.cpp:1760
 msgid "Choose replacement or removal of the hardware key."
 msgstr ""
 
-#: engine/main.cpp:1760
+#: engine/main.cpp:1771
 msgid "At least one unlock component must remain."
 msgstr ""
 
-#: engine/main.cpp:1762
+#: engine/main.cpp:1773
 msgid "KeePassXC could not change the database key."
 msgstr ""
 
-#: engine/main.cpp:1767
+#: engine/main.cpp:1778
 msgid "Choose another database to merge."
 msgstr ""
 
-#: engine/main.cpp:1771
+#: engine/main.cpp:1782
 msgid "The merge database could not be unlocked."
 msgstr ""
 
-#: engine/main.cpp:1772
+#: engine/main.cpp:1783
 msgid "The merge source changed while being read."
 msgstr ""
 
-#: engine/main.cpp:1778
+#: engine/main.cpp:1789
 msgid "The merge source changed during the operation."
 msgstr ""
 
-#: engine/main.cpp:1784 keyslot/core_backend.py:1215
+#: engine/main.cpp:1795 keyslot/core_backend.py:1215
 msgid "Choose a different destination for the database copy."
 msgstr ""
 
-#: engine/main.cpp:1788
+#: engine/main.cpp:1799
 msgid "The encrypted database copy could not be created."
 msgstr ""
 
-#: engine/main.cpp:1792
+#: engine/main.cpp:1803
 msgid "The encrypted database copy could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:1799 keyslot/core_backend.py:1207
+#: engine/main.cpp:1810 keyslot/core_backend.py:1207
 msgid "An unencrypted export cannot replace the database."
 msgstr ""
 
-#: engine/main.cpp:1801
+#: engine/main.cpp:1812
 msgid "The export staging directory could not be created."
 msgstr ""
 
-#: engine/main.cpp:1805
+#: engine/main.cpp:1816
 msgid "The export file could not be created."
 msgstr ""
 
-#: engine/main.cpp:1817
+#: engine/main.cpp:1828
 msgid "Choose XML, CSV, or HTML export."
 msgstr ""
 
-#: engine/main.cpp:1819
+#: engine/main.cpp:1830
 msgid "The export could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:1824
+#: engine/main.cpp:1835
 msgid "The export destination already exists or cannot be written."
 msgstr ""
 
-#: engine/main.cpp:1833
+#: engine/main.cpp:1844
 msgid "Choose a group with an unambiguous identifier."
 msgstr ""
 
-#: engine/main.cpp:1852
+#: engine/main.cpp:1863
 msgid ""
 "This entry identifier is ambiguous. Select an entry with a unique identifier."
 msgstr ""
 
-#: engine/main.cpp:1855
+#: engine/main.cpp:1866
 msgid "Choose supported preview fields."
 msgstr ""
 
-#: engine/main.cpp:1860
+#: engine/main.cpp:1871
 msgid "Choose each supported preview field once."
 msgstr ""
 
-#: engine/main.cpp:1882
+#: engine/main.cpp:1893
 msgid "This entry has no valid TOTP settings."
 msgstr ""
 
-#: engine/main.cpp:1886 engine/main.cpp:1919
+#: engine/main.cpp:1897 engine/main.cpp:1930
 msgid "This attribute does not exist."
 msgstr ""
 
-#: engine/main.cpp:1892
+#: engine/main.cpp:1903
 msgid "Use a shorter attribute-name search."
 msgstr ""
 
-#: engine/main.cpp:1943
+#: engine/main.cpp:1954
 msgid ""
 "The database changed since setup was opened. Open it again before continuing."
 msgstr ""
 
-#: engine/main.cpp:1957
+#: engine/main.cpp:1968
 msgid "The QR code output could not be created completely."
 msgstr ""
 
-#: engine/main.cpp:1960
+#: engine/main.cpp:1971
 msgid "Restore this entry before changing its one-time password."
 msgstr ""
 
-#: engine/main.cpp:1967
+#: engine/main.cpp:1978
 msgid "Restore this group before editing it."
 msgstr ""
 
-#: engine/main.cpp:1983
+#: engine/main.cpp:1994
 msgid "Choose a destination outside the recycle bin."
 msgstr ""
 
-#: engine/main.cpp:1989
+#: engine/main.cpp:2000
 msgid "The recycle bin is disabled or this entry is already recycled."
 msgstr ""
 
-#: engine/main.cpp:1995
+#: engine/main.cpp:2006
 msgid "Select entries and enable the recycle bin first."
 msgstr ""
 
-#: engine/main.cpp:2001
+#: engine/main.cpp:2012
 msgid "Choose each entry once, outside the recycle bin."
 msgstr ""
 
-#: engine/main.cpp:2016
+#: engine/main.cpp:2027
 msgid "Choose a parent group."
 msgstr ""
 
-#: engine/main.cpp:2018
+#: engine/main.cpp:2029
 msgid "Use Restore to move a recycled group."
 msgstr ""
 
-#: engine/main.cpp:2019
+#: engine/main.cpp:2030
 msgid "Choose a parent outside the recycle bin."
 msgstr ""
 
-#: engine/main.cpp:2020
+#: engine/main.cpp:2031
 msgid "The root group cannot be moved."
 msgstr ""
 
-#: engine/main.cpp:2022
+#: engine/main.cpp:2033
 msgid "A group cannot be moved inside itself."
 msgstr ""
 
-#: engine/main.cpp:2025
+#: engine/main.cpp:2036
 msgid "Review the child icon changes first."
 msgstr ""
 
-#: engine/main.cpp:2028
+#: engine/main.cpp:2039
 msgid "Choose the reviewed child icon scope."
 msgstr ""
 
-#: engine/main.cpp:2040
+#: engine/main.cpp:2051
 msgid "Enter a valid group expiry timestamp."
 msgstr ""
 
-#: engine/main.cpp:2050
+#: engine/main.cpp:2061
 msgid "This group cannot be recycled."
 msgstr ""
 
-#: engine/main.cpp:2057
+#: engine/main.cpp:2068
 msgid "Choose a nonempty custom attribute name."
 msgstr ""
 
-#: engine/main.cpp:2061
+#: engine/main.cpp:2072
 msgid ""
 "The database changed since this attribute was opened. Open it again before "
 "continuing."
 msgstr ""
 
-#: engine/main.cpp:2068
+#: engine/main.cpp:2079
 msgid "Choose a custom attribute name that is not reserved."
 msgstr ""
 
-#: engine/main.cpp:2070
+#: engine/main.cpp:2081
 msgid "This attribute no longer exists. Open it again before continuing."
 msgstr ""
 
-#: engine/main.cpp:2072
+#: engine/main.cpp:2083
 msgid "An attribute with this name already exists. Choose another name."
 msgstr ""
 
-#: engine/main.cpp:2113
+#: engine/main.cpp:2124
 msgid "This history field does not exist."
 msgstr ""
 
-#: engine/main.cpp:2136
+#: engine/main.cpp:2147
 msgid "Choose an attachment output file."
 msgstr ""
 
-#: engine/main.cpp:2139
+#: engine/main.cpp:2150
 msgid "This attachment does not exist."
 msgstr ""
 
-#: engine/main.cpp:2144
+#: engine/main.cpp:2155
 msgid "The attachment output could not be created."
 msgstr ""
 
-#: engine/main.cpp:2147
+#: engine/main.cpp:2158
 msgid "The attachment could not be written completely."
 msgstr ""
 
-#: engine/main.cpp:2157
+#: engine/main.cpp:2168
 msgid "This entry identifier is ambiguous. Refresh before adding attachments."
 msgstr ""
 
-#: engine/main.cpp:2162
+#: engine/main.cpp:2173
 msgid "Drop between one and 32 attachment files."
 msgstr ""
 
-#: engine/main.cpp:2170
+#: engine/main.cpp:2181
 msgid "An attachment file request is invalid."
 msgstr ""
 
-#: engine/main.cpp:2174
+#: engine/main.cpp:2185
 msgid "Choose existing files with distinct attachment names."
 msgstr ""
 
-#: engine/main.cpp:2178
+#: engine/main.cpp:2189
 msgid "Choose readable regular attachment files."
 msgstr ""
 
-#: engine/main.cpp:2180
+#: engine/main.cpp:2191
 msgid ""
 "Drop at most 256 MiB at once. Larger individual files can use Add Attachment."
 msgstr ""
 
-#: engine/main.cpp:2185
+#: engine/main.cpp:2196
 msgid ""
 "An attachment already uses a dropped file's name. Review replacements first."
 msgstr ""
 
-#: engine/main.cpp:2189
+#: engine/main.cpp:2200
 msgid "A dropped file changed after review. Drop the files again."
 msgstr ""
 
-#: engine/main.cpp:2192
+#: engine/main.cpp:2203
 msgid "An attachment source changed or could not be opened."
 msgstr ""
 
-#: engine/main.cpp:2196
+#: engine/main.cpp:2207
 msgid "A dropped file changed while being read. No attachments were added."
 msgstr ""
 
-#: engine/main.cpp:2206
+#: engine/main.cpp:2217
 msgid "A dropped file changed before saving. No attachments were added."
 msgstr ""
 
-#: engine/main.cpp:2217
+#: engine/main.cpp:2228
 msgid "Choose an attachment name."
 msgstr ""
 
-#: engine/main.cpp:2221
+#: engine/main.cpp:2232
 msgid "Choose one attachment input source."
 msgstr ""
 
-#: engine/main.cpp:2225
+#: engine/main.cpp:2236
 msgid "The attachment source could not be opened."
 msgstr ""
 
-#: engine/main.cpp:2228
+#: engine/main.cpp:2239
 msgid "The attachment exceeds the upstream engine's size limit."
 msgstr ""
 
-#: engine/main.cpp:2231
+#: engine/main.cpp:2242
 msgid "The attachment source changed or could not be read completely."
 msgstr ""
 
-#: engine/main.cpp:2235
+#: engine/main.cpp:2246
 msgid "The attachment encoding is invalid."
 msgstr ""
 
-#: engine/main.cpp:2240 keyslot/backend.py:465
+#: engine/main.cpp:2251 keyslot/backend.py:465
 msgid "An attachment with this name already exists."
 msgstr ""
 
-#: engine/main.cpp:2248
+#: engine/main.cpp:2259
 msgid "This engine operation is unavailable."
 msgstr ""
 
-#: engine/main.cpp:2287
+#: engine/main.cpp:2298
 msgid "Expected one JSON request per line."
 msgstr ""
 
-#: engine/main.cpp:2291
+#: engine/main.cpp:2302
 msgid "The request ID is invalid."
 msgstr ""
 
-#: engine/main.cpp:2293
+#: engine/main.cpp:2304
 msgid "Expected request parameters."
 msgstr ""
 
@@ -9105,69 +9142,69 @@ msgid ""
 "preserved."
 msgstr ""
 
-#: keyslot/browser_requests.py:102
+#: keyslot/browser_requests.py:105
 msgid "The browser request was cancelled."
 msgstr ""
 
-#: keyslot/configuration.py:115
+#: keyslot/configuration.py:120
 msgid "Choose a nonempty global configuration file path."
 msgstr ""
 
-#: keyslot/configuration.py:181
+#: keyslot/configuration.py:186
 msgid " Quit and reopen Keyslot before changing settings."
 msgstr ""
 
-#: keyslot/configuration.py:248
+#: keyslot/configuration.py:253
 msgid "The remembered key-file path is invalid. Choose a key file manually."
 msgstr ""
 
-#: keyslot/configuration.py:263
+#: keyslot/configuration.py:268
 msgid "The hardware-key selection could not be remembered."
 msgstr ""
 
-#: keyslot/configuration.py:305
+#: keyslot/configuration.py:310
 msgid ""
 "This configuration's idle or clipboard timeout exceeds Keyslot's supported "
 "range. Original settings have been preserved."
 msgstr ""
 
-#: keyslot/configuration.py:312
+#: keyslot/configuration.py:319
 msgid ""
 "The configuration contains an invalid file path. Original settings have been "
 "preserved."
 msgstr ""
 
-#: keyslot/configuration.py:314
+#: keyslot/configuration.py:321
 msgid "The configured SSH agent socket must be an absolute path."
 msgstr ""
 
-#: keyslot/configuration.py:342
+#: keyslot/configuration.py:349
 msgid "The configured recent-database limit is invalid."
 msgstr ""
 
-#: keyslot/configuration.py:375
+#: keyslot/configuration.py:383
 msgid "Choose whether paired browsers may list entries."
 msgstr ""
 
-#: keyslot/configuration.py:388
+#: keyslot/configuration.py:396
 msgid ""
 "This profile's favicon timeout is outside the supported 1–300 second range. "
 "Its original setting was preserved."
 msgstr ""
 
-#: keyslot/configuration.py:394
+#: keyslot/configuration.py:402
 msgid "Choose supported search options."
 msgstr ""
 
-#: keyslot/configuration.py:410
+#: keyslot/configuration.py:418
 msgid "The configuration contains an unsupported password generator mode."
 msgstr ""
 
-#: keyslot/configuration.py:413
+#: keyslot/configuration.py:421
 msgid "The configuration contains unsupported password generator settings."
 msgstr ""
 
-#: keyslot/configuration.py:421
+#: keyslot/configuration.py:429
 msgid "Choose supported password generator settings."
 msgstr ""
 

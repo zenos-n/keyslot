@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Keyslot 0.2.0\n"
 "Report-Msgid-Bugs-To: https://github.com/zenos-n/keyslot/issues\n"
-"POT-Creation-Date: 2026-11-02 12:44+0000\n"
+"POT-Creation-Date: 2026-11-02 13:02+0000\n"
 "PO-Revision-Date: 2026-11-02 00:00+0000\n"
 "Last-Translator: Keyslot Contributors\n"
 "Language-Team: Keyslot and KeePassXC translators\n"
@@ -54,7 +54,7 @@ msgid "Lock All Databases"
 msgstr "Blocare toate bazele de date"
 
 #: keyslot/app.py:620 keyslot/application.py:1286
-#: keyslot/browser_dialogs.py:567
+#: keyslot/browser_dialogs.py:599
 msgid "Database"
 msgstr "Bază de date"
 
@@ -126,10 +126,10 @@ msgstr "Intrările, grupurile și versiunile salvate care folosesc această pict
 #: keyslot/appearance.py:178 keyslot/application.py:822
 #: keyslot/application.py:867 keyslot/application.py:1124
 #: keyslot/auth_views.py:33 keyslot/breach_views.py:61
-#: keyslot/browser_dialogs.py:88 keyslot/browser_dialogs.py:169
-#: keyslot/browser_dialogs.py:313 keyslot/browser_dialogs.py:334
-#: keyslot/browser_dialogs.py:389 keyslot/browser_dialogs.py:450
-#: keyslot/browser_dialogs.py:537 keyslot/database_views.py:570
+#: keyslot/browser_dialogs.py:88 keyslot/browser_dialogs.py:201
+#: keyslot/browser_dialogs.py:345 keyslot/browser_dialogs.py:366
+#: keyslot/browser_dialogs.py:421 keyslot/browser_dialogs.py:482
+#: keyslot/browser_dialogs.py:569 keyslot/database_views.py:570
 #: keyslot/database_views.py:596 keyslot/database_views.py:609
 #: keyslot/database_views.py:666 keyslot/drag_drop.py:256
 #: keyslot/drag_drop.py:287 keyslot/entry_actions.py:112
@@ -372,7 +372,7 @@ msgstr "Deblocarea rapidă este dezactivată după cinci încercări eșuate. Fo
 msgid "Edit Entry"
 msgstr "Editează intrarea"
 
-#: keyslot/application.py:718 keyslot/browser_dialogs.py:248
+#: keyslot/application.py:718 keyslot/browser_dialogs.py:280
 #: keyslot/passkey_views.py:161 keyslot/shortcuts.py:48
 msgid "New Entry"
 msgstr "Intrare nouă"
@@ -389,14 +389,14 @@ msgstr "Titlu"
 
 #: keyslot/application.py:727 keyslot/application.py:789
 #: keyslot/application.py:1584 keyslot/autotype_views.py:227
-#: keyslot/browser_dialogs.py:422 keyslot/database_views.py:104
+#: keyslot/browser_dialogs.py:454 keyslot/database_views.py:104
 #: keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Username"
 msgstr "Nume de utilizator"
 
 #: keyslot/application.py:728 keyslot/application.py:791
-#: keyslot/application.py:1587 keyslot/browser_dialogs.py:237
-#: keyslot/browser_dialogs.py:412 keyslot/browser_dialogs.py:562
+#: keyslot/application.py:1587 keyslot/browser_dialogs.py:269
+#: keyslot/browser_dialogs.py:444 keyslot/browser_dialogs.py:594
 #: keyslot/browser_options.py:164 keyslot/browser_options.py:172
 #: keyslot/history_views.py:13 keyslot/icon_views.py:129
 #: keyslot/passkey_views.py:115 keyslot/passkey_views.py:155
@@ -409,7 +409,7 @@ msgid "New Password"
 msgstr "Parolă nouă"
 
 #: keyslot/application.py:729 keyslot/application.py:790
-#: keyslot/application.py:1585 keyslot/browser_dialogs.py:423
+#: keyslot/application.py:1585 keyslot/browser_dialogs.py:455
 #: keyslot/database_views.py:104 keyslot/database_views.py:433
 #: keyslot/history_views.py:13 keyslot/reference_views.py:13
 msgid "Password"
@@ -420,7 +420,7 @@ msgid "Leave the password unchanged to keep the current one."
 msgstr "Lăsați parola neschimbată pentru a o păstra pe cea actuală."
 
 #: keyslot/application.py:740 keyslot/autotype_views.py:227
-#: keyslot/browser_dialogs.py:253 keyslot/browser_dialogs.py:446
+#: keyslot/browser_dialogs.py:285 keyslot/browser_dialogs.py:478
 #: keyslot/database_views.py:104 keyslot/passkey_views.py:164
 #: keyslot/secret_views.py:21
 msgid "Group"
@@ -487,8 +487,8 @@ msgstr "Creați un grup în interiorul grupului selectat."
 msgid "Group name"
 msgstr "Numele grupului"
 
-#: keyslot/application.py:823 keyslot/browser_dialogs.py:274
-#: keyslot/browser_dialogs.py:390
+#: keyslot/application.py:823 keyslot/browser_dialogs.py:306
+#: keyslot/browser_dialogs.py:422
 msgid "Create"
 msgstr "Creează"
 
@@ -648,7 +648,7 @@ msgstr "Restaurează"
 msgid "Delete Selected Entries"
 msgstr "Șterge intrările selectate"
 
-#: keyslot/application.py:1181 keyslot/browser_dialogs.py:572
+#: keyslot/application.py:1181 keyslot/browser_dialogs.py:604
 #: keyslot/property_views.py:55 keyslot/reports_views.py:168
 msgid "Entries"
 msgstr "Intrări"
@@ -695,7 +695,7 @@ msgstr "Rezultatele căutării"
 
 #: keyslot/application.py:1361 keyslot/application.py:1364
 #: keyslot/autotype_views.py:394 keyslot/breach_views.py:183
-#: keyslot/browser_dialogs.py:421 keyslot/browser_dialogs.py:575
+#: keyslot/browser_dialogs.py:453 keyslot/browser_dialogs.py:607
 #: keyslot/passkey_views.py:64 keyslot/passkey_views.py:71
 #: keyslot/passkey_views.py:114 keyslot/reference_views.py:102
 #: keyslot/reports_views.py:142 keyslot/reports_views.py:188
@@ -1513,7 +1513,7 @@ msgstr "Permite browserelor să listeze toate intrările"
 msgid "Share all entry titles, IDs and resolved website fields with paired browsers"
 msgstr "Partajați cu browserele asociate toate titlurile și ID-urile intrărilor, precum și câmpurile web rezolvate"
 
-#: keyslot/browser_dialogs.py:31 keyslot/browser_dialogs.py:119
+#: keyslot/browser_dialogs.py:31 keyslot/browser_dialogs.py:151
 msgid "Browser Setup"
 msgstr "Configurarea browserului"
 
@@ -1553,97 +1553,133 @@ msgstr "Orice browser asociat poate prelua titlurile și ID-urile intrărilor, p
 msgid "Allow Listing"
 msgstr "Permite listarea"
 
-#: keyslot/browser_dialogs.py:120
+#: keyslot/browser_dialogs.py:100
+msgid "Browser Matching"
+msgstr "Potrivirea site-urilor"
+
+#: keyslot/browser_dialogs.py:103
+msgid "Return Only the Best Website Match"
+msgstr "Returnează doar cea mai bună potrivire pentru site"
+
+#: keyslot/browser_dialogs.py:104
+msgid "Prefer the closest website match after entry permissions are checked"
+msgstr "Preferă cea mai apropiată potrivire a site-ului după verificarea permisiunilor intrării"
+
+#: keyslot/browser_dialogs.py:105
+msgid "Allow Expired Browser Logins"
+msgstr "Permite autentificările expirate în browser"
+
+#: keyslot/browser_dialogs.py:106
+msgid "Include expired entries; existing browser access rules still apply"
+msgstr "Include intrările expirate; regulile existente de acces ale browserului se aplică în continuare"
+
+#: keyslot/browser_dialogs.py:107
+msgid "Match Website Protocol"
+msgstr "Potrivește protocolul site-ului"
+
+#: keyslot/browser_dialogs.py:108
+msgid "Keep HTTP and HTTPS separate when matching logins"
+msgstr "Păstrează HTTP și HTTPS separate la potrivirea autentificărilor"
+
+#: keyslot/browser_dialogs.py:109
+msgid "Include Legacy KPH Fields"
+msgstr "Include câmpurile KPH vechi"
+
+#: keyslot/browser_dialogs.py:110
+msgid "Include legacy KPH: attributes in approved browser results"
+msgstr "Include atributele KPH: vechi în rezultatele aprobate ale browserului"
+
+#: keyslot/browser_dialogs.py:152
 msgid "Enable Browser Integration in Preferences, then install KeePassXC-Browser in the browsers you select. Turning a browser off restores its previous connection settings."
 msgstr "Activați integrarea browserului în Preferințe, apoi instalați KeePassXC-Browser în browserele selectate. Dezactivarea unui browser îi restabilește setările anterioare de conexiune."
 
-#: keyslot/browser_dialogs.py:122
+#: keyslot/browser_dialogs.py:154
 msgid "Browsers"
 msgstr "Browsere"
 
-#: keyslot/browser_dialogs.py:134
+#: keyslot/browser_dialogs.py:166
 msgid "Connected to Keyslot"
 msgstr "Conectat la Keyslot"
 
-#: keyslot/browser_dialogs.py:135
+#: keyslot/browser_dialogs.py:167
 msgid "Another connection is configured"
 msgstr "Este configurată o altă conexiune"
 
-#: keyslot/browser_dialogs.py:135
+#: keyslot/browser_dialogs.py:167
 msgid "Not configured"
 msgstr "Neconfigurat"
 
-#: keyslot/browser_dialogs.py:148
+#: keyslot/browser_dialogs.py:180
 msgid "Start browser integration before connecting a browser."
 msgstr "Porniți integrarea browserului înainte de a conecta un browser."
 
-#: keyslot/browser_dialogs.py:167
+#: keyslot/browser_dialogs.py:199
 #, python-brace-format
 msgid "Use Keyslot for {arg0}?"
 msgstr "Folosești Keyslot pentru {arg0}?"
 
-#: keyslot/browser_dialogs.py:168
+#: keyslot/browser_dialogs.py:200
 msgid "This replaces the browser’s current KeePassXC connection. Its settings will be saved so you can restore them."
 msgstr "Aceasta înlocuiește conexiunea KeePassXC curentă a browserului. Setările acesteia vor fi salvate pentru a le putea restaura."
 
-#: keyslot/browser_dialogs.py:170
+#: keyslot/browser_dialogs.py:202
 msgid "Use Keyslot"
 msgstr "Folosește Keyslot"
 
-#: keyslot/browser_dialogs.py:225
+#: keyslot/browser_dialogs.py:257
 msgid "Entry deleted"
 msgstr "Intrarea a fost ștearsă"
 
-#: keyslot/browser_dialogs.py:229
+#: keyslot/browser_dialogs.py:261
 msgid "Passkey saved"
 msgstr "Cheia de acces a fost salvată"
 
-#: keyslot/browser_dialogs.py:233
+#: keyslot/browser_dialogs.py:265
 msgid "Create Passkey"
 msgstr "Creează o cheie de acces"
 
-#: keyslot/browser_dialogs.py:233
+#: keyslot/browser_dialogs.py:265
 msgid "Sign In with Passkey"
 msgstr "Autentifică-te cu o cheie de acces"
 
-#: keyslot/browser_dialogs.py:235
+#: keyslot/browser_dialogs.py:267
 msgid "Create a passkey for this account."
 msgstr "Creează o cheie de acces pentru acest cont."
 
-#: keyslot/browser_dialogs.py:235
+#: keyslot/browser_dialogs.py:267
 msgid "Choose a passkey to sign in."
 msgstr "Alege o cheie de acces pentru autentificare."
 
-#: keyslot/browser_dialogs.py:238
+#: keyslot/browser_dialogs.py:270
 msgid "Website requesting a passkey"
 msgstr "Site-ul care solicită o cheie de acces"
 
-#: keyslot/browser_dialogs.py:239
+#: keyslot/browser_dialogs.py:271
 msgid "Passkey domain"
 msgstr "Domeniul cheii de acces"
 
-#: keyslot/browser_dialogs.py:243 keyslot/passkey_views.py:115
+#: keyslot/browser_dialogs.py:275 keyslot/passkey_views.py:115
 #: keyslot/passkey_views.py:156
 msgid "Account"
 msgstr "Cont"
 
-#: keyslot/browser_dialogs.py:244 keyslot/browser_dialogs.py:262
+#: keyslot/browser_dialogs.py:276 keyslot/browser_dialogs.py:294
 msgid "Unnamed Account"
 msgstr "Cont fără nume"
 
-#: keyslot/browser_dialogs.py:248 keyslot/passkey_views.py:161
+#: keyslot/browser_dialogs.py:280 keyslot/passkey_views.py:161
 msgid "Save To"
 msgstr "Salvează în"
 
-#: keyslot/browser_dialogs.py:259
+#: keyslot/browser_dialogs.py:291
 msgid "Accounts"
 msgstr "Conturi"
 
-#: keyslot/browser_dialogs.py:274
+#: keyslot/browser_dialogs.py:306
 msgid "Sign In"
 msgstr "Autentifică-te"
 
-#: keyslot/browser_dialogs.py:285
+#: keyslot/browser_dialogs.py:317
 #, python-brace-format
 msgid "Request expires in {count} second"
 msgid_plural "Request expires in {count} seconds"
@@ -1651,96 +1687,96 @@ msgstr[0] "Cererea expiră peste {count} secundă"
 msgstr[1] "Cererea expiră peste {count} secunde"
 msgstr[2] "Cererea expiră peste {count} de secunde"
 
-#: keyslot/browser_dialogs.py:285
+#: keyslot/browser_dialogs.py:317
 msgid "Request expired"
 msgstr "Cererea a expirat"
 
-#: keyslot/browser_dialogs.py:310
+#: keyslot/browser_dialogs.py:342
 msgid "Replace Existing Passkey?"
 msgstr "Înlocuiești cheia de acces existentă?"
 
-#: keyslot/browser_dialogs.py:314
+#: keyslot/browser_dialogs.py:346
 msgid "Replace Passkey"
 msgstr "Înlocuiește cheia de acces"
 
-#: keyslot/browser_dialogs.py:330
+#: keyslot/browser_dialogs.py:362
 msgid "Delete Entry Permanently?"
 msgstr "Ștergi definitiv intrarea?"
 
-#: keyslot/browser_dialogs.py:330
+#: keyslot/browser_dialogs.py:362
 msgid "Move Entry to Recycle Bin?"
 msgstr "Muți intrarea în coșul de reciclare?"
 
-#: keyslot/browser_dialogs.py:335
+#: keyslot/browser_dialogs.py:367
 msgid "Delete Permanently"
 msgstr "Șterge definitiv"
 
-#: keyslot/browser_dialogs.py:335
+#: keyslot/browser_dialogs.py:367
 msgid "Move to Recycle Bin"
 msgstr "Mută în coșul de reciclare"
 
-#: keyslot/browser_dialogs.py:357
+#: keyslot/browser_dialogs.py:389
 msgid "Login saved"
 msgstr "Datele de autentificare au fost salvate"
 
-#: keyslot/browser_dialogs.py:370
+#: keyslot/browser_dialogs.py:402
 msgid "Login saved; its website icon could not be started"
 msgstr "Datele de autentificare au fost salvate; descărcarea pictogramei site-ului nu a putut porni"
 
-#: keyslot/browser_dialogs.py:379
+#: keyslot/browser_dialogs.py:411
 msgid "Group created"
 msgstr "Grupul a fost creat"
 
-#: keyslot/browser_dialogs.py:382
+#: keyslot/browser_dialogs.py:414
 msgid "Create Group"
 msgstr "Creează un grup"
 
-#: keyslot/browser_dialogs.py:383
+#: keyslot/browser_dialogs.py:415
 msgid "A browser wants to create this group. Missing parent groups will also be created."
 msgstr "Un browser dorește să creeze acest grup. Vor fi create și grupurile părinte care lipsesc."
 
-#: keyslot/browser_dialogs.py:386 keyslot/browser_dialogs.py:511
-#: keyslot/browser_dialogs.py:567
+#: keyslot/browser_dialogs.py:418 keyslot/browser_dialogs.py:543
+#: keyslot/browser_dialogs.py:599
 msgid "Password Database"
 msgstr "Bază de date de parole"
 
-#: keyslot/browser_dialogs.py:409 keyslot/browser_dialogs.py:451
+#: keyslot/browser_dialogs.py:441 keyslot/browser_dialogs.py:483
 msgid "Update Login"
 msgstr "Actualizează datele de autentificare"
 
-#: keyslot/browser_dialogs.py:409 keyslot/browser_dialogs.py:451
+#: keyslot/browser_dialogs.py:441 keyslot/browser_dialogs.py:483
 msgid "Save Login"
 msgstr "Salvează datele de autentificare"
 
-#: keyslot/browser_dialogs.py:410
+#: keyslot/browser_dialogs.py:442
 msgid "A browser wants to update this login."
 msgstr "Un browser dorește să actualizeze aceste date de autentificare."
 
-#: keyslot/browser_dialogs.py:410
+#: keyslot/browser_dialogs.py:442
 msgid "A browser wants to save a new login."
 msgstr "Un browser dorește să salveze date noi de autentificare."
 
-#: keyslot/browser_dialogs.py:416 keyslot/browser_dialogs.py:570
+#: keyslot/browser_dialogs.py:448 keyslot/browser_dialogs.py:602
 msgid "Sign-in form destination"
 msgstr "Destinația formularului de autentificare"
 
-#: keyslot/browser_dialogs.py:418
+#: keyslot/browser_dialogs.py:450
 msgid "Current entry website"
 msgstr "Adresa curentă a site-ului intrării"
 
-#: keyslot/browser_dialogs.py:420
+#: keyslot/browser_dialogs.py:452
 msgid "Original Password Entry"
 msgstr "Intrarea originală a parolei"
 
-#: keyslot/browser_dialogs.py:420
+#: keyslot/browser_dialogs.py:452
 msgid "Entry"
 msgstr "Intrare"
 
-#: keyslot/browser_dialogs.py:421
+#: keyslot/browser_dialogs.py:453
 msgid "New entry"
 msgstr "Intrare nouă"
 
-#: keyslot/browser_dialogs.py:422 keyslot/database_views.py:168
+#: keyslot/browser_dialogs.py:454 keyslot/database_views.py:168
 #: keyslot/database_views.py:169 keyslot/passkey_views.py:116
 #: keyslot/passkey_views.py:155 keyslot/passkey_views.py:156
 #: keyslot/property_views.py:36 keyslot/property_views.py:101
@@ -1748,89 +1784,89 @@ msgstr "Intrare nouă"
 msgid "None"
 msgstr "Niciunul"
 
-#: keyslot/browser_dialogs.py:423
+#: keyslot/browser_dialogs.py:455
 msgid "The browser supplied a password"
 msgstr "Browserul a furnizat o parolă"
 
-#: keyslot/browser_dialogs.py:438 keyslot/icon_views.py:127
+#: keyslot/browser_dialogs.py:470 keyslot/icon_views.py:127
 msgid "Download Website Icon"
 msgstr "Descarcă pictograma site-ului"
 
-#: keyslot/browser_dialogs.py:440
+#: keyslot/browser_dialogs.py:472
 msgid "The browser requested an icon. The login is saved before the download starts."
 msgstr "Browserul a solicitat o pictogramă. Datele de autentificare sunt salvate înainte de începerea descărcării."
 
-#: keyslot/browser_dialogs.py:445
+#: keyslot/browser_dialogs.py:477
 msgid "KeePassXC-Browser Passwords (Default)"
 msgstr "Parole KeePassXC-Browser (implicit)"
 
-#: keyslot/browser_dialogs.py:510 keyslot/browser_dialogs.py:518
+#: keyslot/browser_dialogs.py:542 keyslot/browser_dialogs.py:550
 msgid "Connect Browser"
 msgstr "Conectează browserul"
 
-#: keyslot/browser_dialogs.py:512
+#: keyslot/browser_dialogs.py:544
 msgid "A browser wants to connect to this database. Give the connection a name you can recognize later."
 msgstr "Un browser dorește să se conecteze la această bază de date. Dați conexiunii un nume ușor de recunoscut ulterior."
 
-#: keyslot/browser_dialogs.py:515
+#: keyslot/browser_dialogs.py:547
 msgid "Connection Name"
 msgstr "Numele conexiunii"
 
-#: keyslot/browser_dialogs.py:535
+#: keyslot/browser_dialogs.py:567
 msgid "Replace Browser Connection?"
 msgstr "Înlocuiești conexiunea browserului?"
 
-#: keyslot/browser_dialogs.py:536
+#: keyslot/browser_dialogs.py:568
 #, python-brace-format
 msgid "“{arg0}” is already connected. Replacing it will require the previous browser to connect again."
 msgstr "„{arg0}” este deja conectat. Înlocuirea acestuia va necesita reconectarea browserului anterior."
 
-#: keyslot/browser_dialogs.py:538
+#: keyslot/browser_dialogs.py:570
 msgid "Replace Connection"
 msgstr "Înlocuiește conexiunea"
 
-#: keyslot/browser_dialogs.py:560 keyslot/reports_views.py:36
+#: keyslot/browser_dialogs.py:592 keyslot/reports_views.py:36
 #: keyslot/reports_views.py:210
 msgid "Browser Access"
 msgstr "Accesul browserului"
 
-#: keyslot/browser_dialogs.py:561
+#: keyslot/browser_dialogs.py:593
 msgid "A browser wants credentials for this website. Choose which entries to share."
 msgstr "Un browser solicită date de autentificare pentru acest site. Alegeți intrările pe care doriți să le partajați."
 
-#: keyslot/browser_dialogs.py:564
+#: keyslot/browser_dialogs.py:596
 msgid "HTTP authentication request"
 msgstr "Cerere de autentificare HTTP"
 
-#: keyslot/browser_dialogs.py:565
+#: keyslot/browser_dialogs.py:597
 msgid "Website requesting access"
 msgstr "Site-ul care solicită acces"
 
-#: keyslot/browser_dialogs.py:566
+#: keyslot/browser_dialogs.py:598
 msgid "Browser connection"
 msgstr "Conexiune cu browserul"
 
-#: keyslot/browser_dialogs.py:584
+#: keyslot/browser_dialogs.py:616
 msgid "Remember This Decision"
 msgstr "Reține această decizie"
 
-#: keyslot/browser_dialogs.py:584
+#: keyslot/browser_dialogs.py:616
 msgid "Save access rules in this encrypted database"
 msgstr "Salvați regulile de acces în această bază de date criptată"
 
-#: keyslot/browser_dialogs.py:587
+#: keyslot/browser_dialogs.py:619
 msgid "Fully Trust This Browser"
 msgstr "Acordă încredere deplină acestui browser"
 
-#: keyslot/browser_dialogs.py:589
+#: keyslot/browser_dialogs.py:621
 msgid "Automatically share matching logins with this browser in this database. Hidden entries and denied websites stay blocked. Manage trust in Database Settings → Browser Connections."
 msgstr "Partajează automat cu acest browser datele de autentificare corespunzătoare din această bază de date. Intrările ascunse și site-urile refuzate rămân blocate. Gestionează încrederea în Setările bazei de date → Conexiuni cu browsere."
 
-#: keyslot/browser_dialogs.py:593
+#: keyslot/browser_dialogs.py:625
 msgid "Deny All"
 msgstr "Refuză toate"
 
-#: keyslot/browser_dialogs.py:594
+#: keyslot/browser_dialogs.py:626
 msgid "Allow Selected"
 msgstr "Permiteți selectate"
 
@@ -5788,8 +5824,8 @@ msgstr "Confirmarea ștergerii solicitate de browser nu mai este validă."
 msgid "The database changed or the deletion confirmation expired. Try again."
 msgstr "Baza de date s-a modificat sau confirmarea ștergerii a expirat. Încercați din nou."
 
-#: engine/BrowserDatabase.cpp:252 keyslot/browser_requests.py:336
-#: keyslot/browser_requests.py:339
+#: engine/BrowserDatabase.cpp:252 keyslot/browser_requests.py:340
+#: keyslot/browser_requests.py:343
 msgid "Access to all entries is denied."
 msgstr "Accesul la toate intrările este interzis"
 
@@ -6026,148 +6062,148 @@ msgstr "Tastarea automată s-a oprit deoarece fereastra activă s-a modificat."
 msgid "Auto-type could not send a key. Release modifiers and check Caps Lock."
 msgstr "Tastarea automată nu a putut trimite o tastă. Eliberați modificatorii și verificați Caps Lock."
 
-#: engine/KeyslotConfig.cpp:34
+#: engine/KeyslotConfig.cpp:35
 msgid "This build cannot safely decode a value in the Qt configuration. Original files have been preserved."
 msgstr "Această versiune nu poate decoda în siguranță o valoare din configurația Qt. Fișierele originale au fost păstrate."
 
-#: engine/KeyslotConfig.cpp:42
+#: engine/KeyslotConfig.cpp:43
 msgid "Choose a regular configuration file."
 msgstr "Alegeți un fișier de configurare obișnuit."
 
-#: engine/KeyslotConfig.cpp:49
+#: engine/KeyslotConfig.cpp:50
 msgid "The configuration could not be read."
 msgstr "Configurația nu a putut fi citită."
 
-#: engine/KeyslotConfig.cpp:51
+#: engine/KeyslotConfig.cpp:52
 msgid "The configuration exceeds the 16 MiB limit."
 msgstr "Configurația depășește limita de 16 MiB."
 
-#: engine/KeyslotConfig.cpp:52
+#: engine/KeyslotConfig.cpp:53
 msgid "The configuration could not be read completely."
 msgstr "Configurația nu a putut fi citită integral."
 
-#: engine/KeyslotConfig.cpp:67
+#: engine/KeyslotConfig.cpp:68
 msgid "The configuration contains an invalid integer."
 msgstr "Configurația conține un număr întreg invalid."
 
-#: engine/KeyslotConfig.cpp:72 engine/KeyslotConfig.cpp:89
-#: engine/KeyslotConfig.cpp:95
+#: engine/KeyslotConfig.cpp:73 engine/KeyslotConfig.cpp:90
+#: engine/KeyslotConfig.cpp:96
 msgid "The configuration schema is invalid."
 msgstr "Schema configurației este invalidă."
 
-#: engine/KeyslotConfig.cpp:77
+#: engine/KeyslotConfig.cpp:78
 msgid "The configuration contains an unsupported dictionary."
 msgstr "Configurația conține un dicționar neacceptat."
 
-#: engine/KeyslotConfig.cpp:86
+#: engine/KeyslotConfig.cpp:87
 msgid "The configuration dictionary must contain strings."
 msgstr "Dicționarul configurației trebuie să conțină șiruri de caractere."
 
-#: engine/KeyslotConfig.cpp:93
+#: engine/KeyslotConfig.cpp:94
 msgid "The configuration schema is missing."
 msgstr "Schema configurației lipsește."
 
-#: engine/KeyslotConfig.cpp:98
+#: engine/KeyslotConfig.cpp:99
 msgid "The configuration key is invalid."
 msgstr "Cheia configurației este invalidă."
 
-#: engine/KeyslotConfig.cpp:107
+#: engine/KeyslotConfig.cpp:108
 msgid "The configuration is unreadable or is not a valid Qt INI file."
 msgstr "Configurația nu poate fi citită sau nu este un fișier Qt INI valid."
 
-#: engine/KeyslotConfig.cpp:123
+#: engine/KeyslotConfig.cpp:131
 msgid "Choose one or two configuration files."
 msgstr "Alegeți unul sau două fișiere de configurare."
 
-#: engine/KeyslotConfig.cpp:126
+#: engine/KeyslotConfig.cpp:134
 msgid "The configuration request is invalid."
 msgstr "Solicitarea de configurare este invalidă."
 
-#: engine/KeyslotConfig.cpp:128
+#: engine/KeyslotConfig.cpp:136
 msgid "The configuration file was supplied twice."
 msgstr "Fișierul de configurare a fost furnizat de două ori."
 
-#: engine/KeyslotConfig.cpp:147
+#: engine/KeyslotConfig.cpp:155
 msgid "A private configuration snapshot could not be created."
 msgstr "Nu a putut fi creată o copie instantanee privată a configurației."
 
-#: engine/KeyslotConfig.cpp:153
+#: engine/KeyslotConfig.cpp:161
 msgid "The configuration changed while it was read. Try again."
 msgstr "Configurația s-a modificat în timpul citirii. Încercați din nou."
 
-#: engine/KeyslotConfig.cpp:168
+#: engine/KeyslotConfig.cpp:176
 msgid "The configuration folder could not be created."
 msgstr "Dosarul configurației nu a putut fi creat."
 
-#: engine/KeyslotConfig.cpp:170
+#: engine/KeyslotConfig.cpp:178
 msgid "Another application is saving the configuration. Try again."
 msgstr "O altă aplicație salvează configurația. Încercați din nou."
 
-#: engine/KeyslotConfig.cpp:174
+#: engine/KeyslotConfig.cpp:182
 msgid "A private configuration staging folder could not be created."
 msgstr "Dosarul privat de pregătire a configurației nu a putut fi creat."
 
-#: engine/KeyslotConfig.cpp:183
+#: engine/KeyslotConfig.cpp:191
 msgid "The configuration is read-only. Original files have been preserved."
 msgstr "Configurația este doar pentru citire. Fișierele originale au fost păstrate."
 
-#: engine/KeyslotConfig.cpp:191
+#: engine/KeyslotConfig.cpp:199
 msgid "The original configuration could not be staged safely."
 msgstr "Configurația originală nu a putut fi pregătită în siguranță."
 
-#: engine/KeyslotConfig.cpp:200
+#: engine/KeyslotConfig.cpp:208
 msgid "The configuration comparison is invalid."
 msgstr "Compararea configurației este invalidă."
 
-#: engine/KeyslotConfig.cpp:202
+#: engine/KeyslotConfig.cpp:210
 msgid "This setting changed in another application. Reopen it before saving."
 msgstr "Această setare a fost modificată în altă aplicație. Redeschideți-o înainte de salvare."
 
-#: engine/KeyslotConfig.cpp:205
+#: engine/KeyslotConfig.cpp:213
 msgid "The configuration update is invalid."
 msgstr "Actualizarea configurației este invalidă."
 
-#: engine/KeyslotConfig.cpp:207
+#: engine/KeyslotConfig.cpp:215
 msgid "This setting changed in another application. Reopen Keyslot before saving it."
 msgstr "Această setare a fost modificată în altă aplicație. Redeschideți Keyslot înainte de a o salva."
 
-#: engine/KeyslotConfig.cpp:210
+#: engine/KeyslotConfig.cpp:218
 msgid "The configuration value has the wrong type."
 msgstr "Valoarea configurației are tipul greșit."
 
-#: engine/KeyslotConfig.cpp:212
+#: engine/KeyslotConfig.cpp:220
 msgid "The configuration list must contain strings."
 msgstr "Lista configurației trebuie să conțină șiruri de caractere."
 
-#: engine/KeyslotConfig.cpp:216
+#: engine/KeyslotConfig.cpp:224
 msgid "Specify individual settings to reset."
 msgstr "Specificați setările individuale de resetat."
 
-#: engine/KeyslotConfig.cpp:222
+#: engine/KeyslotConfig.cpp:230
 msgid "The configuration reset is invalid."
 msgstr "Resetarea configurației este invalidă."
 
-#: engine/KeyslotConfig.cpp:224
+#: engine/KeyslotConfig.cpp:232
 msgid "This setting changed in another application. Reopen it before resetting it."
 msgstr "Această setare a fost modificată în altă aplicație. Redeschideți-o înainte de resetare."
 
-#: engine/KeyslotConfig.cpp:226
+#: engine/KeyslotConfig.cpp:234
 msgid "Only individual configuration values can be reset."
 msgstr "Pot fi resetate doar valorile individuale de configurare."
 
-#: engine/KeyslotConfig.cpp:232
+#: engine/KeyslotConfig.cpp:240
 msgid "The configuration update could not be staged."
 msgstr "Actualizarea configurației nu a putut fi pregătită."
 
-#: engine/KeyslotConfig.cpp:238
+#: engine/KeyslotConfig.cpp:246
 msgid "Configuration recovery information could not be staged."
 msgstr "Informațiile de recuperare a configurației nu au putut fi pregătite."
 
-#: engine/KeyslotConfig.cpp:243
+#: engine/KeyslotConfig.cpp:251
 msgid "The configuration changed before it could be saved. Try again."
 msgstr "Configurația s-a modificat înainte de a putea fi salvată. Încercați din nou."
 
-#: engine/KeyslotConfig.cpp:247
+#: engine/KeyslotConfig.cpp:255
 msgid "The configuration could not be saved atomically."
 msgstr "Configurația nu a putut fi salvată atomic."
 
@@ -6323,11 +6359,11 @@ msgstr "Răspunsul acestei descărcări de pictogramă nu mai este așteptat."
 msgid "The icon download status is invalid."
 msgstr "Starea descărcării pictogramei este invalidă."
 
-#: engine/KeyslotIcons.cpp:252 engine/main.cpp:1468
+#: engine/KeyslotIcons.cpp:252 engine/main.cpp:1479
 msgid "The icon is too large."
 msgstr "Pictograma este prea mare."
 
-#: engine/KeyslotIcons.cpp:255 engine/main.cpp:1470
+#: engine/KeyslotIcons.cpp:255 engine/main.cpp:1481
 msgid "The icon encoding is invalid."
 msgstr "Codificarea pictogramei este invalidă."
 
@@ -6583,7 +6619,7 @@ msgstr "Fișierul cheie al seifului asociat nu a putut fi încărcat."
 msgid "The linked-vault credential was not accepted. Unlock it manually."
 msgstr "Datele de autentificare ale seifului asociat nu au fost acceptate. Deblocați-l manual."
 
-#: engine/KeyslotPasskeys.cpp:31 engine/main.cpp:1592
+#: engine/KeyslotPasskeys.cpp:31 engine/main.cpp:1603
 msgid "This entry has no passkey."
 msgstr "Această intrare nu are o cheie de acces."
 
@@ -7660,55 +7696,55 @@ msgstr "Alegeți un fișier obișnuit de rezervă, diferit de fișierul bazei de
 msgid "The backup path would replace an active database."
 msgstr "Calea copiei de rezervă ar înlocui o bază de date activă."
 
-#: engine/main.cpp:269
+#: engine/main.cpp:280
 msgid "The unsaved-vault recovery record is not a private regular file."
 msgstr "Înregistrarea de recuperare a seifului nesalvat nu este un fișier obișnuit privat."
 
-#: engine/main.cpp:271
+#: engine/main.cpp:282
 msgid "The recovery record could not be read."
 msgstr "Înregistrarea de recuperare nu a putut fi citită."
 
-#: engine/main.cpp:280
+#: engine/main.cpp:291
 msgid "The recovery record is invalid or belongs to another vault."
 msgstr "Înregistrarea de recuperare este invalidă sau aparține altui seif."
 
-#: engine/main.cpp:284
+#: engine/main.cpp:295
 msgid "The encrypted recovery snapshot is not a private regular file."
 msgstr "Instantaneul criptat de recuperare nu este un fișier obișnuit privat."
 
-#: engine/main.cpp:293
+#: engine/main.cpp:304
 msgid "The recovery record could not be removed."
 msgstr "Înregistrarea de recuperare nu a putut fi eliminată."
 
-#: engine/main.cpp:304 engine/main.cpp:883
+#: engine/main.cpp:315 engine/main.cpp:894
 msgid "The vault owning this recovery copy is still open."
 msgstr "Seiful căruia îi aparține această copie de recuperare este încă deschis."
 
-#: engine/main.cpp:306
+#: engine/main.cpp:317
 msgid "Another process is already saving this recovery snapshot."
 msgstr "Un alt proces salvează deja acest instantaneu de recuperare."
 
-#: engine/main.cpp:312
+#: engine/main.cpp:323
 msgid "The encrypted recovery snapshot changed. It was not saved over the vault."
 msgstr "Instantaneul criptat de recuperare s-a modificat. Nu a fost salvat peste seif."
 
-#: engine/main.cpp:317
+#: engine/main.cpp:328
 msgid "The vault changed elsewhere. The unsaved encrypted copy was kept for recovery."
 msgstr "Seiful s-a modificat în altă parte. Copia criptată nesalvată a fost păstrată pentru recuperare."
 
-#: engine/main.cpp:321
+#: engine/main.cpp:332
 msgid "The vault is read-only. Its unsaved encrypted copy was kept."
 msgstr "Seiful este doar pentru citire. Copia criptată nesalvată a fost păstrată."
 
-#: engine/main.cpp:382 keyslot/core_backend.py:588
+#: engine/main.cpp:393 keyslot/core_backend.py:588
 msgid "CSV options must be an object."
 msgstr "Opțiunile CSV trebuie să fie un obiect."
 
-#: engine/main.cpp:387
+#: engine/main.cpp:398
 msgid "The import source changed since review. Review it again before importing."
 msgstr "Sursa importului s-a modificat de la examinare. Examinați-o din nou înainte de import."
 
-#: engine/main.cpp:414 keyslot/backend.py:366 keyslot/core_backend.py:452
+#: engine/main.cpp:425 keyslot/backend.py:366 keyslot/core_backend.py:452
 #: keyslot/core_backend.py:461 keyslot/core_backend.py:892
 #: keyslot/core_backend.py:898 keyslot/core_backend.py:904
 #: keyslot/core_backend.py:1205 keyslot/core_backend.py:1213
@@ -7716,839 +7752,839 @@ msgstr "Sursa importului s-a modificat de la examinare. Examinați-o din nou în
 msgid "Unlock a database first."
 msgstr "Deblocați mai întâi o bază de date."
 
-#: engine/main.cpp:417 keyslot/backend.py:286
+#: engine/main.cpp:428 keyslot/backend.py:286
 msgid "Another application changed this database. Refresh before continuing."
 msgstr "O altă aplicație a modificat această bază de date. Reîmprospătați înainte de a continua."
 
-#: engine/main.cpp:423
+#: engine/main.cpp:434
 msgid "The entry no longer exists. Refresh the database."
 msgstr "Intrarea nu mai există. Reîmprospătați baza de date."
 
-#: engine/main.cpp:429
+#: engine/main.cpp:440
 msgid "The database changed since history was reviewed. Open history again."
 msgstr "Baza de date s-a modificat de la examinarea istoricului. Deschideți din nou istoricul."
 
-#: engine/main.cpp:434
+#: engine/main.cpp:445
 msgid "Select a valid history version."
 msgstr "Selectați o versiune validă din istoric."
 
-#: engine/main.cpp:441
+#: engine/main.cpp:452
 msgid "The group no longer exists. Refresh the database."
 msgstr "Grupul nu mai există. Reîmprospătați baza de date."
 
-#: engine/main.cpp:450
+#: engine/main.cpp:461
 msgid "The key file could not be loaded."
 msgstr "Fișierul cheie nu a putut fi încărcat."
 
-#: engine/main.cpp:457 keyslot/backend.py:261
+#: engine/main.cpp:468 keyslot/backend.py:261
 msgid "Use hardware key slot 1 or 2, optionally followed by :serial."
 msgstr "Folosiți slotul 1 sau 2 al cheii hardware, urmat opțional de :serial."
 
-#: engine/main.cpp:460
+#: engine/main.cpp:471
 msgid "The hardware key serial is invalid."
 msgstr "Numărul de serie al cheii hardware este invalid."
 
-#: engine/main.cpp:464
+#: engine/main.cpp:475
 msgid "This engine was built without hardware-key support."
 msgstr "Acest motor a fost compilat fără suport pentru chei hardware."
 
-#: engine/main.cpp:467
+#: engine/main.cpp:478
 msgid "Choose a password, a key file, or a hardware key."
 msgstr "Alegeți o parolă, un fișier cheie sau o cheie hardware."
 
-#: engine/main.cpp:489
+#: engine/main.cpp:500
 msgid "An encrypted recovery snapshot could not be created."
 msgstr "Instantaneul criptat de recuperare nu a putut fi creat."
 
-#: engine/main.cpp:492
+#: engine/main.cpp:503
 msgid "The encrypted recovery snapshot could not be written completely."
 msgstr "Instantaneul criptat de recuperare nu a putut fi scris complet."
 
-#: engine/main.cpp:497
+#: engine/main.cpp:508
 msgid "A private unsaved-vault directory could not be created."
 msgstr "Directorul privat al seifului nesalvat nu a putut fi creat."
 
-#: engine/main.cpp:500
+#: engine/main.cpp:511
 msgid "The recovery checkpoint could not be reserved."
 msgstr "Punctul de verificare pentru recuperare nu a putut fi rezervat."
 
-#: engine/main.cpp:506
+#: engine/main.cpp:517
 msgid "The unsaved-vault journal could not be prepared."
 msgstr "Jurnalul seifului nesalvat nu a putut fi pregătit."
 
-#: engine/main.cpp:511
+#: engine/main.cpp:522
 msgid "The recovery checkpoint is in use."
 msgstr "Punctul de verificare pentru recuperare este în uz."
 
-#: engine/main.cpp:513
+#: engine/main.cpp:524
 msgid "The recovery snapshot could not be staged."
 msgstr "Instantaneul de recuperare nu a putut fi pregătit."
 
-#: engine/main.cpp:521
+#: engine/main.cpp:532
 msgid "The encrypted checkpoint could not be verified."
 msgstr "Punctul de verificare criptat nu a putut fi verificat."
 
-#: engine/main.cpp:528
+#: engine/main.cpp:539
 msgid "The encrypted checkpoint could not be recorded. The previous state was kept."
 msgstr "Punctul de verificare criptat nu a putut fi înregistrat. Starea anterioară a fost păstrată."
 
-#: engine/main.cpp:538
+#: engine/main.cpp:549
 msgid "Save, merge or discard the unsaved changes before reloading."
 msgstr "Salvați, îmbinați sau renunțați la modificările nesalvate înainte de reîncărcare."
 
-#: engine/main.cpp:543
+#: engine/main.cpp:554
 msgid "The database could not be reopened. The currently open data is still available to save as a copy."
 msgstr "Baza de date nu a putut fi redeschisă. Datele deschise în prezent pot fi salvate în continuare ca copie."
 
-#: engine/main.cpp:558 keyslot/backend.py:368
+#: engine/main.cpp:569 keyslot/backend.py:368
 msgid "The database is read-only."
 msgstr "Baza de date este doar pentru citire."
 
-#: engine/main.cpp:560
+#: engine/main.cpp:571
 msgid "An encrypted staging directory could not be created."
 msgstr "Directorul criptat de pregătire nu a putut fi creat."
 
-#: engine/main.cpp:562
+#: engine/main.cpp:573
 msgid "KeePassXC could not save the encrypted database."
 msgstr "KeePassXC nu a putut salva baza de date criptată."
 
-#: engine/main.cpp:564
+#: engine/main.cpp:575
 msgid "The encrypted staging file permissions could not be secured."
 msgstr "Permisiunile fișierului criptat de pregătire nu au putut fi securizate."
 
-#: engine/main.cpp:569
+#: engine/main.cpp:580
 msgid "The database could not be created. A file may already exist there."
 msgstr "Baza de date nu a putut fi creată. Este posibil să existe deja un fișier acolo."
 
-#: engine/main.cpp:586
+#: engine/main.cpp:597
 msgid "The merge source changed before the merge began."
 msgstr "Sursa îmbinării s-a modificat înainte de începerea îmbinării."
 
-#: engine/main.cpp:593
+#: engine/main.cpp:604
 msgid "An encrypted recovery snapshot could not be created. The vault was not changed."
 msgstr "Instantaneul criptat de recuperare nu a putut fi creat. Seiful nu a fost modificat."
 
-#: engine/main.cpp:600
+#: engine/main.cpp:611
 msgid "The database changed while preparing recovery. Refresh before continuing."
 msgstr "Baza de date s-a modificat în timpul pregătirii recuperării. Reîmprospătați înainte de a continua."
 
-#: engine/main.cpp:602
+#: engine/main.cpp:613
 msgid "The encrypted recovery snapshot could not be prepared. The vault was not changed."
 msgstr "Instantaneul criptat de recuperare nu a putut fi pregătit. Seiful nu a fost modificat."
 
-#: engine/main.cpp:685
+#: engine/main.cpp:696
 msgid "This KDF is not supported by the current database format."
 msgstr "Acest KDF nu este acceptat de formatul curent al bazei de date."
 
-#: engine/main.cpp:688
+#: engine/main.cpp:699
 msgid "The selected KDF is unavailable."
 msgstr "KDF-ul selectat nu este disponibil."
 
-#: engine/main.cpp:690
+#: engine/main.cpp:701
 msgid "The KDF iteration count is invalid."
 msgstr "Numărul de iterații KDF este invalid."
 
-#: engine/main.cpp:693
+#: engine/main.cpp:704
 msgid "The KDF memory setting is invalid."
 msgstr "Setarea memoriei KDF este invalidă."
 
-#: engine/main.cpp:695
+#: engine/main.cpp:706
 msgid "The KDF parallelism setting is invalid."
 msgstr "Setarea paralelismului KDF este invalidă."
 
-#: engine/main.cpp:728
+#: engine/main.cpp:739
 msgid "Entry fields must be an object."
 msgstr "Câmpurile intrării trebuie să fie un obiect."
 
-#: engine/main.cpp:733
+#: engine/main.cpp:744
 msgid "An entry field is invalid."
 msgstr "Un câmp al intrării este invalid."
 
-#: engine/main.cpp:735
+#: engine/main.cpp:746
 msgid "Enter a valid expiry timestamp."
 msgstr "Introduceți un marcaj temporal de expirare valid."
 
-#: engine/main.cpp:739
+#: engine/main.cpp:750
 msgid "Enter a valid TOTP URI."
 msgstr "Introduceți un URI TOTP valid."
 
-#: engine/main.cpp:762
+#: engine/main.cpp:773
 msgid "Choose a valid entry color or leave it empty for the default."
 msgstr "Alegeți o culoare validă pentru intrare sau lăsați gol pentru valoarea implicită."
 
-#: engine/main.cpp:771
+#: engine/main.cpp:782
 msgid "The selected custom icon is no longer available."
 msgstr "Pictograma personalizată selectată nu mai este disponibilă."
 
-#: engine/main.cpp:777
+#: engine/main.cpp:788
 msgid "The icon is too large to preview."
 msgstr "Pictograma este prea mare pentru previzualizare."
 
-#: engine/main.cpp:783
+#: engine/main.cpp:794
 msgid "Convert this image to PNG before importing it."
 msgstr "Convertiți această imagine în PNG înainte de import."
 
-#: engine/main.cpp:793
+#: engine/main.cpp:804
 msgid "This icon has no supported image size."
 msgstr "Această pictogramă nu are o dimensiune de imagine acceptată."
 
-#: engine/main.cpp:797
+#: engine/main.cpp:808
 msgid "Choose an image with dimensions of at most 4096 by 4096 pixels."
 msgstr "Alegeți o imagine cu dimensiuni de cel mult 4096 pe 4096 de pixeli."
 
-#: engine/main.cpp:800
+#: engine/main.cpp:811
 msgid "The icon image could not be decoded."
 msgstr "Imaginea pictogramei nu a putut fi decodată."
 
-#: engine/main.cpp:803
+#: engine/main.cpp:814
 msgid "The icon image could not be converted."
 msgstr "Imaginea pictogramei nu a putut fi convertită."
 
-#: engine/main.cpp:853 keyslot/core_backend.py:573
+#: engine/main.cpp:864 keyslot/core_backend.py:573
 msgid "Choose a supported import format."
 msgstr "Alegeți un format de import acceptat."
 
-#: engine/main.cpp:854
+#: engine/main.cpp:865
 msgid "KeePassXC could not import this source. Check the export format and source credentials."
 msgstr "KeePassXC nu a putut importa această sursă. Verificați formatul de export și datele de autentificare ale sursei."
 
-#: engine/main.cpp:885
+#: engine/main.cpp:896
 msgid "This encrypted recovery copy is in use."
 msgstr "Această copie criptată de recuperare este în uz."
 
-#: engine/main.cpp:889
+#: engine/main.cpp:900
 msgid "The recovery copy changed after it was opened. It was kept for review."
 msgstr "Copia de recuperare s-a modificat după deschidere. A fost păstrată pentru examinare."
 
-#: engine/main.cpp:893
+#: engine/main.cpp:904
 msgid "The encrypted recovery snapshot changed. It was kept for manual recovery."
 msgstr "Instantaneul criptat de recuperare s-a modificat. A fost păstrat pentru recuperare manuală."
 
-#: engine/main.cpp:895
+#: engine/main.cpp:906
 msgid "An independent encrypted working copy could not be created."
 msgstr "Nu a putut fi creată o copie de lucru criptată independentă."
 
-#: engine/main.cpp:905
+#: engine/main.cpp:916
 msgid "Close the recipient vault before opening a linked vault."
 msgstr "Închideți seiful destinatar înainte de a deschide un seif asociat."
 
-#: engine/main.cpp:909
+#: engine/main.cpp:920
 msgid "Open this linked vault manually to review its unsaved recovery copy first."
 msgstr "Deschideți manual acest seif asociat pentru a-i examina mai întâi copia de recuperare nesalvată."
 
-#: engine/main.cpp:930
+#: engine/main.cpp:941
 msgid "Lock the vault before requesting system authentication."
 msgstr "Blocați seiful înainte de a solicita autentificarea sistemului."
 
-#: engine/main.cpp:932
+#: engine/main.cpp:943
 msgid "The vault file is unavailable."
 msgstr "Fișierul seifului nu este disponibil."
 
-#: engine/main.cpp:934
+#: engine/main.cpp:945
 msgid "The native session credential is invalid."
 msgstr "Datele native de autentificare ale sesiunii sunt invalide."
 
-#: engine/main.cpp:936
+#: engine/main.cpp:947
 msgid "This session credential belongs to another vault."
 msgstr "Aceste date de autentificare ale sesiunii aparțin altui seif."
 
-#: engine/main.cpp:941
+#: engine/main.cpp:952
 msgid "This system authentication operation is unavailable."
 msgstr "Această operație de autentificare a sistemului nu este disponibilă."
 
-#: engine/main.cpp:947
+#: engine/main.cpp:958
 msgid "Choose a short password with 4 to 128 characters."
 msgstr "Alegeți o parolă scurtă cu 4 până la 128 de caractere."
 
-#: engine/main.cpp:952
+#: engine/main.cpp:963
 msgid "The unlock credential is too large for quick unlock."
 msgstr "Datele de autentificare sunt prea mari pentru deblocarea rapidă."
 
-#: engine/main.cpp:957
+#: engine/main.cpp:968
 msgid "The quick-unlock key could not be created."
 msgstr "Cheia de deblocare rapidă nu a putut fi creată."
 
-#: engine/main.cpp:966
+#: engine/main.cpp:977
 msgid "The quick-unlock credential could not be encrypted."
 msgstr "Datele de autentificare pentru deblocare rapidă nu au putut fi criptate."
 
-#: engine/main.cpp:971 engine/main.cpp:973 engine/main.cpp:983
+#: engine/main.cpp:982 engine/main.cpp:984 engine/main.cpp:994
 msgid "The quick-unlock credential is invalid."
 msgstr "Datele de autentificare pentru deblocare rapidă sunt invalide."
 
-#: engine/main.cpp:981
+#: engine/main.cpp:992
 msgid "The short password is incorrect."
 msgstr "Parola scurtă este incorectă."
 
-#: engine/main.cpp:986
+#: engine/main.cpp:997
 msgid "This quick-unlock credential belongs to another vault."
 msgstr "Aceste date de autentificare pentru deblocare rapidă aparțin altui seif."
 
-#: engine/main.cpp:999
+#: engine/main.cpp:1010
 msgid "The CSV source changed while being read."
 msgstr "Sursa CSV s-a modificat în timpul citirii."
 
-#: engine/main.cpp:1009 engine/main.cpp:1030
+#: engine/main.cpp:1020 engine/main.cpp:1041
 msgid "The import source changed while being read."
 msgstr "Sursa importului s-a modificat în timpul citirii."
 
-#: engine/main.cpp:1020
+#: engine/main.cpp:1031
 msgid "Save or discard the open vault before importing another database."
 msgstr "Salvați sau abandonați seiful deschis înainte de a importa o altă bază de date."
 
-#: engine/main.cpp:1022 engine/main.cpp:1063 keyslot/backend.py:301
+#: engine/main.cpp:1033 engine/main.cpp:1074 keyslot/backend.py:301
 msgid "A file already exists at that location."
 msgstr "Există deja un fișier în acea locație."
 
-#: engine/main.cpp:1035
+#: engine/main.cpp:1046
 msgid "KeePassXC could not set the imported database's unlock key."
 msgstr "KeePassXC nu a putut seta cheia de deblocare a bazei de date importate."
 
-#: engine/main.cpp:1042
+#: engine/main.cpp:1053
 msgid "Save or discard the open vault before opening another database."
 msgstr "Salvați sau abandonați seiful deschis înainte de a deschide o altă bază de date."
 
-#: engine/main.cpp:1047
+#: engine/main.cpp:1058
 msgid "Select a database path."
 msgstr "Selectați o cale către baza de date."
 
-#: engine/main.cpp:1054
+#: engine/main.cpp:1065
 msgid "Open the source vault to review an independent recovery copy. Recovery checkpoints cannot be edited directly."
 msgstr "Deschideți seiful sursă pentru a examina o copie de recuperare independentă. Punctele de verificare pentru recuperare nu pot fi editate direct."
 
-#: engine/main.cpp:1056
+#: engine/main.cpp:1067
 msgid "An unsaved encrypted recovery copy is available. Open this vault in Keyslot to review it first."
 msgstr "Este disponibilă o copie criptată de recuperare nesalvată. Deschideți acest seif în Keyslot pentru a o examina mai întâi."
 
-#: engine/main.cpp:1058
+#: engine/main.cpp:1069
 msgid "KeePassXC could not unlock the database. Check your credentials and hardware key."
 msgstr "KeePassXC nu a putut debloca baza de date. Verificați datele de autentificare și cheia hardware."
 
-#: engine/main.cpp:1059
+#: engine/main.cpp:1070
 msgid "The database changed while being unlocked."
 msgstr "Baza de date s-a modificat în timpul deblocării."
 
-#: engine/main.cpp:1066
+#: engine/main.cpp:1077
 msgid "KeePassXC could not set the database key."
 msgstr "KeePassXC nu a putut seta cheia bazei de date."
 
-#: engine/main.cpp:1090
+#: engine/main.cpp:1101
 msgid "Specify supported keyboard shortcuts."
 msgstr "Specificați comenzi rapide de tastatură acceptate."
 
-#: engine/main.cpp:1094
+#: engine/main.cpp:1105
 msgid "A keyboard shortcut is invalid."
 msgstr "O comandă rapidă de tastatură este invalidă."
 
-#: engine/main.cpp:1119 engine/main.cpp:1150 keyslot/wordlists.py:57
+#: engine/main.cpp:1130 engine/main.cpp:1161 keyslot/wordlists.py:57
 msgid "Choose a regular word-list file."
 msgstr "Alegeți un fișier obișnuit cu o listă de cuvinte."
 
-#: engine/main.cpp:1124
+#: engine/main.cpp:1135
 msgid "This file contains no usable passphrase words."
 msgstr "Acest fișier nu conține cuvinte utilizabile pentru fraza de acces."
 
-#: engine/main.cpp:1148
+#: engine/main.cpp:1159
 msgid "Choose a readable word list."
 msgstr "Alegeți o listă de cuvinte lizibilă."
 
-#: engine/main.cpp:1154
+#: engine/main.cpp:1165
 msgid "Choose an installed word list or an absolute custom word-list path."
 msgstr "Alegeți o listă de cuvinte instalată sau o cale absolută către o listă personalizată."
 
-#: engine/main.cpp:1161
+#: engine/main.cpp:1172
 msgid "Choose a supported word case."
 msgstr "Alegeți o capitalizare acceptată pentru cuvinte."
 
-#: engine/main.cpp:1165
+#: engine/main.cpp:1176
 msgid "Choose a readable word list containing at least one word."
 msgstr "Alegeți o listă de cuvinte lizibilă care conține cel puțin un cuvânt."
 
-#: engine/main.cpp:1190
+#: engine/main.cpp:1201
 msgid "The password generator settings are invalid."
 msgstr "Setările generatorului de parole sunt invalide."
 
-#: engine/main.cpp:1197
+#: engine/main.cpp:1208
 msgid "A key-file staging directory could not be created."
 msgstr "Directorul de pregătire a fișierului cheie nu a putut fi creat."
 
-#: engine/main.cpp:1200
+#: engine/main.cpp:1211
 msgid "The key file could not be generated."
 msgstr "Fișierul cheie nu a putut fi generat."
 
-#: engine/main.cpp:1203
+#: engine/main.cpp:1214
 msgid "The key file could not be synchronized to disk."
 msgstr "Fișierul cheie nu a putut fi sincronizat pe disc."
 
-#: engine/main.cpp:1205
+#: engine/main.cpp:1216
 msgid "The key file could not be created. A file may already exist there."
 msgstr "Fișierul cheie nu a putut fi creat. Este posibil să existe deja un fișier acolo."
 
-#: engine/main.cpp:1210
+#: engine/main.cpp:1221
 msgid "The icon download address is invalid."
 msgstr "Adresa de descărcare a pictogramei este invalidă."
 
-#: engine/main.cpp:1228
+#: engine/main.cpp:1239
 msgid "This properties operation is not supported."
 msgstr "Această operație asupra proprietăților nu este acceptată."
 
-#: engine/main.cpp:1249
+#: engine/main.cpp:1260
 msgid "This remote operation is not supported."
 msgstr "Această operație la distanță nu este acceptată."
 
-#: engine/main.cpp:1263
+#: engine/main.cpp:1274
 msgid "This entry action is not supported."
 msgstr "Această acțiune a intrării nu este acceptată."
 
-#: engine/main.cpp:1285
+#: engine/main.cpp:1296
 msgid "This icon operation is not supported."
 msgstr "Această operație asupra pictogramei nu este acceptată."
 
-#: engine/main.cpp:1331
+#: engine/main.cpp:1342
 msgid "Choose an existing destination folder."
 msgstr "Alegeți un director de destinație existent."
 
-#: engine/main.cpp:1334 engine/main.cpp:1348
+#: engine/main.cpp:1345 engine/main.cpp:1359
 msgid "Choose a destination outside Keyslot’s private recovery storage."
 msgstr "Alegeți o destinație în afara spațiului privat de recuperare Keyslot."
 
-#: engine/main.cpp:1336
+#: engine/main.cpp:1347
 msgid "Choose a regular file, not a link or a folder."
 msgstr "Alegeți un fișier obișnuit, nu un link sau un director."
 
-#: engine/main.cpp:1343
+#: engine/main.cpp:1354
 msgid "The working vault changed while choosing its destination. Save it again."
 msgstr "Seiful de lucru s-a modificat în timpul alegerii destinației. Salvați-l din nou."
 
-#: engine/main.cpp:1346
+#: engine/main.cpp:1357
 msgid "The destination folder is unavailable."
 msgstr "Directorul de destinație nu este disponibil."
 
-#: engine/main.cpp:1352
+#: engine/main.cpp:1363
 msgid "Review the existing destination before replacing it."
 msgstr "Examinați destinația existentă înainte de a o înlocui."
 
-#: engine/main.cpp:1356
+#: engine/main.cpp:1367
 msgid "The destination changed into a link or a folder."
 msgstr "Destinația s-a transformat într-un link sau director."
 
-#: engine/main.cpp:1359
+#: engine/main.cpp:1370
 msgid "The destination changed after review. Choose it again before replacing it."
 msgstr "Destinația s-a modificat după examinare. Alegeți-o din nou înainte de a o înlocui."
 
-#: engine/main.cpp:1360
+#: engine/main.cpp:1371
 msgid "The destination is read-only."
 msgstr "Destinația este doar pentru citire."
 
-#: engine/main.cpp:1361
+#: engine/main.cpp:1372
 msgid "A file appeared at the destination. It was not replaced."
 msgstr "A apărut un fișier la destinație. Acesta nu a fost înlocuit."
 
-#: engine/main.cpp:1369
+#: engine/main.cpp:1380
 msgid "The destination could not be staged."
 msgstr "Destinația nu a putut fi pregătită."
 
-#: engine/main.cpp:1378
+#: engine/main.cpp:1389
 msgid "The destination could not be created. A file may already exist there."
 msgstr "Destinația nu a putut fi creată. Este posibil să existe deja un fișier acolo."
 
-#: engine/main.cpp:1390
+#: engine/main.cpp:1401
 msgid "The unsaved vault changed after review. Review it again before continuing."
 msgstr "Seiful nesalvat s-a modificat după examinare. Examinați-l din nou înainte de a continua."
 
-#: engine/main.cpp:1393
+#: engine/main.cpp:1404
 msgid "The file changed again after review. Review the new changes before continuing."
 msgstr "Fișierul s-a modificat din nou după examinare. Examinați noile modificări înainte de a continua."
 
-#: engine/main.cpp:1395
+#: engine/main.cpp:1406
 msgid "Review both versions before overwriting disk changes."
 msgstr "Examinați ambele versiuni înainte de a suprascrie modificările de pe disc."
 
-#: engine/main.cpp:1402
+#: engine/main.cpp:1413
 msgid "The changed vault requires its current credential before merging."
 msgstr "Seiful modificat necesită datele de autentificare curente înainte de îmbinare."
 
-#: engine/main.cpp:1403
+#: engine/main.cpp:1414
 msgid "The changed vault changed again while being opened."
 msgstr "Seiful modificat s-a schimbat din nou în timpul deschiderii."
 
-#: engine/main.cpp:1407
+#: engine/main.cpp:1418
 msgid "The vault changed again during the merge."
 msgstr "Seiful s-a modificat din nou în timpul îmbinării."
 
-#: engine/main.cpp:1415
+#: engine/main.cpp:1426
 msgid "The vault credential could not be verified. Check the password and key file."
 msgstr "Datele de autentificare ale seifului nu au putut fi verificate. Verificați parola și fișierul cheie."
 
-#: engine/main.cpp:1435
+#: engine/main.cpp:1446
 msgid "This entry transfer operation is unavailable."
 msgstr "Această operație de transfer al intrării nu este disponibilă."
 
-#: engine/main.cpp:1446 engine/main.cpp:1482
+#: engine/main.cpp:1457 engine/main.cpp:1493
 msgid "This custom icon is unavailable."
 msgstr "Această pictogramă personalizată nu este disponibilă."
 
-#: engine/main.cpp:1452
+#: engine/main.cpp:1463
 msgid "The standard icon assets are unavailable."
 msgstr "Resursele standard ale pictogramelor nu sunt disponibile."
 
-#: engine/main.cpp:1454
+#: engine/main.cpp:1465
 msgid "The standard icon could not be read."
 msgstr "Pictograma standard nu a putut fi citită."
 
-#: engine/main.cpp:1461
+#: engine/main.cpp:1472
 msgid "The icon could not be exported."
 msgstr "Pictograma nu a putut fi exportată."
 
-#: engine/main.cpp:1596 keyslot/core_backend.py:919
+#: engine/main.cpp:1607 keyslot/core_backend.py:919
 msgid "An unencrypted passkey cannot replace the database."
 msgstr "O cheie de acces necriptată nu poate înlocui baza de date."
 
-#: engine/main.cpp:1601
+#: engine/main.cpp:1612
 msgid "Restore this entry before removing its passkey."
 msgstr "Restaurați această intrare înainte de a-i elimina cheia de acces."
 
-#: engine/main.cpp:1668
+#: engine/main.cpp:1679
 msgid "Choose a nonempty browser connection name."
 msgstr "Alegeți un nume nevid pentru conexiunea browserului."
 
-#: engine/main.cpp:1671 engine/main.cpp:1681
+#: engine/main.cpp:1682 engine/main.cpp:1692
 msgid "The browser connection no longer exists."
 msgstr "Conexiunea browserului nu mai există."
 
-#: engine/main.cpp:1673
+#: engine/main.cpp:1684
 msgid "The browser connection changed. Open the connection list again."
 msgstr "Conexiunea browserului s-a schimbat. Deschide din nou lista conexiunilor."
 
-#: engine/main.cpp:1688
+#: engine/main.cpp:1699
 msgid "The browser identification key is invalid."
 msgstr "Cheia de identificare a browserului este invalidă."
 
-#: engine/main.cpp:1693
+#: engine/main.cpp:1704
 msgid "That browser connection name is already in use."
 msgstr "Acest nume de conexiune a browserului este deja folosit."
 
-#: engine/main.cpp:1700
+#: engine/main.cpp:1711
 msgid "Unknown browser operation."
 msgstr "Operație necunoscută a browserului."
 
-#: engine/main.cpp:1705
+#: engine/main.cpp:1716
 msgid "An unknown KDF benchmark option was supplied."
 msgstr "A fost furnizată o opțiune necunoscută de testare KDF."
 
-#: engine/main.cpp:1709
+#: engine/main.cpp:1720
 msgid "KeePassXC could not calibrate these KDF settings."
 msgstr "KeePassXC nu a putut calibra aceste setări KDF."
 
-#: engine/main.cpp:1716
+#: engine/main.cpp:1727
 msgid "An unknown database setting was supplied."
 msgstr "A fost furnizată o setare necunoscută a bazei de date."
 
-#: engine/main.cpp:1719
+#: engine/main.cpp:1730
 msgid "The selected cipher is unavailable."
 msgstr "Cifrul selectat nu este disponibil."
 
-#: engine/main.cpp:1738
+#: engine/main.cpp:1749
 msgid "KeePassXC could not apply the KDF settings."
 msgstr "KeePassXC nu a putut aplica setările KDF."
 
-#: engine/main.cpp:1744
+#: engine/main.cpp:1755
 msgid "An unknown unlock-key option was supplied."
 msgstr "A fost furnizată o opțiune necunoscută pentru cheia de deblocare."
 
-#: engine/main.cpp:1747
+#: engine/main.cpp:1758
 msgid "Choose replacement or removal of the password."
 msgstr "Alegeți înlocuirea sau eliminarea parolei."
 
-#: engine/main.cpp:1748
+#: engine/main.cpp:1759
 msgid "Choose replacement or removal of the key file."
 msgstr "Alegeți înlocuirea sau eliminarea fișierului cheie."
 
-#: engine/main.cpp:1749
+#: engine/main.cpp:1760
 msgid "Choose replacement or removal of the hardware key."
 msgstr "Alegeți înlocuirea sau eliminarea cheii hardware."
 
-#: engine/main.cpp:1760
+#: engine/main.cpp:1771
 msgid "At least one unlock component must remain."
 msgstr "Trebuie să rămână cel puțin o componentă de deblocare."
 
-#: engine/main.cpp:1762
+#: engine/main.cpp:1773
 msgid "KeePassXC could not change the database key."
 msgstr "KeePassXC nu a putut schimba cheia bazei de date."
 
-#: engine/main.cpp:1767
+#: engine/main.cpp:1778
 msgid "Choose another database to merge."
 msgstr "Alegeți o altă bază de date pentru îmbinare."
 
-#: engine/main.cpp:1771
+#: engine/main.cpp:1782
 msgid "The merge database could not be unlocked."
 msgstr "Baza de date pentru îmbinare nu a putut fi deblocată."
 
-#: engine/main.cpp:1772
+#: engine/main.cpp:1783
 msgid "The merge source changed while being read."
 msgstr "Sursa îmbinării s-a modificat în timpul citirii."
 
-#: engine/main.cpp:1778
+#: engine/main.cpp:1789
 msgid "The merge source changed during the operation."
 msgstr "Sursa îmbinării s-a modificat în timpul operației."
 
-#: engine/main.cpp:1784 keyslot/core_backend.py:1215
+#: engine/main.cpp:1795 keyslot/core_backend.py:1215
 msgid "Choose a different destination for the database copy."
 msgstr "Alegeți o altă destinație pentru copia bazei de date."
 
-#: engine/main.cpp:1788
+#: engine/main.cpp:1799
 msgid "The encrypted database copy could not be created."
 msgstr "Copia criptată a bazei de date nu a putut fi creată."
 
-#: engine/main.cpp:1792
+#: engine/main.cpp:1803
 msgid "The encrypted database copy could not be written completely."
 msgstr "Copia criptată a bazei de date nu a putut fi scrisă complet."
 
-#: engine/main.cpp:1799 keyslot/core_backend.py:1207
+#: engine/main.cpp:1810 keyslot/core_backend.py:1207
 msgid "An unencrypted export cannot replace the database."
 msgstr "Un export necriptat nu poate înlocui baza de date."
 
-#: engine/main.cpp:1801
+#: engine/main.cpp:1812
 msgid "The export staging directory could not be created."
 msgstr "Directorul de pregătire a exportului nu a putut fi creat."
 
-#: engine/main.cpp:1805
+#: engine/main.cpp:1816
 msgid "The export file could not be created."
 msgstr "Fișierul de export nu a putut fi creat."
 
-#: engine/main.cpp:1817
+#: engine/main.cpp:1828
 msgid "Choose XML, CSV, or HTML export."
 msgstr "Alegeți export XML, CSV sau HTML."
 
-#: engine/main.cpp:1819
+#: engine/main.cpp:1830
 msgid "The export could not be written completely."
 msgstr "Exportul nu a putut fi scris complet."
 
-#: engine/main.cpp:1824
+#: engine/main.cpp:1835
 msgid "The export destination already exists or cannot be written."
 msgstr "Destinația exportului există deja sau nu permite scrierea."
 
-#: engine/main.cpp:1833
+#: engine/main.cpp:1844
 msgid "Choose a group with an unambiguous identifier."
 msgstr "Alegeți un grup cu un identificator neambiguu."
 
-#: engine/main.cpp:1852
+#: engine/main.cpp:1863
 msgid "This entry identifier is ambiguous. Select an entry with a unique identifier."
 msgstr "Identificatorul acestei intrări este ambiguu. Selectați o intrare cu un identificator unic."
 
-#: engine/main.cpp:1855
+#: engine/main.cpp:1866
 msgid "Choose supported preview fields."
 msgstr "Alegeți câmpuri de previzualizare acceptate."
 
-#: engine/main.cpp:1860
+#: engine/main.cpp:1871
 msgid "Choose each supported preview field once."
 msgstr "Selectați o singură dată fiecare câmp de previzualizare acceptat."
 
-#: engine/main.cpp:1882
+#: engine/main.cpp:1893
 msgid "This entry has no valid TOTP settings."
 msgstr "Această intrare nu are setări TOTP valide."
 
-#: engine/main.cpp:1886 engine/main.cpp:1919
+#: engine/main.cpp:1897 engine/main.cpp:1930
 msgid "This attribute does not exist."
 msgstr "Acest atribut nu există."
 
-#: engine/main.cpp:1892
+#: engine/main.cpp:1903
 msgid "Use a shorter attribute-name search."
 msgstr "Folosiți o căutare mai scurtă după numele atributului."
 
-#: engine/main.cpp:1943
+#: engine/main.cpp:1954
 msgid "The database changed since setup was opened. Open it again before continuing."
 msgstr "Baza de date s-a modificat de când a fost deschisă configurarea. Deschideți-o din nou înainte de a continua."
 
-#: engine/main.cpp:1957
+#: engine/main.cpp:1968
 msgid "The QR code output could not be created completely."
 msgstr "Codul QR nu a putut fi creat complet."
 
-#: engine/main.cpp:1960
+#: engine/main.cpp:1971
 msgid "Restore this entry before changing its one-time password."
 msgstr "Restaurați această intrare înainte de a-i schimba parola de unică folosință."
 
-#: engine/main.cpp:1967
+#: engine/main.cpp:1978
 msgid "Restore this group before editing it."
 msgstr "Restaurați acest grup înainte de a-l edita."
 
-#: engine/main.cpp:1983
+#: engine/main.cpp:1994
 msgid "Choose a destination outside the recycle bin."
 msgstr "Alegeți o destinație din afara coșului de reciclare."
 
-#: engine/main.cpp:1989
+#: engine/main.cpp:2000
 msgid "The recycle bin is disabled or this entry is already recycled."
 msgstr "Coșul de reciclare este dezactivat sau această intrare este deja reciclată."
 
-#: engine/main.cpp:1995
+#: engine/main.cpp:2006
 msgid "Select entries and enable the recycle bin first."
 msgstr "Selectați intrările și activați mai întâi coșul de reciclare."
 
-#: engine/main.cpp:2001
+#: engine/main.cpp:2012
 msgid "Choose each entry once, outside the recycle bin."
 msgstr "Selectați fiecare intrare o singură dată, din afara coșului de reciclare."
 
-#: engine/main.cpp:2016
+#: engine/main.cpp:2027
 msgid "Choose a parent group."
 msgstr "Alegeți un grup părinte."
 
-#: engine/main.cpp:2018
+#: engine/main.cpp:2029
 msgid "Use Restore to move a recycled group."
 msgstr "Folosiți Restaurare pentru a muta un grup reciclat."
 
-#: engine/main.cpp:2019
+#: engine/main.cpp:2030
 msgid "Choose a parent outside the recycle bin."
 msgstr "Alegeți un grup părinte din afara coșului de reciclare."
 
-#: engine/main.cpp:2020
+#: engine/main.cpp:2031
 msgid "The root group cannot be moved."
 msgstr "Grupul rădăcină nu poate fi mutat."
 
-#: engine/main.cpp:2022
+#: engine/main.cpp:2033
 msgid "A group cannot be moved inside itself."
 msgstr "Un grup nu poate fi mutat în interiorul său."
 
-#: engine/main.cpp:2025
+#: engine/main.cpp:2036
 msgid "Review the child icon changes first."
 msgstr "Examinați mai întâi modificările pictogramelor copiilor."
 
-#: engine/main.cpp:2028
+#: engine/main.cpp:2039
 msgid "Choose the reviewed child icon scope."
 msgstr "Alegeți domeniul examinat al pictogramelor copiilor."
 
-#: engine/main.cpp:2040
+#: engine/main.cpp:2051
 msgid "Enter a valid group expiry timestamp."
 msgstr "Introduceți un marcaj temporal de expirare valid pentru grup."
 
-#: engine/main.cpp:2050
+#: engine/main.cpp:2061
 msgid "This group cannot be recycled."
 msgstr "Acest grup nu poate fi reciclat."
 
-#: engine/main.cpp:2057
+#: engine/main.cpp:2068
 msgid "Choose a nonempty custom attribute name."
 msgstr "Alegeți un nume nevid pentru atributul personalizat."
 
-#: engine/main.cpp:2061
+#: engine/main.cpp:2072
 msgid "The database changed since this attribute was opened. Open it again before continuing."
 msgstr "Baza de date s-a modificat de când a fost deschis acest atribut. Redeschideți-l înainte de a continua."
 
-#: engine/main.cpp:2068
+#: engine/main.cpp:2079
 msgid "Choose a custom attribute name that is not reserved."
 msgstr "Alegeți un nume de atribut personalizat care nu este rezervat."
 
-#: engine/main.cpp:2070
+#: engine/main.cpp:2081
 msgid "This attribute no longer exists. Open it again before continuing."
 msgstr "Acest atribut nu mai există. Redeschideți-l înainte de a continua."
 
-#: engine/main.cpp:2072
+#: engine/main.cpp:2083
 msgid "An attribute with this name already exists. Choose another name."
 msgstr "Există deja un atribut cu acest nume. Alegeți alt nume."
 
-#: engine/main.cpp:2113
+#: engine/main.cpp:2124
 msgid "This history field does not exist."
 msgstr "Acest câmp din istoric nu există."
 
-#: engine/main.cpp:2136
+#: engine/main.cpp:2147
 msgid "Choose an attachment output file."
 msgstr "Alegeți un fișier de ieșire pentru atașament."
 
-#: engine/main.cpp:2139
+#: engine/main.cpp:2150
 msgid "This attachment does not exist."
 msgstr "Acest atașament nu există."
 
-#: engine/main.cpp:2144
+#: engine/main.cpp:2155
 msgid "The attachment output could not be created."
 msgstr "Fișierul de ieșire al atașamentului nu a putut fi creat."
 
-#: engine/main.cpp:2147
+#: engine/main.cpp:2158
 msgid "The attachment could not be written completely."
 msgstr "Atașamentul nu a putut fi scris complet."
 
-#: engine/main.cpp:2157
+#: engine/main.cpp:2168
 msgid "This entry identifier is ambiguous. Refresh before adding attachments."
 msgstr "Identificatorul acestei intrări este ambiguu. Reîmprospătați înainte de a adăuga atașamente."
 
-#: engine/main.cpp:2162
+#: engine/main.cpp:2173
 msgid "Drop between one and 32 attachment files."
 msgstr "Plasați între unu și 32 de fișiere atașate."
 
-#: engine/main.cpp:2170
+#: engine/main.cpp:2181
 msgid "An attachment file request is invalid."
 msgstr "O solicitare pentru un fișier atașat este invalidă."
 
-#: engine/main.cpp:2174
+#: engine/main.cpp:2185
 msgid "Choose existing files with distinct attachment names."
 msgstr "Alegeți fișiere existente cu nume distincte pentru atașamente."
 
-#: engine/main.cpp:2178
+#: engine/main.cpp:2189
 msgid "Choose readable regular attachment files."
 msgstr "Alegeți fișiere atașate obișnuite și lizibile."
 
-#: engine/main.cpp:2180
+#: engine/main.cpp:2191
 msgid "Drop at most 256 MiB at once. Larger individual files can use Add Attachment."
 msgstr "Plasați cel mult 256 MiB odată. Fișierele individuale mai mari pot fi adăugate folosind Adăugați atașament."
 
-#: engine/main.cpp:2185
+#: engine/main.cpp:2196
 msgid "An attachment already uses a dropped file's name. Review replacements first."
 msgstr "Un atașament folosește deja numele unui fișier plasat. Examinați mai întâi înlocuirile."
 
-#: engine/main.cpp:2189
+#: engine/main.cpp:2200
 msgid "A dropped file changed after review. Drop the files again."
 msgstr "Un fișier plasat s-a modificat după examinare. Plasați din nou fișierele."
 
-#: engine/main.cpp:2192
+#: engine/main.cpp:2203
 msgid "An attachment source changed or could not be opened."
 msgstr "O sursă de atașament s-a modificat sau nu a putut fi deschisă."
 
-#: engine/main.cpp:2196
+#: engine/main.cpp:2207
 msgid "A dropped file changed while being read. No attachments were added."
 msgstr "Un fișier plasat s-a modificat în timpul citirii. Nu s-au adăugat atașamente."
 
-#: engine/main.cpp:2206
+#: engine/main.cpp:2217
 msgid "A dropped file changed before saving. No attachments were added."
 msgstr "Un fișier plasat s-a modificat înainte de salvare. Nu s-au adăugat atașamente."
 
-#: engine/main.cpp:2217
+#: engine/main.cpp:2228
 msgid "Choose an attachment name."
 msgstr "Alegeți un nume pentru atașament."
 
-#: engine/main.cpp:2221
+#: engine/main.cpp:2232
 msgid "Choose one attachment input source."
 msgstr "Alegeți o singură sursă de intrare pentru atașament."
 
-#: engine/main.cpp:2225
+#: engine/main.cpp:2236
 msgid "The attachment source could not be opened."
 msgstr "Sursa atașamentului nu a putut fi deschisă."
 
-#: engine/main.cpp:2228
+#: engine/main.cpp:2239
 msgid "The attachment exceeds the upstream engine's size limit."
 msgstr "Atașamentul depășește limita de dimensiune a motorului din amonte."
 
-#: engine/main.cpp:2231
+#: engine/main.cpp:2242
 msgid "The attachment source changed or could not be read completely."
 msgstr "Sursa atașamentului s-a modificat sau nu a putut fi citită complet."
 
-#: engine/main.cpp:2235
+#: engine/main.cpp:2246
 msgid "The attachment encoding is invalid."
 msgstr "Codificarea atașamentului este invalidă."
 
-#: engine/main.cpp:2240 keyslot/backend.py:465
+#: engine/main.cpp:2251 keyslot/backend.py:465
 msgid "An attachment with this name already exists."
 msgstr "Există deja un atașament cu acest nume."
 
-#: engine/main.cpp:2248
+#: engine/main.cpp:2259
 msgid "This engine operation is unavailable."
 msgstr "Această operație a motorului nu este disponibilă."
 
-#: engine/main.cpp:2287
+#: engine/main.cpp:2298
 msgid "Expected one JSON request per line."
 msgstr "Era așteptată o solicitare JSON pe fiecare linie."
 
-#: engine/main.cpp:2291
+#: engine/main.cpp:2302
 msgid "The request ID is invalid."
 msgstr "ID-ul solicitării este invalid."
 
-#: engine/main.cpp:2293
+#: engine/main.cpp:2304
 msgid "Expected request parameters."
 msgstr "Erau așteptați parametrii solicitării."
 
@@ -8786,63 +8822,63 @@ msgstr "Înlocuirea conexiunii curente a acestui browser necesită confirmare."
 msgid "Another application changed this browser connection. Its settings have been preserved."
 msgstr "O altă aplicație a modificat această conexiune a browserului. Setările sale au fost păstrate."
 
-#: keyslot/browser_requests.py:102
+#: keyslot/browser_requests.py:105
 msgid "The browser request was cancelled."
 msgstr "Cererea browserului a fost anulată."
 
-#: keyslot/configuration.py:115
+#: keyslot/configuration.py:120
 msgid "Choose a nonempty global configuration file path."
 msgstr "Alegeți o cale nevidă către fișierul global de configurare."
 
-#: keyslot/configuration.py:181
+#: keyslot/configuration.py:186
 msgid " Quit and reopen Keyslot before changing settings."
 msgstr " Închideți și redeschideți Keyslot înainte de a schimba setările."
 
-#: keyslot/configuration.py:248
+#: keyslot/configuration.py:253
 msgid "The remembered key-file path is invalid. Choose a key file manually."
 msgstr "Calea reținută a fișierului cheie este invalidă. Alegeți manual un fișier cheie."
 
-#: keyslot/configuration.py:263
+#: keyslot/configuration.py:268
 msgid "The hardware-key selection could not be remembered."
 msgstr "Selecția cheii hardware nu a putut fi reținută."
 
-#: keyslot/configuration.py:305
+#: keyslot/configuration.py:310
 msgid "This configuration's idle or clipboard timeout exceeds Keyslot's supported range. Original settings have been preserved."
 msgstr "Timeoutul de inactivitate sau clipboard din această configurație depășește intervalul acceptat de Keyslot. Setările originale au fost păstrate."
 
-#: keyslot/configuration.py:312
+#: keyslot/configuration.py:319
 msgid "The configuration contains an invalid file path. Original settings have been preserved."
 msgstr "Configurația conține o cale de fișier invalidă. Setările originale au fost păstrate."
 
-#: keyslot/configuration.py:314
+#: keyslot/configuration.py:321
 msgid "The configured SSH agent socket must be an absolute path."
 msgstr "Calea configurată a socketului agentului SSH trebuie să fie absolută."
 
-#: keyslot/configuration.py:342
+#: keyslot/configuration.py:349
 msgid "The configured recent-database limit is invalid."
 msgstr "Limita configurată pentru bazele de date recente este invalidă."
 
-#: keyslot/configuration.py:375
+#: keyslot/configuration.py:383
 msgid "Choose whether paired browsers may list entries."
 msgstr "Alegeți dacă browserele asociate pot lista intrările."
 
-#: keyslot/configuration.py:388
+#: keyslot/configuration.py:396
 msgid "This profile's favicon timeout is outside the supported 1–300 second range. Its original setting was preserved."
 msgstr "Timeoutul favicon din acest profil este în afara intervalului acceptat de 1–300 de secunde. Setarea originală a fost păstrată."
 
-#: keyslot/configuration.py:394
+#: keyslot/configuration.py:402
 msgid "Choose supported search options."
 msgstr "Alege opțiuni de căutare acceptate."
 
-#: keyslot/configuration.py:410
+#: keyslot/configuration.py:418
 msgid "The configuration contains an unsupported password generator mode."
 msgstr "Configurația conține un mod neacceptat al generatorului de parole."
 
-#: keyslot/configuration.py:413
+#: keyslot/configuration.py:421
 msgid "The configuration contains unsupported password generator settings."
 msgstr "Configurația conține setări neacceptate ale generatorului de parole."
 
-#: keyslot/configuration.py:421
+#: keyslot/configuration.py:429
 msgid "Choose supported password generator settings."
 msgstr "Alegeți setări acceptate ale generatorului de parole."
 

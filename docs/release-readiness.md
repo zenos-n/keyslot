@@ -702,3 +702,15 @@ guards; older private fixed-backup clients keep their prior contract. This
 supersedes earlier strict optional-backup failure descriptions. Native/runtime
 compilation and static inspection only; no tests or behavior probes. Manual
 legacy/modern-key/read-write/backup-failure/concurrent-writer acceptance remains.
+
+R08 browser matching now maps the stock BestMatchOnly/AllowExpiredCredentials/
+MatchUrlScheme/SupportKphFields flags through INI/private preferences, GTK rows and
+native lookup request parameters. All retain stock defaults; matching/release
+algorithms remain native. Each request captures the committed policy tuple;
+policy changes dismiss pending prompts, reject old worker/reply callbacks and
+notify browser state without removing associations. Row changes merge only their
+field into current shared state. Nine captions have PL/RO translations. Runtime/
+Python/gettext compilation and static artifact review only; no tests or browser/
+GTK/vault/credential behavior probes. [Matching policy](browser-matching.md)
+records manual acceptance and scope. Other stock settings and full goal remain
+incomplete.

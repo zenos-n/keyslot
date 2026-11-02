@@ -52,3 +52,9 @@ packaged Python bytecode compilation, JavaScript syntax parsing and static
 source/artifact review. No tests, harnesses or application/Shell/browser/vault
 behavior runs were added or performed. User manual approval/DND/owner/lifecycle,
 accessibility and trust/revocation acceptance remains pending.
+
+[Browser matching preferences](browser-matching.md) now map stock global best-
+match, expired-entry, URL-scheme and legacy-KPH controls into each native lookup.
+Trust does not override those choices; expired entries are excluded by default
+and can match when the user explicitly enables the expired-login option.
+Changing matching policy invalidates pending consent/results without unpairing.
