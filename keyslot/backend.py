@@ -95,6 +95,12 @@ class Snapshot:
     recovery_copy: bool = False
     recycle_bin: str = ""
     non_data_only: bool = False
+    entry_order: tuple[str, ...] = ()
+
+
+def ordered_entries(snapshot):
+    ranks = {identifier: index for index, identifier in enumerate(snapshot.entry_order)}
+    return sorted(snapshot.entries, key=lambda entry: (ranks.get(entry.uuid, len(ranks)), entry.title.casefold()))
 
 
 def parse_snapshot(xml: bytes) -> Snapshot:

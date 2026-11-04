@@ -6,6 +6,7 @@ from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 from . import transfer_views, trash_views
 from .database_views import _dialog
 from .transfers import EntryTransfer
+from .backend import ordered_entries
 
 
 class Items(GObject.Object):
@@ -32,9 +33,178 @@ def _ready(session):
     return session.vault.unlocked and not session.busy and not session.jobs.closed and not session.dialogs and not session.file_requests
 
 
+def cancel(session):
+    active = getattr(session, "entry_drag", None)
+    if active:
+        active.close(cancel_drag=True)
+
+
+class EntryDrag:
+    """Keep metadata in the source column; only a compact card follows external drags."""
+    def __init__(self, session, source, drag, row, payload, offset):
+        self.session, self.source, self.drag = session, source, drag
+        self.payload, self.offset = payload, offset
+        self.list = session.window.entries
+        self.rows, self.providers = [], []
+        child = self.list.get_first_child()
+        while child:
+            self.rows.append(child)
+            child = child.get_next_sibling()
+        self.positions = [item.get_allocation().y for item in self.rows]
+        self.heights = [item.get_height() for item in self.rows]
+        self.chosen = [item for item in self.rows if item.entry.uuid in payload.entries]
+        self.indices = {item: index for index, item in enumerate(self.rows)}
+        self.offset += sum(self.heights[self.indices[item]] for item in self.chosen[:self.chosen.index(row)])
+        self.order = list(self.rows)
+        self.styles = [None] * len(self.rows)
+        self.selected_indices = {item: index for index, item in enumerate(self.chosen)}
+        self.layer = session.window.entry_drag_layer
+        self.floating = []
+        for item in self.chosen:
+            picture = Gtk.Picture(paintable=Gtk.WidgetPaintable.new(item.get_child()),
+                                  width_request=item.get_width(), height_request=item.get_height(), can_shrink=False,
+                                  can_target=False, css_classes=["card"])
+            self.layer.put(picture, 0, 0)
+            self.floating.append(picture)
+        self.closed = False
+        self.tooltips = []
+        for item in self.rows:
+            provider = Gtk.CssProvider()
+            item.get_style_context().add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+            self.providers.append(provider)
+            for widget in (item, getattr(item, "keyslot_grip", None)):
+                if widget:
+                    self.tooltips.append((widget, widget.get_has_tooltip()))
+                    widget.set_has_tooltip(False)
+        # The preview uses the already-visible metadata, never a native secret read.
+        entry = row.entry
+        self.card = Gtk.Box(spacing=10, css_classes=["card"], margin_start=4, margin_end=4,
+                            margin_top=4, margin_bottom=4, width_request=220)
+        icon = session.icons.image(entry, 24)
+        icon.set_margin_start(12)
+        self.card.append(icon)
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
+                         margin_top=8, margin_bottom=8, margin_end=12, hexpand=True)
+        title = Gtk.Label(label=entry.title or _tr("Untitled Entry"), xalign=0, ellipsize=3, max_width_chars=28)
+        labels.append(title)
+        if entry.username:
+            username = "••••••" if session.application.startup.hide_usernames else entry.username
+            labels.append(Gtk.Label(label=username, xalign=0, ellipsize=3, max_width_chars=28,
+                                    css_classes=["dim-label", "caption"]))
+        self.card.append(labels)
+        if len(self.chosen) > 1:
+            self.card.append(Gtk.Label(label=str(len(self.chosen)), margin_end=10, css_classes=["dim-label"]))
+        self.icon = Gtk.DragIcon.get_for_drag(drag)
+        drag.set_hotspot(12, 12)
+        self.blank = Gtk.Box(width_request=1, height_request=1, opacity=0)
+        self.icon.set_child(self.blank)
+        session.entry_drag = self
+        self.timer = GLib.timeout_add(100, self.watch)
+        self.motion(self.positions[self.indices[row]] + offset)
+
+    def watch(self):
+        if self.closed:
+            return GLib.SOURCE_REMOVE
+        if self.payload.source() is None or not _ready(self.session) or not self.list.get_mapped():
+            self.timer = 0
+            self.close(cancel_drag=True)
+            return GLib.SOURCE_REMOVE
+        return GLib.SOURCE_CONTINUE
+
+    def outside(self):
+        if self.closed:
+            return
+        self.icon.set_child(self.card)
+        for picture in self.floating:
+            picture.set_visible(False)
+        for index, row in enumerate(self.rows):
+            self.style(index, "row {opacity: .4;}" if row in self.selected_indices else "")
+
+    def style(self, index, css):
+        if self.styles[index] != css:
+            self.providers[index].load_from_string(css)
+            self.styles[index] = css
+
+    def motion(self, y, copy=False):
+        if self.closed:
+            return
+        if copy:
+            self.outside()
+            return
+        self.icon.set_child(self.blank)
+        valid, bounds = self.list.compute_bounds(self.layer)
+        if not valid:
+            self.outside()
+            return
+        selected = set(self.chosen)
+        remaining = [row for row in self.rows if row not in selected]
+        insertion = sum(self.positions[self.indices[row]] + self.heights[self.indices[row]] / 2 < y
+                        for row in remaining)
+        self.order = remaining[:insertion] + self.chosen + remaining[insertion:]
+        block_height = sum(self.heights[self.indices[row]] for row in self.chosen)
+        block_y = max(0, min(y - self.offset, sum(self.heights) - block_height))
+        top, selected_top = 0, block_y
+        for row in self.order:
+            index = self.indices[row]
+            is_selected = row in selected
+            target = selected_top if is_selected else top
+            if is_selected:
+                selected_top += self.heights[index]
+            offset = target - self.positions[index]
+            if is_selected:
+                picture = self.floating[self.selected_indices[row]]
+                picture.set_visible(True)
+                self.layer.move(picture, bounds.get_x(), bounds.get_y() + target)
+                style = "row {opacity: 0;}"
+            else:
+                style = f"row {{ transform: translate(0px, {offset:.2f}px); }}"
+            self.style(index, style)
+            top += self.heights[index]
+
+    def drop(self):
+        if self.closed or self.payload.source() is not self.session or not _ready(self.session):
+            return False
+        ordered = [row.entry.uuid for row in self.order]
+        original = [row.entry.uuid for row in self.rows]
+        snapshot = self.session.vault.snapshot
+        self.close()
+        if ordered == original:
+            return True
+        # Replace only the visible slots: filtered-out entries keep their relative order.
+        visible = set(ordered)
+        replacements = iter(ordered)
+        all_ids = [next(replacements) if item.uuid in visible else item.uuid for item in ordered_entries(snapshot)]
+        return self.session.run_job(lambda: self.session.vault.reorder_entries(all_ids), self.session.window.show_vault)
+
+    def close(self, cancel_drag=False):
+        if self.closed:
+            return
+        self.closed = True
+        if self.timer:
+            GLib.source_remove(self.timer)
+            self.timer = 0
+        for picture in self.floating:
+            picture.set_paintable(None)
+            self.layer.remove(picture)
+        self.floating.clear()
+        for row, provider in zip(self.rows, self.providers):
+            row.get_style_context().remove_provider(provider)
+        for widget, enabled in self.tooltips:
+            widget.set_has_tooltip(enabled)
+        self.icon.set_child(self.blank)
+        # A drag surface may outlive the source window; discard its visible metadata now.
+        while self.card.get_first_child():
+            self.card.remove(self.card.get_first_child())
+        if getattr(self.session, "entry_drag", None) is self:
+            self.session.entry_drag = None
+        if cancel_drag:
+            self.source.drag_cancel()
+
+
 def _source(session, row, entries=None, group=None):
     source = Gtk.DragSource(actions=Gdk.DragAction.MOVE | Gdk.DragAction.COPY)
-    def prepare(_source, _x, _y):
+    prepared = {}
+    def prepare(_source, _x, y):
         if not _ready(session):
             return None
         snapshot = session.vault.snapshot
@@ -51,16 +221,27 @@ def _source(session, row, entries=None, group=None):
                 session.toast(_tr("Ambiguous entry identifiers cannot be dragged"))
                 return None
             payload = Items(session, chosen)
+        prepared.update(payload=payload, y=y)
         return Gdk.ContentProvider.new_for_value(payload)
     def begin(_source, drag):
-        label = Gtk.Label(label=_tr("Move or Copy Group") if group is not None else _tr("Move or Copy Entries"),
-                          margin_start=12, margin_end=12, margin_top=8, margin_bottom=8, css_classes=["card"])
-        Gtk.DragIcon.get_for_drag(drag).set_child(label)
+        cancel(session)
+        if group is None:
+            EntryDrag(session, source, drag, row, prepared["payload"], prepared["y"])
+        else:
+            label = Gtk.Label(label=_tr("Move or Copy Group"), margin_start=12, margin_end=12,
+                              margin_top=8, margin_bottom=8, css_classes=["card"])
+            Gtk.DragIcon.get_for_drag(drag).set_child(label)
+    def end(*_):
+        active = getattr(session, "entry_drag", None)
+        if active and active.source is source:
+            active.close()
+        source.set_content(None)
+        prepared.clear()
     source.connect("prepare", prepare)
     source.connect("drag-begin", begin)
     # Native receipt handling owns move cleanup. GDK's delete_data flag never deletes a vault item.
-    source.connect("drag-end", lambda *_: source.set_content(None))
-    source.connect("drag-cancel", lambda *_: (source.set_content(None), False)[1])
+    source.connect("drag-end", end)
+    source.connect("drag-cancel", lambda *_: (end(), True)[1])
     row.add_controller(source)
 
 
@@ -69,6 +250,7 @@ def entry_row(session, row, entry):
                      valign=Gtk.Align.CENTER, css_classes=["dim-label"])
     grip.keyslot_drag_handle = True
     row.add_suffix(grip)
+    row.keyslot_grip = grip
     _source(session, row, entries=entry)
 
 
@@ -78,8 +260,22 @@ def group_row(session, row, group):
     _target(session, row, group.identity)
 
 
-def entry_list(session, widget):
-    _target(session, widget, None)
+def entry_list(session, widget, viewport):
+    _target(session, viewport, None)
+    motion = Gtk.DropControllerMotion()
+    def moved(controller, x, y):
+        active = getattr(session, "entry_drag", None)
+        drop = controller.get_drop()
+        if not active or not drop or drop.get_drag() != active.drag:
+            return
+        valid, bounds = widget.compute_bounds(viewport)
+        if valid:
+            copy = bool(controller.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK)
+            active.motion(y - bounds.get_y(), copy)
+    motion.connect("enter", moved)
+    motion.connect("motion", moved)
+    motion.connect("leave", lambda *_: getattr(session, "entry_drag", None) and session.entry_drag.outside())
+    viewport.add_controller(motion)
 
 
 def _target(session, widget, group):
@@ -137,6 +333,15 @@ def _target(session, widget, group):
         drag = controller.get_current_drop().get_drag() if controller.get_current_drop() else None
         move = not (controller.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK
                     or (drag and drag.get_selected_action() == Gdk.DragAction.COPY))
+        active = getattr(source, "entry_drag", None)
+        if group is None and source is session and move and not payload.group and active and active.payload is payload:
+            if "entry-order" not in source.vault.capabilities:
+                return False
+            valid, bounds = active.list.compute_bounds(widget)
+            if not valid:
+                return False
+            active.motion(y - bounds.get_y())
+            return active.drop()
         entries = [item for item in source.vault.snapshot.entries if item.uuid in payload.entries]
         groups = [item for item in source.vault.snapshot.groups if item.identity == payload.group]
         item = next((item for item in session.vault.snapshot.groups if item.identity == identifier), None)

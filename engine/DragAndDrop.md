@@ -3,16 +3,30 @@
 Keyslot uses GTK4 DragSource/DropTarget for app-local entry and group drags.
 The private GObject payload contains source/session identity, epoch, helper
 identity/generation and item UUIDs. It has no text/URI serializer, credential
-fields or password drag provider. Drag previews contain generic labels.
+fields or password drag provider. Entry drags retain the full rows inside the source column: the dragged rows
+follow the pointer vertically and their neighbors make room. The cursor preview
+is transparent there. Leaving the column switches to a compact card containing
+only the existing public icon/title/username, honoring Hide Usernames; multiple
+selections show a count. Group previews retain a generic label. Active entry
+previews and row transforms are cleared on lock, re-render, invalidated source,
+cancellation and completion.
 
 Drag an entry, or use the grip to drag selected entries in selection mode.
-Drop on a sidebar group or the current entry list. Hold Ctrl to copy; otherwise
-move. Group drops in the middle of a row nest inside that group; the upper or
+Drop within the source entry column to reorder the displayed entries. This also
+works for search results and selections spanning groups: only visible slots are
+reordered, without changing group membership. The complete UUID order is stored
+as encrypted `Keyslot/EntryOrder` database custom data through the existing
+native transaction, Manual Save and recovery paths. New entries append in title
+order; missing IDs are ignored on reload. Other KeePass clients preserve this
+custom data but need not use its display order. Cancelled drags do not write.
+
+Drop on a sidebar group or another entry list to transfer. Hold Ctrl to copy;
+otherwise move. Group drops in the middle of a row nest inside that group; the upper or
 lower quarter inserts before or after it, with an accent insertion line.
 The database root is not draggable. Self/descendant destinations
 and ambiguous identifiers are rejected. UUIDs identify objects rather than paths.
 
-Every transfer drop opens the existing copy/move review in the destination
+Every transfer drop (as distinct from in-column reordering) opens the existing copy/move review in the destination
 window, listing source/destination vault and group, and the insertion position
 when applicable. Same-vault operations retain the normal encrypted transaction
 and recovery path, honoring Manual Save with an encrypted dirty checkpoint.
@@ -86,3 +100,16 @@ behavior runs. Actual pointer/touch/keyboard modifiers, edge markers,
 selection-mode grips, same/cross-vault save/recovery, source/destination lock
 and close races, recycled items, file/attachment review and accessibility
 remain for user manual acceptance. Successful compilation does not prove parity.
+
+Secret Service startup: a busy `org.freedesktop.secrets` name is an optional
+provider conflict, not a failed vault unlock. Keyslot records the conflict in
+Preferences → Secret Service → Status and keeps the retry control available,
+without a generic startup error modal. It neither replaces the owner nor stops
+GNOME Keyring. GNOME Keyring can continue supplying the login credential used
+by Keyslot’s automatic unlock; that is distinct from Keyslot providing Secret
+Service to other applications. Other initialization failures still surface.
+
+GTK references for column tracking and transformed rows:
+- https://docs.gtk.org/gtk4/class.DropControllerMotion.html
+- https://docs.gtk.org/gtk4/css-properties.html
+- https://docs.gtk.org/gtk4/method.DragIcon.set_child.html

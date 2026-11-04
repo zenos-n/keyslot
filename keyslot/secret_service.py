@@ -16,6 +16,10 @@ from .secret_interfaces import INTERFACES, NAME, PREFIX, PROPERTIES, ROOT
 MAX_SECRET_REPLY = 24 * 1024 * 1024
 
 
+class SecretServiceBusy(VaultError):
+    """Another provider is running; startup can continue without this service."""
+
+
 class ServiceError(Exception):
     def __init__(self, name, message):
         self.name, self.message = name, message
@@ -103,7 +107,7 @@ class SecretService:
                 "RequestName", GLib.Variant("(su)", (NAME, 4)), GLib.VariantType.new("(u)"),
                 Gio.DBusCallFlags.NONE, 3000, None).unpack()[0]
             if result not in (1, 4):
-                raise VaultError("Another Secret Service already owns the session bus name. Keyslot has not replaced it. Stop that provider before enabling Keyslot’s service.")
+                raise SecretServiceBusy("Another Secret Service already owns the session bus name. Keyslot has not replaced it. Stop that provider before enabling Keyslot’s service.")
             self.owner = True
             self._register(ROOT, "service", self)
             self.subscription = self.connection.signal_subscribe("org.freedesktop.DBus", "org.freedesktop.DBus",

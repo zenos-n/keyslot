@@ -731,6 +731,7 @@ class Engine {
                 {"non_data_only", modified && nonDataOnly},
                 {"recovery_copy", recoveryLocation(path)},
                 {"secret_group", secretGroup.isNull() ? QString() : uid(secretGroup)},
+                {"entry_order", QJsonDocument::fromJson(db->metadata()->customData()->value("Keyslot/EntryOrder").toUtf8()).array()},
                 {"groups", groups}, {"entries", entries}, {"root", uid(db->rootGroup()->uuid())},
                 {"default_username", db->metadata()->defaultUserName()}};
     }
@@ -869,7 +870,7 @@ public:
     bool unlocked() const { return bool(db); }
     QJsonValue call(const QString& method, const QJsonObject& args) {
         if (method == "hello") return QJsonObject{{"protocol", 1}, {"upstream", KEEPASSXC_VERSION},
-            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy", "autotype-sort", "non-data-save"}}};
+            {"engine", "keepassxc-core"}, {"capabilities", QJsonArray{"uuid", "entry-edit", "groups", "attributes", "totp", "history", "attachments", "search", "settings", "key-change", "merge", "export", "reports", "encrypted-copy", "import", "csv-import", "import-review", "generator-options", "generator-details", "browser-associations", "browser-lookup", "autotype", "keeshare", "entry-urls", "history-preview", "totp-live", "transaction-recovery", "configuration", "file-watch", "manual-save", "trash-review", "report-details", "hibp", "search-options", "favicon", "unused-icons", "browser-save-result", "favicon-entry", "browser-icon-reservation", "wordlist-library", "browser-options", "entry-actions", "browser-entry-list", "shortcut-codec", "configuration-reset", "ssh-key-generation", "attribute-suggestions", "proton-record-types", "remote-sync", "object-properties", "polkit-unlock", "transfer-position", "attachment-files", "transfer-recycled", "entry-preview", "group-icon-propagation", "autotype-fields", "autotype-search", "autotype-display", "keeshare-identity", "browser-trust", "backup-policy", "autotype-sort", "non-data-save", "entry-order"}}};
         if (method == "save.policy") {
             autoSave = boolean(args, "auto_save");
             autoSaveNonData = boolean(args, "auto_save_non_data", true);
@@ -2013,6 +2014,22 @@ public:
                 chosen.append(e); seen.insert(e->uuid());
             }
             return transaction([&] { for (auto* e : chosen) db->recycleEntry(e); });
+        }
+        if (method == "entry.order") {
+            if (!args.value("entries").isArray()) fail("invalid_request", "Choose entries to reorder.");
+            const auto values = args.value("entries").toArray();
+            const auto all = db->rootGroup()->entriesRecursive();
+            if (values.size() != all.size()) fail("conflict", "The entry list changed. Refresh before reordering.");
+            QSet<QUuid> seen;
+            for (const auto& value : values) {
+                if (!value.isString()) fail("invalid_request", "Choose entries to reorder.");
+                auto* chosen = entry(QJsonObject{{"entry", value}});
+                if (seen.contains(chosen->uuid())) fail("invalid_request", "Choose each entry once.");
+                seen.insert(chosen->uuid());
+            }
+            const auto order = QString::fromUtf8(QJsonDocument(values).toJson(QJsonDocument::Compact));
+            if (db->metadata()->customData()->value("Keyslot/EntryOrder") == order) return snapshot();
+            return transaction([&] { db->metadata()->customData()->set("Keyslot/EntryOrder", order); });
         }
         if (method == "group.expanded") {
             auto* target = group(text(args, "group"));

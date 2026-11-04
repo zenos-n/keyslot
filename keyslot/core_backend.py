@@ -345,10 +345,16 @@ class Vault:
             group_keys = {f.name for f in fields(Group)}
             entries = [Entry(**{k: v for k, v in item.items() if k in entry_keys}, _owner=self._owner) for item in value["entries"]]
             groups = [Group(**{k: v for k, v in item.items() if k in group_keys}) for item in value["groups"]]
+            order = value.get("entry_order", [])
+            identifiers = {item.uuid for item in entries}
+            if not isinstance(order, list) or any(not isinstance(item, str) for item in order):
+                order = []
+            order = tuple(dict.fromkeys(item for item in order if item in identifiers))
             self.snapshot = Snapshot(value.get("name", ""), value.get("recycle_bin_enabled", True), groups,
                                      entries, value.get("root", ""), value.get("default_username", ""), value.get("secret_group", ""),
                                      value.get("modified") is True, value.get("recovery_path", ""), value.get("recovery_copy") is True,
-                                     value.get("recycle_bin", ""), value.get("non_data_only") is True)
+                                     value.get("recycle_bin", ""), value.get("non_data_only") is True,
+                                     order)
         except (TypeError, AttributeError) as exc:
             self.lock()
             raise VaultError("The native engine returned invalid database metadata.") from exc
@@ -426,6 +432,12 @@ class Vault:
                 self.auto_save, self.auto_save_on_exit, self.auto_save_non_data = auto_save, on_exit, non_data
             finally:
                 self._updating_save_policy = previous
+
+    def reorder_entries(self, identifiers):
+        with self._mutex:
+            if "entry-order" not in self.capabilities:
+                raise VaultError("The native engine protocol is incompatible with this client.")
+            return self._snapshot_call("entry.order", entries=list(identifiers))
 
     def set_group_expanded(self, identity, expanded):
         with self._mutex:

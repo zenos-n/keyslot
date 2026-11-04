@@ -12,7 +12,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from . import APP_ID, ICON_NAME, VERSION
-from .backend import VaultError
+from .backend import VaultError, ordered_entries
 from .core_backend import Vault, EngineError
 from .session import SessionJobs
 from .file_changes import FileChanges
@@ -1155,8 +1155,12 @@ class DatabaseView(Gtk.Box):
         long_press.connect("pressed", lambda gesture, x, y: self._entry_secondary(gesture, 1, x, y))
         self.entries.add_controller(long_press)
         from . import drag_drop
-        drag_drop.entry_list(self.app, self.entries)
-        entries_box.append(scroll(margins(self.entries, 12)))
+        entry_scroll = scroll(margins(self.entries, 12))
+        entry_overlay = Gtk.Overlay(child=entry_scroll)
+        self.entry_drag_layer = Gtk.Fixed(can_target=False, overflow=Gtk.Overflow.HIDDEN)
+        entry_overlay.add_overlay(self.entry_drag_layer)
+        drag_drop.entry_list(self.app, self.entries, entry_scroll)
+        entries_box.append(entry_overlay)
         self.empty_label = Gtk.Label(label=_tr("No entries found"), visible=False, margin_bottom=24, css_classes=["dim-label"])
         entries_box.append(self.empty_label)
         list_toolbar.set_content(entries_box)
@@ -1230,6 +1234,8 @@ class DatabaseView(Gtk.Box):
             action.set_enabled(self.app.vault.unlocked and not busy)
 
     def show_locked(self):
+        from . import drag_drop
+        drag_drop.cancel(self.app)
         self.stack.set_visible_child_name("locked")
         self.snapshot = None
         self.set_selection_mode(False)
@@ -1333,6 +1339,8 @@ class DatabaseView(Gtk.Box):
             self.outer.set_show_sidebar(False)
 
     def render_entries(self, previous=None, selection=None):
+        from . import drag_drop
+        drag_drop.cancel(self.app)
         self.app.previews.clear()
         if not self.snapshot:
             return
@@ -1350,7 +1358,7 @@ class DatabaseView(Gtk.Box):
         self.list_title.set_title(_tr("Search Results") if query else title)
         rows = []
         candidates = self.snapshot.entries if not query or self.search_matches is not None else ()
-        for entry in sorted(candidates, key=lambda e: e.title.casefold()):
+        for entry in ordered_entries(self.snapshot) if candidates else ():
             if query:
                 if self.search_matches is None or entry.uuid not in self.search_matches:
                     continue

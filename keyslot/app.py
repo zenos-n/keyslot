@@ -150,8 +150,10 @@ class Keyslot(Adw.Application):
             try:
                 self.set_secret_service(self.startup.secret_service, persist=False)
             except (VaultError, GLib.Error, OSError) as exc:
+                from .secret_service import SecretServiceBusy
                 self.secret_service_error = str(exc)
-                self.startup_error = str(exc)
+                if not isinstance(exc, SecretServiceBusy):
+                    self.startup_error = str(exc)
         if self.startup.browser:
             try:
                 self.native_hosts().refresh()
