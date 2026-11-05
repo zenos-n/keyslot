@@ -47,6 +47,7 @@ STARTUP_KEYS = {
     "ssh_socket": ("local", "SSHAgent/AuthSockOverride", ""),
     "ssh_provider": ("local", "SSHAgent/SecurityKeyProviderOverride", ""),
     "login": ("local", "Keyslot/UnlockAtLogin", False),
+    "login_service": ("local", "Keyslot/StartAsService", True),
 }
 AUTOTYPE_KEYS = {"match_title": "AutoTypeEntryTitleMatch", "match_url": "AutoTypeEntryURLMatch",
     "hide_expired": "AutoTypeHideExpiredEntry", "relock": "Security/RelockAutoType",

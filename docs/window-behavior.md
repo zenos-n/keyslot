@@ -84,12 +84,32 @@ remains for X11/Wayland, extension upgrade/disable, focus/lock/close races,
 multi-vault and every unlock path, opening links, clipboard failure, Never,
 minimize-lock grace, explicit INI conflict handling, accessibility and layout.
 
-Login-keyring startup now always requests daemon/background mode, independently
-of the saved close-window preference. `--login` implies a background application
-hold and new autostart entries also include `--background`. Restored/new login
-windows stay hidden; later explicit Open/Show presents normally. An already
-visible window is not hidden by a repeated login request. Hidden credential
-failures stay locked and queue their error for explicit opening. No credentials
-or enrollment policy changed. Runtime/Python compilation only, no tests or
-automated login/keyring/GTK/vault behavior runs; next-login/manual acceptance
-remains with the user.
+Preferences → Startup → **Start as a Service** controls login-keyring startup.
+It defaults on, including existing profiles. With it enabled, the generated
+launcher uses `--login --background`, takes a background application hold, and
+restores/unlocks vaults without presenting their windows. Turn it off to show
+the login-unlocked vault. Explicit `--background`/`--minimized` still takes
+precedence. Later explicit Open/Show opens normally; a repeated login command
+does not hide a window the user already opened. Hidden credential failures stay
+locked and queue their error until explicit opening. This is the existing GTK
+background process, not a new system daemon. Run in Background separately
+controls keeping the process alive when windows close.
+
+The preference is stored in private startup JSON or the selected profile's
+local `Keyslot/StartAsService` boolean. Changing it refreshes the login launcher.
+Enrollment uses the running packaged build; a stable profile command is retained
+when it resolves to that same binary. Trying a newer build therefore does not
+silently schedule an older installed binary for the next login.
+An existing user `org.keepassxc.KeePassXC.desktop` autostart entry with a plain
+`keepassxc` command is disabled only when that executable resolves to Keyslot's
+launcher and service login is enabled. Its exact contents are preserved beside
+it as `.desktop.keyslot-backup`, and an owned Hidden tombstone prevents duplicate
+GUI activation. Disabling service login or login unlock restores the original
+entry only while the tombstone remains unchanged. Unrelated commands and real
+KeePassXC executables are untouched; managed symlinks/conflicting backups are
+reported instead of overwritten. Launcher/backup writes roll back if settings
+cannot be saved. No system services or keyring credentials are changed.
+
+Runtime/Python/gettext compilation and static review only; no tests or automated
+login, keyring, GTK or vault runs. The next desktop login remains for manual
+acceptance.

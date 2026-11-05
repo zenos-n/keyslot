@@ -9783,3 +9783,24 @@ msgstr ""
 #: keyslot/language_preferences.py:19
 msgid "Romanian"
 msgstr ""
+
+msgid "Use the GNOME login keyring to unlock your vault"
+msgstr ""
+
+msgid "Start as a Service"
+msgstr ""
+
+msgid "Unlock without opening a window; open Keyslot when you need it"
+msgstr ""
+
+msgid "Startup settings changed. Open Preferences and try again."
+msgstr ""
+
+msgid "The saved KeePassXC startup entry is unavailable. Restore it before changing service startup."
+msgstr ""
+
+msgid "A managed KeePassXC startup entry also launches Keyslot. Disable that entry before using service startup."
+msgstr ""
+
+msgid "A different KeePassXC startup backup already exists. Keep it safe before changing service startup."
+msgstr ""

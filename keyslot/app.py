@@ -16,7 +16,11 @@ class Keyslot(Adw.Application):
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         executable = Path(sys.argv[0]).resolve().parent / "keyslot"
-        launcher = shutil.which("keyslot") or (str(executable) if executable.is_file() else None)
+        installed = shutil.which("keyslot")
+        # A newer build must not enroll an older profile binary for the next login.
+        launcher = str(executable) if executable.is_file() else installed
+        if installed and executable.is_file() and Path(installed).samefile(executable):
+            launcher = installed
         self.startup = Startup(launcher=launcher)
         from .i18n import select_language
         select_language(self.startup.language)
@@ -274,7 +278,8 @@ class Keyslot(Adw.Application):
             command_line.printerr_literal("Keyslot is already running with a different configuration. Quit it before switching profiles.\n")
             return 1
         arguments = gui_cli.arguments(options)
-        background_requested = options.contains("background") or options.contains("minimized") or options.contains("login")
+        background_requested = (options.contains("background") or options.contains("minimized")
+                                or (options.contains("login") and self.startup.login_service))
         if background_requested:
             self.set_background(True)
         if options.contains("login"):
@@ -291,6 +296,8 @@ class Keyslot(Adw.Application):
                 if not session.vault.unlocked and not session.busy:
                     session.pending_unlock = None
                     session.unlock_at_login(path)
+                if not background_requested:
+                    self.select_session(session)
             return 0
         if background_requested and not arguments:
             if not self.sessions:

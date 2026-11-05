@@ -1,11 +1,15 @@
 """Startup preferences contain paths and flags only; credentials live in libsecret."""
+import configparser
 import json
+import shlex
+import shutil
 import os
 from pathlib import Path
 import tempfile
 import threading
 
 from . import APP_ID
+from .i18n import mark as _mark
 
 AUTO_TYPE_DEFAULTS = dict(match_title=True, match_url=True, hide_expired=False, relock=False,
                           delay=25, start_delay=500, retype_seconds=15, always_ask=True, skip_main_confirmation=False,
@@ -120,6 +124,7 @@ class Startup:
         self.mutex = threading.RLock()
         self.remember = self.login = False
         self.background = True
+        self.login_service = True
         self.browser = False
         self.browser_listing = False
         self.browser_matching = dict(BROWSER_MATCH_DEFAULTS)
@@ -150,6 +155,7 @@ class Startup:
         stored = storage.read_startup() if storage else None
         try:
             data = stored if storage else json.loads(self.path.read_text())
+            self.login_service = data.get("login_service", True) is True
             self.background = data.get("background", True) is True
             self.browser = data.get("browser") is True
             self.browser_listing = data.get("browser_listing") is True
@@ -254,6 +260,53 @@ class Startup:
                 _write(self.path, json.dumps(data) + "\n")
             self.browser_listing = enabled
 
+    def _legacy_launcher_changes(self, service):
+        # The compatibility command can otherwise activate an already-unlocked hidden window.
+        target = self.autostart.with_name("org.keepassxc.KeePassXC.desktop")
+        backup = target.with_name(target.name + ".keyslot-backup")
+        marker = "[Desktop Entry]\nType=Application\nName=KeePassXC\nHidden=true\nX-Keyslot-Managed=true\n"
+        if not target.exists():
+            return []
+        with target.open(encoding="utf-8", newline="") as stream:
+            original = stream.read()
+        if original == marker:
+            if target.is_symlink():
+                raise ValueError(_mark("A managed KeePassXC startup entry also launches Keyslot. Disable that entry before using service startup."))
+            if service:
+                return []
+            if backup.is_symlink() or not backup.is_file():
+                raise ValueError(_mark("The saved KeePassXC startup entry is unavailable. Restore it before changing service startup."))
+            with backup.open(encoding="utf-8", newline="") as stream:
+                saved = stream.read()
+            return [(target, original, saved), (backup, saved, None)]
+        if not service:
+            return []
+        try:
+            desktop = configparser.ConfigParser(interpolation=None)
+            desktop.optionxform = str
+            desktop.read_string(original)
+            entry = desktop["Desktop Entry"]
+            if entry.get("Hidden", "false").lower() == "true" or entry.get("X-GNOME-Autostart-enabled", "true").lower() == "false":
+                return []
+            command = shlex.split(entry.get("Exec", ""))
+            if len(command) != 1 or Path(command[0]).name != "keepassxc":
+                return []
+            executable = shutil.which(command[0])
+            launchers = (self.launcher, shutil.which("keyslot"))
+            if not executable or not any(candidate and Path(executable).samefile(candidate) for candidate in launchers):
+                return []
+        except (configparser.Error, KeyError, ValueError, OSError):
+            return []
+        if target.is_symlink() or backup.is_symlink():
+            raise ValueError(_mark("A managed KeePassXC startup entry also launches Keyslot. Disable that entry before using service startup."))
+        saved = None
+        if backup.exists():
+            with backup.open(encoding="utf-8", newline="") as stream:
+                saved = stream.read()
+        if saved is not None and saved != original:
+            raise ValueError(_mark("A different KeePassXC startup backup already exists. Keep it safe before changing service startup."))
+        return [(backup, saved, original), (target, original, marker)]
+
     def save(self, remember, login, vault=None, background=None, lock_minutes=None, browser=None,
              ssh=None, ssh_socket=None, ssh_provider=None, autotype=None, keeshare=None, secret_service=None,
              minimize_on_url=None, lock_seconds=None, clipboard_seconds=None, auto_reload=None,
@@ -264,8 +317,11 @@ class Startup:
              hide_usernames=None, hide_notes=None, hide_password_preview=None, monospace_notes=None, password_empty_placeholder=None,
              hide_window_on_copy=None, minimize_on_copy=None, drop_to_background_on_copy=None,
              minimize_after_unlock=None, minimize_to_background=None,
-             inherit_group_icon=None, generate_password_on_create=None):
+             inherit_group_icon=None, generate_password_on_create=None, login_service=None):
         with self.mutex:
+            login_service = self.login_service if login_service is None else login_service
+            if type(login_service) is not bool:
+                raise ValueError("Choose supported window behavior switches.")
             browser_matching = _browser_matching_options(self.browser_matching if browser_matching is None else browser_matching)
             behavior = _behavior_options({name: getattr(self, name) if value is None else value for name, value in (
                 ("auto_save_non_data", auto_save_non_data), ("show_expiry_warning", show_expiry_warning),
@@ -336,18 +392,33 @@ class Startup:
             if login and any(char in str(self.launcher) for char in ("%", "\n", "\r")):
                 raise ValueError("The login launcher path cannot contain a percent sign or a newline.")
             old = self.autostart.read_text() if self.autostart.exists() else None
+            launcher = None
             if login:
                 command = _desktop_argument(self.launcher)
                 if self.storage:
                     for option, value in self.storage.launch_arguments:
                         command += " " + option + " " + _desktop_argument(value)
-                _write(self.autostart, '[Desktop Entry]\nType=Application\nName=Keyslot\n'
-                       f'Exec={command} --login --background\nIcon=keepassxc\nTerminal=false\n'
-                       'OnlyShowIn=GNOME;\nX-GNOME-Autostart-enabled=true\n')
-            else:
-                self.autostart.unlink(missing_ok=True)
+                mode = " --background" if login_service else ""
+                launcher = ('[Desktop Entry]\nType=Application\nName=Keyslot\n'
+                            f'Exec={command} --login{mode}\nIcon=keepassxc\nTerminal=false\n'
+                            'OnlyShowIn=GNOME;\nX-GNOME-Autostart-enabled=true\n')
+            changes = self._legacy_launcher_changes(login and login_service)
+            changes.append((self.autostart, old, launcher))
+            applied = []
             try:
-                data = {"remember": bool(remember), "login": login, "background": background, "lock_minutes": timeout, "browser": browser,
+                for target, previous, value in changes:
+                    current = None
+                    if target.exists():
+                        with target.open(encoding="utf-8", newline="") as stream:
+                            current = stream.read()
+                    if current != previous:
+                        raise ValueError(_mark("Startup settings changed. Open Preferences and try again."))
+                    if value is None:
+                        target.unlink(missing_ok=True)
+                    else:
+                        _write(target, value)
+                    applied.append((target, previous))
+                data = {"remember": bool(remember), "login": login, "login_service": login_service, "background": background, "lock_minutes": timeout, "browser": browser,
                        "browser_listing": self.browser_listing if self.storage else self.browser_listing_allowed(),
                        "ssh": ssh, "ssh_socket": ssh_socket, "ssh_provider": ssh_provider,
                        "autotype": autotype,
@@ -378,12 +449,14 @@ class Startup:
                 else:
                     _write(self.path, json.dumps(data) + "\n")
             except Exception:
-                if old is None:
-                    self.autostart.unlink(missing_ok=True)
-                else:
-                    _write(self.autostart, old)
+                for target, previous in reversed(applied):
+                    if previous is None:
+                        target.unlink(missing_ok=True)
+                    else:
+                        _write(target, previous)
                 raise
             self.remember, self.login, self.vault = bool(remember), login, vault
+            self.login_service = login_service
             self.background = background
             self.browser = browser
             self.browser_matching = browser_matching

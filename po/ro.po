@@ -9448,3 +9448,24 @@ msgstr "Română"
 
 #~ msgid "Update the native engine before configuring database backups."
 #~ msgstr "Actualizați motorul nativ înainte de a configura copiile de rezervă ale bazelor de date."
+
+msgid "Use the GNOME login keyring to unlock your vault"
+msgstr "Folosește brelocul de autentificare GNOME pentru a debloca seiful"
+
+msgid "Start as a Service"
+msgstr "Pornește ca serviciu"
+
+msgid "Unlock without opening a window; open Keyslot when you need it"
+msgstr "Deblochează fără a deschide o fereastră; deschide Keyslot când ai nevoie"
+
+msgid "Startup settings changed. Open Preferences and try again."
+msgstr "Setările de pornire s-au schimbat. Deschide Preferințe și încearcă din nou."
+
+msgid "The saved KeePassXC startup entry is unavailable. Restore it before changing service startup."
+msgstr "Intrarea de pornire KeePassXC salvată nu este disponibilă. Restaureaz-o înainte de a schimba pornirea ca serviciu."
+
+msgid "A managed KeePassXC startup entry also launches Keyslot. Disable that entry before using service startup."
+msgstr "O intrare de pornire KeePassXC gestionată lansează și Keyslot. Dezactiveaz-o înainte de a folosi pornirea ca serviciu."
+
+msgid "A different KeePassXC startup backup already exists. Keep it safe before changing service startup."
+msgstr "Există deja o altă copie de siguranță a pornirii KeePassXC. Păstreaz-o în siguranță înainte de a schimba pornirea ca serviciu."

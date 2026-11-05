@@ -25,10 +25,26 @@ def show(session):
     remember = Adw.SwitchRow(title=_tr("Remember Last Opened Vault"),
         subtitle=_tr("Open its unlock screen when Keyslot starts"), active=settings.remember)
     login = Adw.SwitchRow(title=_tr("Unlock at Login"),
-        subtitle=_tr("Unlock in the background using the GNOME login keyring"), active=settings.login,
+        subtitle=_tr("Use the GNOME login keyring to unlock your vault"), active=settings.login,
         sensitive=settings.remember)
     group.add(remember)
     group.add(login)
+    service = Adw.SwitchRow(title=_tr("Start as a Service"),
+        subtitle=_tr("Unlock without opening a window; open Keyslot when you need it"),
+        active=settings.login_service, sensitive=settings.login)
+    group.add(service)
+    def changed_service(*_):
+        if updating[0]:
+            return
+        if not session.application.busy:
+            try:
+                settings.save(settings.remember, settings.login, settings.vault, login_service=service.get_active())
+            except (OSError, ValueError, VaultError) as exc:
+                session.error(str(exc))
+        updating[0] = True
+        service.set_active(settings.login_service)
+        updating[0] = False
+    service.connect("notify::active", changed_service)
     background = Adw.SwitchRow(title=_tr("Run in Background"),
         subtitle=_tr("Keep vaults available when windows close; use Quit to exit"), active=settings.background)
     group.add(background)
@@ -337,6 +353,8 @@ def show(session):
         remember.set_active(settings.remember)
         login.set_active(settings.login)
         login.set_sensitive(settings.remember)
+        service.set_active(settings.login_service)
+        service.set_sensitive(settings.login)
         updating[0] = False
     def clear_saved():
         session.run_keyring_job(lambda request: session.application.login_keyring().clear(request))
